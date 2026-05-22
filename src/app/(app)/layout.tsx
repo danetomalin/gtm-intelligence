@@ -1,21 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 
-export default async function AppLayout({
+// Demo mode: auth disabled. Restore by re-adding the getUser() check
+// and redirect to /login if !user (see git history for the original).
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b border-border bg-surface/60 backdrop-blur">
@@ -26,15 +17,15 @@ export default async function AppLayout({
           >
             <span className="text-accent">Throughline</span>
           </Link>
-          <form action="/api/auth/sign-out" method="post">
-            <span className="text-xs text-text-dim mr-3">{user.email}</span>
-            <button
-              type="submit"
-              className="text-xs text-text-muted hover:text-text transition"
-            >
-              Sign out
-            </button>
-          </form>
+          <nav className="flex items-center gap-5 text-xs text-text-muted">
+            <Link href="/dashboard" className="hover:text-text transition">
+              Dashboard
+            </Link>
+            <Link href="/onboarding" className="hover:text-text transition">
+              New brand
+            </Link>
+            <span className="text-text-dim">demo mode</span>
+          </nav>
         </div>
       </header>
       <main className="flex-1">{children}</main>

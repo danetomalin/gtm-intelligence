@@ -1,14 +1,8 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
-export default async function OnboardingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
+// Demo mode: skips the auth check. Real session reads will come back when
+// auth is restored.
+export default function OnboardingPage() {
   return (
     <div className="mx-auto max-w-xl px-6 py-16">
       <div className="mb-8">
@@ -22,7 +16,7 @@ export default async function OnboardingPage() {
           competitive and positioning snapshot.
         </p>
       </div>
-      <OnboardingForm userEmail={user.email ?? ""} />
+      <OnboardingForm userEmail="demo@throughline.io" />
     </div>
   );
 }

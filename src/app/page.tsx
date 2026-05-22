@@ -18,18 +18,21 @@ export default function HomePage() {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Link
-            href="/login"
+            href="/dashboard"
             className="inline-flex items-center justify-center rounded-md bg-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent"
           >
-            Sign in
+            Open dashboard
           </Link>
           <Link
-            href="/login?mode=signup"
+            href="/onboarding"
             className="inline-flex items-center justify-center rounded-md border border-border bg-card px-5 py-3 text-sm font-semibold text-text transition hover:bg-card-hover"
           >
-            Get started
+            Add a brand
           </Link>
         </div>
+        <p className="text-xs text-text-dim pt-4">
+          Demo mode — auth disabled while we build out the UI.
+        </p>
       </div>
     </main>
   );
