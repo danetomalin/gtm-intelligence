@@ -9,6 +9,8 @@ import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID } from "@/lib/demo-context";
 import { RunButton } from "./run-button";
+import { SignalCard, type Signal } from "./signal-card";
+import { PastSignalsArchive } from "./past-signals";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -119,17 +121,8 @@ export default async function AgentPage({
     error_message: string | null;
   } | null = null;
   let runs30dCount = 0;
-  let signals: Array<{
-    id: string;
-    signal_date: string | null;
-    category: string | null;
-    headline: string | null;
-    summary: string | null;
-    strategic_commentary: string | null;
-    impact_score: number | null;
-    sentiment: string | null;
-    sentiment_reason: string | null;
-  }> = [];
+  let latestSignals: Signal[] = [];
+  let pastSignals: Signal[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -156,17 +149,22 @@ export default async function AgentPage({
         ? admin
             .from("market_signals")
             .select(
-              "id, signal_date, category, headline, summary, strategic_commentary, impact_score, sentiment, sentiment_reason",
+              "id, signal_date, category, headline, summary, strategic_commentary, impact_score, sentiment, sentiment_reason, created_at",
             )
             .eq("brand_id", DEMO_BRAND_ID)
-            .order("impact_score", { ascending: false })
-            .limit(20)
-        : Promise.resolve({ data: [] as typeof signals, error: null }),
+            .order("created_at", { ascending: false })
+            .limit(200)
+        : Promise.resolve({ data: [] as Signal[], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
     runs30dCount = runCountRes.count ?? 0;
-    signals = signalsRes.data ?? [];
+    const allSignals = (signalsRes.data ?? []) as Signal[];
+    pastSignals = allSignals;
+    // Latest = top 6 by impact_score from the most recent run window
+    latestSignals = [...allSignals]
+      .sort((a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0))
+      .slice(0, 6);
   }
 
   const sampleOutput = sampleOutputByCode[code] ?? [];
@@ -235,25 +233,36 @@ export default async function AgentPage({
       )}
 
       {isLive && code === "A2" && (
-        <section>
-          <SectionDivider
-            title="Latest signals"
-            sub={`${signals.length} captured`}
-          />
-          {signals.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-              No signals yet. Click <strong className="text-text">Run now</strong>{" "}
-              to fire the agent — the first run typically takes 30–60 seconds and
-              produces 4–8 signals.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {signals.map((s) => (
-                <SignalCard key={s.id} signal={s} />
-              ))}
-            </div>
-          )}
-        </section>
+        <>
+          <section>
+            <SectionDivider
+              title="Top signals"
+              sub={`Highest impact · ${latestSignals.length}`}
+            />
+            {latestSignals.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No signals yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — the first run typically takes 30–60 seconds and produces
+                4–8 signals.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestSignals.map((s) => (
+                  <SignalCard key={s.id} signal={s} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Past signals"
+              sub={`Archive · ${pastSignals.length} total`}
+            />
+            <PastSignalsArchive signals={pastSignals} />
+          </section>
+        </>
       )}
 
       {!isLive && sampleOutput.length > 0 && (
@@ -296,75 +305,6 @@ export default async function AgentPage({
           , etc.).
         </div>
       </section>
-    </div>
-  );
-}
-
-function SignalCard({
-  signal,
-}: {
-  signal: {
-    id: string;
-    signal_date: string | null;
-    category: string | null;
-    headline: string | null;
-    summary: string | null;
-    strategic_commentary: string | null;
-    impact_score: number | null;
-    sentiment: string | null;
-    sentiment_reason: string | null;
-  };
-}) {
-  const sentimentTone =
-    signal.sentiment === "bullish"
-      ? "bg-win-bg text-win"
-      : signal.sentiment === "bearish"
-        ? "bg-danger-bg text-danger"
-        : "bg-warn-bg text-warn";
-  return (
-    <div className="rounded-lg border border-border bg-card px-5 py-4">
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 text-[11px] uppercase tracking-wider">
-            <span className="text-text-dim">{signal.signal_date ?? "—"}</span>
-            {signal.category && (
-              <span className="rounded-full bg-accent-bg text-accent px-2 py-0.5">
-                {signal.category}
-              </span>
-            )}
-          </div>
-          <h3 className="text-base font-semibold text-text leading-snug">
-            {signal.headline}
-          </h3>
-        </div>
-        <div className="flex-shrink-0 flex items-center gap-2">
-          <span className="rounded-full bg-accent-bg text-accent text-[11px] font-semibold px-2 py-0.5">
-            {signal.impact_score ?? "—"}/10
-          </span>
-          {signal.sentiment && (
-            <span
-              className={`rounded-full text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 ${sentimentTone}`}
-            >
-              {signal.sentiment}
-            </span>
-          )}
-        </div>
-      </div>
-      {signal.summary && (
-        <p className="text-sm text-text-muted leading-relaxed mb-2">
-          {signal.summary}
-        </p>
-      )}
-      {signal.strategic_commentary && (
-        <div className="border-l-2 border-accent pl-3 mt-2">
-          <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
-            So what
-          </div>
-          <p className="text-sm text-text leading-relaxed">
-            {signal.strategic_commentary}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
