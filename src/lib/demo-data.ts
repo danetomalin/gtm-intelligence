@@ -90,7 +90,7 @@ export const voicePillars = [
   },
   {
     name: "Operationalized PMM",
-    body: "Every output is built on a methodology with a name (April Dunford 5-element positioning, UVFV scoring, Kellogg battlecard structure). The PMM team can trust that the intelligence shipping each Monday was reasoned, not generated.",
+    body: "Every output is built on a methodology with a name (five-element positioning, UVFV scoring, Kellogg battlecard structure). The PMM team can trust that the intelligence shipping each Monday was reasoned, not generated.",
   },
   {
     name: "Tenant-isolated by default",
@@ -150,7 +150,7 @@ export const agentTooling = [
     name: "Positioning Engine",
     code: "A5",
     purpose:
-      "April Dunford 5-element framework: Competitive Alternatives, Distinct Capabilities, Differentiated Value, Best-Fit Accounts, Market Category.",
+      "Five-element framework: Competitive Alternatives, Distinct Capabilities, Differentiated Value, Best-Fit Accounts, Market Category.",
     cadence: "Monthly + on-demand",
     status: "shipping",
   },

@@ -54,7 +54,7 @@ export default function DashboardPage() {
           {[
             { name: "Market Context", desc: "Category dynamics + competitive landscape cards", href: "/market-context" },
             { name: "Brand Voice", desc: "Central thesis, voice pillars, narrative through-line", href: "/brand-voice" },
-            { name: "Positioning Framework", desc: "April Dunford 5-element positioning", href: "/positioning" },
+            { name: "Positioning Framework", desc: "Five-element positioning framework", href: "/positioning" },
             { name: "Agent Tooling", desc: "Pipeline status across all nine agents", href: "/agent-tooling" },
           ].map((row) => (
             <a

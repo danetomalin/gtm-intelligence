@@ -7,7 +7,7 @@ export default function PositioningPage() {
       <PageHeader
         eyebrow="Positioning framework"
         title="Five-element positioning"
-        subtitle="April Dunford's five-element framework. Each element is paired with the evidence that supports it, so the positioning isn't theoretical — it's traceable to research."
+        subtitle="The five-element positioning framework. Each element is paired with the evidence that supports it, so the positioning isn't theoretical — it's traceable to research."
       />
 
       <section>

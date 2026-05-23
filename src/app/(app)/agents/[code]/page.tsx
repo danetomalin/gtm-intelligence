@@ -22,6 +22,7 @@ import {
   dedupeLatestPerType,
   type PositioningElement,
 } from "./positioning-card";
+import { BattlecardCard, type Battlecard } from "./battlecard-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -46,7 +47,7 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
   },
   A5: {
     name: "Five-Element Positioning",
-    body: "April Dunford framework: Competitive Alternatives → Distinct Capabilities → Differentiated Value → Best-Fit Accounts → Market Category.",
+    body: "Five-element framework: Competitive Alternatives → Distinct Capabilities → Differentiated Value → Best-Fit Accounts → Market Category.",
   },
   A6: {
     name: "Messaging Template",
@@ -136,6 +137,8 @@ export default async function AgentPage({
   let pastRoadmap: RoadmapItem[] = [];
   let latestPositioning: PositioningElement[] = [];
   let pastPositioning: PositioningElement[] = [];
+  let latestBattlecards: Battlecard[] = [];
+  let pastBattlecards: Battlecard[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -194,7 +197,16 @@ export default async function AgentPage({
                   .eq("brand_id", DEMO_BRAND_ID)
                   .order("created_at", { ascending: false })
                   .limit(200)
-              : Promise.resolve({ data: [], error: null }),
+              : code === "A7"
+                ? admin
+                    .from("battlecards")
+                    .select(
+                      "id, competitor_name, elevator_pitch, value_prop, features_benefits, target_personas, pain_points, qualifying_questions, competitor_profile, competitor_strengths, competitor_weaknesses, kill_points, objections, success_stories, created_at",
+                    )
+                    .eq("brand_id", DEMO_BRAND_ID)
+                    .order("created_at", { ascending: false })
+                    .limit(200)
+                : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -232,6 +244,20 @@ export default async function AgentPage({
       latestPositioning = sortPositioningElements(
         dedupeLatestPerType(allElements),
       );
+    } else if (code === "A7") {
+      const allCards = (dataRes.data ?? []) as Battlecard[];
+      pastBattlecards = allCards;
+      // Latest = one per competitor
+      const seen = new Set<string>();
+      const latestPerCompetitor: Battlecard[] = [];
+      for (const c of allCards) {
+        const name = c.competitor_name ?? "";
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          latestPerCompetitor.push(c);
+        }
+      }
+      latestBattlecards = latestPerCompetitor;
     }
   }
 
@@ -398,6 +424,45 @@ export default async function AgentPage({
         </>
       )}
 
+      {isLive && code === "A7" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Current battlecards"
+              sub={`One per competitor · ${latestBattlecards.length}`}
+            />
+            {latestBattlecards.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No battlecards yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — A7 generates one battlecard per competitor in ~30–60
+                seconds, pulling from positioning + dossiers.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {latestBattlecards.map((c) => (
+                  <BattlecardCard key={c.id} card={c} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {pastBattlecards.length > latestBattlecards.length && (
+            <section>
+              <SectionDivider
+                title="Past battlecards"
+                sub={`Archive · ${pastBattlecards.length} total`}
+              />
+              <div className="space-y-2">
+                {pastBattlecards.map((c) => (
+                  <BattlecardCard key={c.id} card={c} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
       {isLive && code === "A5" && (
         <>
           <section>
@@ -409,7 +474,7 @@ export default async function AgentPage({
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No positioning yet. Click{" "}
                 <strong className="text-text">Run now</strong> to fire the
-                agent — A5 produces all 5 Dunford elements in ~30–45 seconds.
+                agent — A5 produces all 5 elements in ~30–45 seconds.
               </div>
             ) : (
               <div className="space-y-3">
