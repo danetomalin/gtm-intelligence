@@ -16,6 +16,12 @@ import { DossierCard, type Dossier } from "./dossier-card";
 import { PastDossiersArchive } from "./past-dossiers";
 import { RoadmapCard, type RoadmapItem } from "./roadmap-card";
 import { PastRoadmapArchive } from "./past-roadmap";
+import {
+  PositioningElementCard,
+  sortPositioningElements,
+  dedupeLatestPerType,
+  type PositioningElement,
+} from "./positioning-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -128,6 +134,8 @@ export default async function AgentPage({
   let pastDossiers: Dossier[] = [];
   let latestRoadmap: RoadmapItem[] = [];
   let pastRoadmap: RoadmapItem[] = [];
+  let latestPositioning: PositioningElement[] = [];
+  let pastPositioning: PositioningElement[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -177,7 +185,16 @@ export default async function AgentPage({
                 .eq("brand_id", DEMO_BRAND_ID)
                 .order("overall_score", { ascending: false })
                 .limit(200)
-            : Promise.resolve({ data: [], error: null }),
+            : code === "A5"
+              ? admin
+                  .from("positioning_elements")
+                  .select(
+                    "id, element_type, content, evidence, last_change_reason, created_at, updated_at",
+                  )
+                  .eq("brand_id", DEMO_BRAND_ID)
+                  .order("created_at", { ascending: false })
+                  .limit(200)
+              : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -209,6 +226,12 @@ export default async function AgentPage({
       latestRoadmap = [...allItems]
         .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
         .slice(0, 8);
+    } else if (code === "A5") {
+      const allElements = (dataRes.data ?? []) as PositioningElement[];
+      pastPositioning = allElements;
+      latestPositioning = sortPositioningElements(
+        dedupeLatestPerType(allElements),
+      );
     }
   }
 
@@ -372,6 +395,53 @@ export default async function AgentPage({
             />
             <PastRoadmapArchive items={pastRoadmap} />
           </section>
+        </>
+      )}
+
+      {isLive && code === "A5" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Current positioning"
+              sub={`Five-element framework · ${latestPositioning.length}/5`}
+            />
+            {latestPositioning.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No positioning yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — A5 produces all 5 Dunford elements in ~30–45 seconds.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {latestPositioning.map((el, idx) => (
+                  <PositioningElementCard
+                    key={el.id}
+                    element={el}
+                    index={idx + 1}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {pastPositioning.length > latestPositioning.length && (
+            <section>
+              <SectionDivider
+                title="Past positioning"
+                sub={`Archive · ${pastPositioning.length} total (includes prior versions)`}
+              />
+              <p className="text-xs text-text-dim mb-3">
+                Showing every positioning element ever written for this brand.
+                The Current section above is the latest version per element
+                type.
+              </p>
+              <div className="space-y-2">
+                {pastPositioning.map((el) => (
+                  <PositioningElementCard key={el.id} element={el} />
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
 
