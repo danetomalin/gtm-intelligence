@@ -8,9 +8,12 @@ import {
 import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID } from "@/lib/demo-context";
+import { LIVE_AGENTS } from "@/lib/agent-config";
 import { RunButton } from "./run-button";
 import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
+import { DossierCard, type Dossier } from "./dossier-card";
+import { PastDossiersArchive } from "./past-dossiers";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -89,10 +92,6 @@ const sampleOutputByCode: Record<
   ],
 };
 
-// Agents that have been migrated to the Supabase-native pattern and support
-// on-demand runs from the UI. Each entry maps to its real-data renderer.
-const LIVE_AGENTS = new Set(["A2"]);
-
 export async function generateStaticParams() {
   return agentTooling.map((a) => ({ code: a.code.toLowerCase() }));
 }
@@ -123,6 +122,8 @@ export default async function AgentPage({
   let runs30dCount = 0;
   let latestSignals: Signal[] = [];
   let pastSignals: Signal[] = [];
+  let latestDossiers: Dossier[] = [];
+  let pastDossiers: Dossier[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -130,7 +131,7 @@ export default async function AgentPage({
       Date.now() - 30 * 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    const [latestRunRes, runCountRes, signalsRes] = await Promise.all([
+    const [latestRunRes, runCountRes, dataRes] = await Promise.all([
       admin
         .from("run_history")
         .select("id, status, started_at, finished_at, error_message")
@@ -154,17 +155,42 @@ export default async function AgentPage({
             .eq("brand_id", DEMO_BRAND_ID)
             .order("created_at", { ascending: false })
             .limit(200)
-        : Promise.resolve({ data: [] as Signal[], error: null }),
+        : code === "A1"
+          ? admin
+              .from("competitive_dossiers")
+              .select(
+                "id, competitor_name, run_date, strategic_move, messaging_drift, pricing_intelligence, product_signals, talent_signals, competitive_landmines, risk_assessment, risk_justification, sources, created_at",
+              )
+              .eq("brand_id", DEMO_BRAND_ID)
+              .order("created_at", { ascending: false })
+              .limit(200)
+          : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
     runs30dCount = runCountRes.count ?? 0;
-    const allSignals = (signalsRes.data ?? []) as Signal[];
-    pastSignals = allSignals;
-    // Latest = top 6 by impact_score from the most recent run window
-    latestSignals = [...allSignals]
-      .sort((a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0))
-      .slice(0, 6);
+
+    if (code === "A2") {
+      const allSignals = (dataRes.data ?? []) as Signal[];
+      pastSignals = allSignals;
+      latestSignals = [...allSignals]
+        .sort((a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0))
+        .slice(0, 6);
+    } else if (code === "A1") {
+      const allDossiers = (dataRes.data ?? []) as Dossier[];
+      pastDossiers = allDossiers;
+      // Latest = one per competitor (most recent run_date), up to all unique competitors
+      const seen = new Set<string>();
+      const latestPerCompetitor: Dossier[] = [];
+      for (const d of allDossiers) {
+        const name = d.competitor_name ?? "";
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          latestPerCompetitor.push(d);
+        }
+      }
+      latestDossiers = latestPerCompetitor;
+    }
   }
 
   const sampleOutput = sampleOutputByCode[code] ?? [];
@@ -261,6 +287,39 @@ export default async function AgentPage({
               sub={`Archive · ${pastSignals.length} total`}
             />
             <PastSignalsArchive signals={pastSignals} />
+          </section>
+        </>
+      )}
+
+      {isLive && code === "A1" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Current dossiers"
+              sub={`One per competitor · ${latestDossiers.length}`}
+            />
+            {latestDossiers.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No dossiers yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — A1 generates one dossier per competitor in
+                brand_competitors. ~30–60 seconds.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestDossiers.map((d) => (
+                  <DossierCard key={d.id} dossier={d} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Past dossiers"
+              sub={`Archive · ${pastDossiers.length} total`}
+            />
+            <PastDossiersArchive dossiers={pastDossiers} />
           </section>
         </>
       )}
