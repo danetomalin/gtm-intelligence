@@ -23,6 +23,7 @@ import {
   type PositioningElement,
 } from "./positioning-card";
 import { BattlecardCard, type Battlecard } from "./battlecard-card";
+import { ThemeCard, type FeedbackTheme } from "./theme-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -139,6 +140,8 @@ export default async function AgentPage({
   let pastPositioning: PositioningElement[] = [];
   let latestBattlecards: Battlecard[] = [];
   let pastBattlecards: Battlecard[] = [];
+  let latestThemes: FeedbackTheme[] = [];
+  let pastThemes: FeedbackTheme[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -206,7 +209,16 @@ export default async function AgentPage({
                     .eq("brand_id", DEMO_BRAND_ID)
                     .order("created_at", { ascending: false })
                     .limit(200)
-                : Promise.resolve({ data: [], error: null }),
+                : code === "A4"
+                  ? admin
+                      .from("feedback_themes")
+                      .select(
+                        "id, theme_name, category, summary, representative_quotes, frequency, urgency, revenue_impact, strategic_alignment, recommended_action, created_at",
+                      )
+                      .eq("brand_id", DEMO_BRAND_ID)
+                      .order("created_at", { ascending: false })
+                      .limit(200)
+                  : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -247,7 +259,6 @@ export default async function AgentPage({
     } else if (code === "A7") {
       const allCards = (dataRes.data ?? []) as Battlecard[];
       pastBattlecards = allCards;
-      // Latest = one per competitor
       const seen = new Set<string>();
       const latestPerCompetitor: Battlecard[] = [];
       for (const c of allCards) {
@@ -258,6 +269,19 @@ export default async function AgentPage({
         }
       }
       latestBattlecards = latestPerCompetitor;
+    } else if (code === "A4") {
+      const allThemes = (dataRes.data ?? []) as FeedbackTheme[];
+      pastThemes = allThemes;
+      const seen = new Set<string>();
+      const latestPerTheme: FeedbackTheme[] = [];
+      for (const t of allThemes) {
+        const name = t.theme_name ?? "";
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          latestPerTheme.push(t);
+        }
+      }
+      latestThemes = latestPerTheme;
     }
   }
 
@@ -421,6 +445,45 @@ export default async function AgentPage({
             />
             <PastRoadmapArchive items={pastRoadmap} />
           </section>
+        </>
+      )}
+
+      {isLive && code === "A4" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Current themes"
+              sub={`Unique themes · ${latestThemes.length}`}
+            />
+            {latestThemes.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No themes yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire A4 — it
+                synthesizes 5–8 feedback themes from the market context in
+                ~30–45 seconds.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestThemes.map((t) => (
+                  <ThemeCard key={t.id} theme={t} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {pastThemes.length > latestThemes.length && (
+            <section>
+              <SectionDivider
+                title="Past themes"
+                sub={`Archive · ${pastThemes.length} total`}
+              />
+              <div className="space-y-2">
+                {pastThemes.map((t) => (
+                  <ThemeCard key={t.id} theme={t} compact />
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
 
