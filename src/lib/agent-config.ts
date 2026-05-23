@@ -8,7 +8,9 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   A3: "/webhook/roadmap-steering-supabase",
   A4: "/webhook/customer-feedback-supabase",
   A5: "/webhook/positioning-engine-supabase",
+  A6: "/webhook/messaging-supabase",
   A7: "/webhook/battlecards-supabase",
+  A8: "/webhook/sales-narrative-supabase",
 };
 
 export const LIVE_AGENTS = new Set(Object.keys(AGENT_WEBHOOK_PATHS));

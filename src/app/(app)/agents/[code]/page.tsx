@@ -24,6 +24,8 @@ import {
 } from "./positioning-card";
 import { BattlecardCard, type Battlecard } from "./battlecard-card";
 import { ThemeCard, type FeedbackTheme } from "./theme-card";
+import { ContentCard, type ContentOutput } from "./content-card";
+import { CollateralCard, type SalesCollateral } from "./collateral-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -142,6 +144,8 @@ export default async function AgentPage({
   let pastBattlecards: Battlecard[] = [];
   let latestThemes: FeedbackTheme[] = [];
   let pastThemes: FeedbackTheme[] = [];
+  let pastContent: ContentOutput[] = [];
+  let pastCollateral: SalesCollateral[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -218,7 +222,25 @@ export default async function AgentPage({
                       .eq("brand_id", DEMO_BRAND_ID)
                       .order("created_at", { ascending: false })
                       .limit(200)
-                  : Promise.resolve({ data: [], error: null }),
+                  : code === "A6"
+                    ? admin
+                        .from("content_outputs")
+                        .select(
+                          "id, channel, topic, target_persona, content, messaging_refs, proof_pending, created_at",
+                        )
+                        .eq("brand_id", DEMO_BRAND_ID)
+                        .order("created_at", { ascending: false })
+                        .limit(200)
+                    : code === "A8"
+                      ? admin
+                          .from("sales_collateral")
+                          .select(
+                            "id, collateral_type, target_account, target_segment, competitors, content, positioning_refs, messaging_refs, source_data_date, stale_flag, created_at",
+                          )
+                          .eq("brand_id", DEMO_BRAND_ID)
+                          .order("created_at", { ascending: false })
+                          .limit(200)
+                      : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -282,6 +304,10 @@ export default async function AgentPage({
         }
       }
       latestThemes = latestPerTheme;
+    } else if (code === "A6") {
+      pastContent = (dataRes.data ?? []) as ContentOutput[];
+    } else if (code === "A8") {
+      pastCollateral = (dataRes.data ?? []) as SalesCollateral[];
     }
   }
 
@@ -446,6 +472,46 @@ export default async function AgentPage({
             <PastRoadmapArchive items={pastRoadmap} />
           </section>
         </>
+      )}
+
+      {isLive && code === "A6" && (
+        <section>
+          <SectionDivider
+            title="Messaging library"
+            sub={`Channel-aware · ${pastContent.length} messages`}
+          />
+          {pastContent.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+              No messages yet. Click <strong className="text-text">Run now</strong> to fire A6 — it produces 6–10 channel-aware messages anchored to positioning.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {pastContent.map((c) => (
+                <ContentCard key={c.id} content={c} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isLive && code === "A8" && (
+        <section>
+          <SectionDivider
+            title="Sales collateral"
+            sub={`${pastCollateral.length} pieces`}
+          />
+          {pastCollateral.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+              No collateral yet. Click <strong className="text-text">Run now</strong> to fire A8 — it produces 4–6 collateral pieces (narrative arc, one-pager, SKO outline, exec briefing).
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pastCollateral.map((p) => (
+                <CollateralCard key={p.id} piece={p} />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {isLive && code === "A4" && (
