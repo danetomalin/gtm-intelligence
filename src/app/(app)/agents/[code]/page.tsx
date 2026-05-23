@@ -14,6 +14,8 @@ import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
 import { DossierCard, type Dossier } from "./dossier-card";
 import { PastDossiersArchive } from "./past-dossiers";
+import { RoadmapCard, type RoadmapItem } from "./roadmap-card";
+import { PastRoadmapArchive } from "./past-roadmap";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -124,6 +126,8 @@ export default async function AgentPage({
   let pastSignals: Signal[] = [];
   let latestDossiers: Dossier[] = [];
   let pastDossiers: Dossier[] = [];
+  let latestRoadmap: RoadmapItem[] = [];
+  let pastRoadmap: RoadmapItem[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -164,7 +168,16 @@ export default async function AgentPage({
               .eq("brand_id", DEMO_BRAND_ID)
               .order("created_at", { ascending: false })
               .limit(200)
-          : Promise.resolve({ data: [], error: null }),
+          : code === "A3"
+            ? admin
+                .from("roadmap_items")
+                .select(
+                  "id, item_date, title, category, summary, evidence, usable_score, usable_rationale, valuable_score, valuable_rationale, feasible_score, feasible_rationale, viable_score, viable_rationale, overall_score, recommendation, priority, tags, sources, created_at",
+                )
+                .eq("brand_id", DEMO_BRAND_ID)
+                .order("overall_score", { ascending: false })
+                .limit(200)
+            : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -190,6 +203,12 @@ export default async function AgentPage({
         }
       }
       latestDossiers = latestPerCompetitor;
+    } else if (code === "A3") {
+      const allItems = (dataRes.data ?? []) as RoadmapItem[];
+      pastRoadmap = allItems;
+      latestRoadmap = [...allItems]
+        .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
+        .slice(0, 8);
     }
   }
 
@@ -320,6 +339,38 @@ export default async function AgentPage({
               sub={`Archive · ${pastDossiers.length} total`}
             />
             <PastDossiersArchive dossiers={pastDossiers} />
+          </section>
+        </>
+      )}
+
+      {isLive && code === "A3" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Top roadmap items"
+              sub={`Highest overall · ${latestRoadmap.length}`}
+            />
+            {latestRoadmap.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No roadmap items yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — A3 produces 5–8 UVFV-scored items in ~30–60 seconds.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestRoadmap.map((it) => (
+                  <RoadmapCard key={it.id} item={it} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Past roadmap"
+              sub={`Archive · ${pastRoadmap.length} total`}
+            />
+            <PastRoadmapArchive items={pastRoadmap} />
           </section>
         </>
       )}
