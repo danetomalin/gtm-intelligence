@@ -117,7 +117,7 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
   },
   "D-CN": {
     name: "Counter-Narrative Trigger",
-    body: "Autonomous-firing agent. Watches R-MS signals and fires on the compound rule (impact ≥ 8, OR impact ≥ 7 + bearish + competitive_positioning/regulatory). Reads S-BC battlecards for framing. Output draft (rep talking points + LinkedIn post + email reply) goes through the HITL review queue before publish.",
+    body: "Designed for autonomous firing on R-MS signals; currently on-demand only (scheduled trigger disabled to avoid API credit consumption). When run, applies the compound rule (impact ≥ 8, OR impact ≥ 7 + bearish + competitive_positioning/regulatory) against the latest signals and drafts memos for every match. Reads S-BC battlecards for framing. Output goes through the HITL review queue before publish.",
   },
 };
 
@@ -1058,10 +1058,11 @@ export default async function AgentPage({
             />
             {latestMemos.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No memos yet. D-CN fires automatically when R-MS produces an
-                impact-8+ signal, or when impact ≥ 7 + bearish + a sensitive
-                category (competitive_positioning or regulatory_watch). Manual
-                run via the button above also works.
+                No memos yet. Click <strong className="text-text">Run now</strong>{" "}
+                to apply the compound trigger rule against the latest R-MS
+                signals (impact ≥ 8, OR impact ≥ 7 + bearish + sensitive
+                category). Scheduled firing is paused for now to keep API
+                credit consumption deliberate.
               </div>
             ) : (
               <div className="space-y-2">

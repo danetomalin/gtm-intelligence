@@ -199,6 +199,8 @@ Default rule lives in the D-CN agent's trigger node config. Per-tenant overrides
 
 **Output goes through Cap 6:** D-CN memos are Medium tier by default (internal Slack post for the PMM team), so they queue for single-reviewer approval before being shared. Goes High tier if the memo is being prepared for external publication (LinkedIn post, public statement).
 
+**Autonomous firing is currently paused.** Decision 2026-05-23: every Throughline n8n workflow runs on-demand only. No Schedule Trigger nodes, no cron, no autonomous polling, to keep API credit consumption deliberate. D-CN's manual `Run now` button still applies the compound rule against the latest signals. When credits are unblocked, re-enable D-CN's 30-min Schedule Trigger (the original two-trigger shape is in commit `995feb0` for reference).
+
 ---
 
 ## Capability 4 — Distribution + Feedback Loop

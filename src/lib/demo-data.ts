@@ -238,8 +238,8 @@ export const agentTooling = [
     name: "Counter-Narrative Responder",
     code: "D-CN",
     purpose:
-      "Autonomous-firing agent. Watches R-MS signals and drafts a one-page counter-narrative (rep talking points, suggested LinkedIn post, email reply template) when a signal meets the compound trigger rule (impact 8+ OR impact 7 + bearish + sensitive category).",
-    cadence: "Event-triggered + manual",
+      "Designed for autonomous firing on R-MS signals. Currently runs on-demand only (scheduled trigger disabled to avoid API credit consumption). Drafts a one-page counter-narrative (rep talking points, suggested LinkedIn post, email reply template) for every signal that meets the compound trigger rule (impact 8+ OR impact 7 + bearish + sensitive category).",
+    cadence: "On-demand (auto-trigger paused)",
     status: "shipping",
   },
 ];
