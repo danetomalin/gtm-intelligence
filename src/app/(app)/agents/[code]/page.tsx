@@ -49,6 +49,14 @@ import {
   CounterNarrativeCard,
   type CounterNarrative,
 } from "./counter-narrative-card";
+import {
+  DistributionCard,
+  type CampaignSend,
+} from "./distribution-card";
+import {
+  PerformanceCard,
+  type CampaignPerformance,
+} from "./performance-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -118,6 +126,26 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
   "D-CN": {
     name: "Counter-Narrative Trigger",
     body: "Designed for autonomous firing on R-MS signals; currently on-demand only (scheduled trigger disabled to avoid API credit consumption). When run, applies the compound rule (impact ≥ 8, OR impact ≥ 7 + bearish + competitive_positioning/regulatory) against the latest signals and drafts memos for every match. Reads S-BC battlecards for framing. Output goes through the HITL review queue before publish.",
+  },
+  "X-EM": {
+    name: "Email Distributor (mock)",
+    body: "Mock-first Resend adapter. Sends an approved D-MG / D-SN / D-CN artifact, marks it published, and writes synthetic open / click / reply events to campaign_metrics. Real-credential swap-in via admin settings, no code changes required.",
+  },
+  "X-LI": {
+    name: "LinkedIn Queue (mock)",
+    body: "Mock-first LinkedIn adapter. Synthetic impressions / clicks / comments for an approved artifact. Real path is queue + manual paste until LinkedIn API access is granted.",
+  },
+  "X-OR": {
+    name: "Outreach Distributor (mock)",
+    body: "Mock-first Outreach.io sequence adapter. Synthetic engagement matching Outreach's typical 5-step sequence profile (45% opens, 11% replies, 2.5% meetings booked).",
+  },
+  "X-AP": {
+    name: "Apollo Distributor (mock)",
+    body: "Mock-first Apollo.io sequence adapter. Synthetic engagement mirroring Apollo's typical profile (40% opens, 9% replies, 2.8% conversions).",
+  },
+  "S-CP": {
+    name: "Campaign Performance Analyst",
+    body: "Reads campaign_sends + campaign_metrics + content_outputs. Aggregates by channel and messaging theme, writes campaign_performance rollups with winning/losing theme + recommendation. The output feeds S-PO positioning and D-MG messaging on their next runs — this is the closed loop.",
   },
 };
 
@@ -222,6 +250,8 @@ export default async function AgentPage({
   let personas: BuyerPersona[] = [];
   let latestMemos: CounterNarrative[] = [];
   let pastMemos: CounterNarrative[] = [];
+  let channelSends: CampaignSend[] = [];
+  let performanceRows: CampaignPerformance[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -381,7 +411,35 @@ export default async function AgentPage({
                                           .eq("brand_id", DEMO_BRAND_ID)
                                           .order("created_at", { ascending: false })
                                           .limit(200)
-                                      : Promise.resolve({ data: [], error: null }),
+                                      : code === "X-EM" || code === "X-LI" || code === "X-OR" || code === "X-AP"
+                                        ? admin
+                                            .from("campaign_sends")
+                                            .select(
+                                              "id, channel_type, source, artifact_table, artifact_id, audience_descriptor, audience_size, external_send_id, status, sent_at, error_message",
+                                            )
+                                            .eq("brand_id", DEMO_BRAND_ID)
+                                            .eq(
+                                              "channel_type",
+                                              code === "X-EM"
+                                                ? "resend"
+                                                : code === "X-LI"
+                                                  ? "linkedin"
+                                                  : code === "X-OR"
+                                                    ? "outreach"
+                                                    : "apollo",
+                                            )
+                                            .order("sent_at", { ascending: false })
+                                            .limit(50)
+                                        : code === "S-CP"
+                                          ? admin
+                                              .from("campaign_performance")
+                                              .select(
+                                                "id, scope, scope_value, window_label, sends_count, open_rate_pct, click_through_rate_pct, reply_rate_pct, attributed_pipeline_usd, outperforms_baseline_pct, winning_theme, losing_theme, narrative, recommendation, sources, created_at",
+                                              )
+                                              .eq("brand_id", DEMO_BRAND_ID)
+                                              .order("created_at", { ascending: false })
+                                              .limit(50)
+                                          : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -489,6 +547,10 @@ export default async function AgentPage({
       const all = (dataRes.data ?? []) as CounterNarrative[];
       pastMemos = all;
       latestMemos = all.slice(0, 8);
+    } else if (code === "X-EM" || code === "X-LI" || code === "X-OR" || code === "X-AP") {
+      channelSends = (dataRes.data ?? []) as CampaignSend[];
+    } else if (code === "S-CP") {
+      performanceRows = (dataRes.data ?? []) as CampaignPerformance[];
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
       const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
@@ -1046,6 +1108,56 @@ export default async function AgentPage({
               </div>
             </section>
           )}
+        </>
+      )}
+
+      {isLive && (code === "X-EM" || code === "X-LI" || code === "X-OR" || code === "X-AP") && (
+        <>
+          <section>
+            <SectionDivider
+              title="Recent sends"
+              sub={`${channelSends.length} via this channel · mock-first`}
+            />
+            {channelSends.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No sends yet. The distribution adapters take an approved D-MG /
+                D-SN / D-CN artifact and ship it. Synthetic metrics events
+                generate immediately so S-CP has data to analyze. Real API
+                credentials swap in via admin settings without code changes.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {channelSends.map((s) => (
+                  <DistributionCard key={s.id} send={s} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "S-CP" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Performance rollups"
+              sub={`${performanceRows.length} written · closed-loop input to S-PO + D-MG`}
+            />
+            {performanceRows.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No rollups yet. Run S-CP after the distribution adapters have
+                fired so there are sends + metrics to analyze. Output writes
+                campaign_performance rows that S-PO positioning and D-MG
+                messaging read in their next Build Context.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {performanceRows.map((p) => (
+                  <PerformanceCard key={p.id} perf={p} />
+                ))}
+              </div>
+            )}
+          </section>
         </>
       )}
 

@@ -32,6 +32,12 @@ describe("agent-config", () => {
         "R-BR",
         // Phase 5: Counter-Narrative Responder.
         "D-CN",
+        // Phase 6A: Distribution adapters + S-CP.
+        "X-EM",
+        "X-LI",
+        "X-OR",
+        "X-AP",
+        "S-CP",
       ];
       for (const code of expectedCodes) {
         expect(AGENT_WEBHOOK_PATHS).toHaveProperty(code);
@@ -108,8 +114,8 @@ describe("agent-config", () => {
 
     it("returns false for unknown codes", () => {
       expect(isLiveAgent("A99")).toBe(false);
-      expect(isLiveAgent("D-OB")).toBe(false); // Phase 6 collateral sub-agent
-      expect(isLiveAgent("X-EM")).toBe(false); // Phase 6 distribution adapter
+      expect(isLiveAgent("D-OB")).toBe(false); // Phase 6B collateral sub-agent
+      expect(isLiveAgent("D-WW")).toBe(false); // Phase 6B win wire
       expect(isLiveAgent("")).toBe(false);
     });
   });

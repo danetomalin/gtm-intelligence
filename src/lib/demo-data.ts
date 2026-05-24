@@ -242,6 +242,46 @@ export const agentTooling = [
     cadence: "On-demand (auto-trigger paused)",
     status: "shipping",
   },
+  {
+    name: "Email Distributor",
+    code: "X-EM",
+    purpose:
+      "Mock-first Resend adapter (PLAN §4d). Sends an approved content_outputs or counter_narrative artifact and writes synthetic open / click / reply events to campaign_metrics so S-CP can analyze. Real credentials swap in via admin settings without code changes.",
+    cadence: "On-demand",
+    status: "shipping",
+  },
+  {
+    name: "LinkedIn Queue",
+    code: "X-LI",
+    purpose:
+      "Mock-first LinkedIn adapter. Queues an approved artifact for posting and writes synthetic impressions / reactions / replies to campaign_metrics. Real account integration swaps in later; queue + manual paste is the v1 real path.",
+    cadence: "On-demand",
+    status: "shipping",
+  },
+  {
+    name: "Outreach Distributor",
+    code: "X-OR",
+    purpose:
+      "Mock-first Outreach.io sequence adapter. Synthetic sequence engagement (open / reply / book) until real Outreach credentials are connected. Always sends a sample of 50 personas from buyer_personas + customer_evidence for realism.",
+    cadence: "On-demand",
+    status: "shipping",
+  },
+  {
+    name: "Apollo Distributor",
+    code: "X-AP",
+    purpose:
+      "Mock-first Apollo.io sequence adapter. Mirrors X-OR's pattern with Apollo-specific event names. Real-credential swap-in deferred until Apollo workspace is provisioned for the tenant.",
+    cadence: "On-demand",
+    status: "shipping",
+  },
+  {
+    name: "Campaign Performance Analyst",
+    code: "S-CP",
+    purpose:
+      "Reads campaign_metrics (real or mock) and writes campaign_performance rollups: which messaging theme is winning, which channels outperform, attributed pipeline. Feeds S-PO positioning and D-MG messaging so the next refresh weighs winning themes more heavily. This is the closed loop.",
+    cadence: "On-demand (weekly recommended)",
+    status: "shipping",
+  },
 ];
 
 export const positioningElements = [
