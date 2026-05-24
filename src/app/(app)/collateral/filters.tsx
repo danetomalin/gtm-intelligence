@@ -9,6 +9,8 @@ type Counts = {
   qbr_template: number;
   customer_health_playbook: number;
   win_wire: number;
+  expansion_play: number;
+  renewal_talk_track: number;
   sales: number;
   customer_success: number;
   current: number;
@@ -65,6 +67,16 @@ export function CollateralLibraryFilters({
           label={`Win wire (${counts.win_wire})`}
           href={urlFor("win_wire", audienceFilter, freshnessFilter)}
           active={typeFilter === "win_wire"}
+        />
+        <FilterPill
+          label={`Expansion (${counts.expansion_play})`}
+          href={urlFor("expansion_play", audienceFilter, freshnessFilter)}
+          active={typeFilter === "expansion_play"}
+        />
+        <FilterPill
+          label={`Renewal (${counts.renewal_talk_track})`}
+          href={urlFor("renewal_talk_track", audienceFilter, freshnessFilter)}
+          active={typeFilter === "renewal_talk_track"}
         />
       </div>
 

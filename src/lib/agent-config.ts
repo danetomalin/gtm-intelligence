@@ -42,6 +42,9 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   "D-QB": "/webhook/qbr-template-supabase",
   "D-HP": "/webhook/health-playbook-supabase",
   "D-WW": "/webhook/win-wire-supabase",
+  // Phase 7: Final two Cap 5 sub-agents (expansion + renewal talk track).
+  "D-XP": "/webhook/expansion-play-supabase",
+  "D-RT": "/webhook/renewal-talk-track-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

@@ -38,6 +38,8 @@ export default async function CollateralLibraryPage({
     qbr_template: assets.filter((a) => a.asset_type === "qbr_template").length,
     customer_health_playbook: assets.filter((a) => a.asset_type === "customer_health_playbook").length,
     win_wire: assets.filter((a) => a.asset_type === "win_wire").length,
+    expansion_play: assets.filter((a) => a.asset_type === "expansion_play").length,
+    renewal_talk_track: assets.filter((a) => a.asset_type === "renewal_talk_track").length,
     sales: assets.filter((a) => a.audience === "sales").length,
     customer_success: assets.filter((a) => a.audience === "customer_success").length,
     current: assets.filter((a) => a.freshness_state === "current").length,

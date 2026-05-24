@@ -167,6 +167,14 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
     name: "Win Wire",
     body: "Reads R-WL win_loss_analyses + S-BC battlecards. Writes a post-deal teardown asset: deal arc, decisive moment, key quotes, replicable plays. Internal celebration + pattern propagation.",
   },
+  "D-XP": {
+    name: "Expansion Play",
+    body: "Reads R-EV customer_evidence + product_capabilities + buyer_personas. Writes account-expansion playbooks: triggers, multi-thread plan, talk track, proof points. CS + AE collaboration asset.",
+  },
+  "D-RT": {
+    name: "Renewal Talk Track",
+    body: "Reads R-EV customer_evidence + R-PF product_feedback + S-CP campaign_performance. Writes renewal-call playbooks keyed to a customer-health pattern: value-realized recap, risk acknowledgment, expansion bridge, deal-saver play.",
+  },
 };
 
 const sampleOutputByCode: Record<
@@ -460,7 +468,7 @@ export default async function AgentPage({
                                               .eq("brand_id", DEMO_BRAND_ID)
                                               .order("created_at", { ascending: false })
                                               .limit(50)
-                                          : code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW"
+                                          : code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW" || code === "D-XP" || code === "D-RT"
                                             ? admin
                                                 .from("enablement_assets")
                                                 .select(
@@ -475,7 +483,11 @@ export default async function AgentPage({
                                                       ? "qbr_template"
                                                       : code === "D-HP"
                                                         ? "customer_health_playbook"
-                                                        : "win_wire",
+                                                        : code === "D-WW"
+                                                          ? "win_wire"
+                                                          : code === "D-XP"
+                                                            ? "expansion_play"
+                                                            : "renewal_talk_track",
                                                 )
                                                 .order("created_at", { ascending: false })
                                                 .limit(50)
@@ -591,7 +603,7 @@ export default async function AgentPage({
       channelSends = (dataRes.data ?? []) as CampaignSend[];
     } else if (code === "S-CP") {
       performanceRows = (dataRes.data ?? []) as CampaignPerformance[];
-    } else if (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW") {
+    } else if (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW" || code === "D-XP" || code === "D-RT") {
       enablementAssets = (dataRes.data ?? []) as EnablementAsset[];
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
@@ -1178,7 +1190,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW") && (
+      {isLive && (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW" || code === "D-XP" || code === "D-RT") && (
         <>
           <section>
             <SectionDivider

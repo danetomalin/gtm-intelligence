@@ -314,6 +314,22 @@ export const agentTooling = [
     cadence: "Per closed-won deal",
     status: "shipping",
   },
+  {
+    name: "Expansion Play",
+    code: "D-XP",
+    purpose:
+      "Account-expansion playbook: triggers to watch for, the multi-thread plan (who to engage where), expansion talk track, and the proof points that land. Reads customer_evidence + product_capabilities + buyer_personas. CS + AE collaboration asset.",
+    cadence: "Per account or quarterly",
+    status: "shipping",
+  },
+  {
+    name: "Renewal Talk Track",
+    code: "D-RT",
+    purpose:
+      "Renewal-call playbook keyed to a customer-health pattern: value-realized recap script, risk acknowledgement, expansion bridge, deal-saver play. Reads customer_evidence + product_feedback + campaign_performance (so winning themes inform the talk track).",
+    cadence: "Per renewal cycle",
+    status: "shipping",
+  },
 ];
 
 export const positioningElements = [

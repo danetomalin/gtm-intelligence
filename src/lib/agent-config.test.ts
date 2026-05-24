@@ -43,6 +43,9 @@ describe("agent-config", () => {
         "D-QB",
         "D-HP",
         "D-WW",
+        // Phase 7: Final two collateral sub-agents.
+        "D-XP",
+        "D-RT",
       ];
       for (const code of expectedCodes) {
         expect(AGENT_WEBHOOK_PATHS).toHaveProperty(code);
@@ -119,8 +122,8 @@ describe("agent-config", () => {
 
     it("returns false for unknown codes", () => {
       expect(isLiveAgent("A99")).toBe(false);
-      expect(isLiveAgent("D-XP")).toBe(false); // Phase 7 expansion play
-      expect(isLiveAgent("D-RT")).toBe(false); // Phase 7 renewal talk track
+      expect(isLiveAgent("R-NEW")).toBe(false); // not implemented
+      expect(isLiveAgent("X-SL")).toBe(false); // Slack channel exists as internal-only; not in agent map
       expect(isLiveAgent("")).toBe(false);
     });
   });

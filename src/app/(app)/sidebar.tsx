@@ -8,6 +8,7 @@ import { ROLE_LABEL_SHORT, ROLE_TAGLINE, WORKSPACE_ROLES } from "@/lib/persona";
 
 const outputItems = [
   { name: "Overview", href: "/dashboard", hint: "Exec summary" },
+  { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
   { name: "Review Queue", href: "/review-queue", hint: "HITL approvals" },
   { name: "Collateral Library", href: "/collateral", hint: "Cap 5 enablement assets" },
   { name: "Market Context", href: "/market-context", hint: "Category dynamics" },
