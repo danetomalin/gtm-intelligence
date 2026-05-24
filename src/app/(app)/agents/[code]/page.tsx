@@ -57,6 +57,10 @@ import {
   PerformanceCard,
   type CampaignPerformance,
 } from "./performance-card";
+import {
+  EnablementAssetCard,
+  type EnablementAsset,
+} from "./enablement-asset-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -146,6 +150,22 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
   "S-CP": {
     name: "Campaign Performance Analyst",
     body: "Reads campaign_sends + campaign_metrics + content_outputs. Aggregates by channel and messaging theme, writes campaign_performance rollups with winning/losing theme + recommendation. The output feeds S-PO positioning and D-MG messaging on their next runs — this is the closed loop.",
+  },
+  "D-OB": {
+    name: "Objection Handler",
+    body: "Reads S-BC battlecards + R-WL win/loss patterns + buyer_personas. Writes structured objection-handler entries to the enablement library: objection, why it comes up, response framework, proof point, escalation path. Sales-facing.",
+  },
+  "D-QB": {
+    name: "QBR Template Generator",
+    body: "Reads R-EV customer_evidence + R-PF product_feedback + R-CF feedback themes. Writes segment-specific QBR deck outlines: success milestones, expansion signals, risk flags, next-quarter agenda.",
+  },
+  "D-HP": {
+    name: "Customer Health Playbook",
+    body: "Reads R-PF product_feedback + R-CF feedback themes + R-EV customer_evidence. Writes health-pattern playbooks: early-warning signals, intervention scripts, escalation paths, recovery proof.",
+  },
+  "D-WW": {
+    name: "Win Wire",
+    body: "Reads R-WL win_loss_analyses + S-BC battlecards. Writes a post-deal teardown asset: deal arc, decisive moment, key quotes, replicable plays. Internal celebration + pattern propagation.",
   },
 };
 
@@ -252,6 +272,7 @@ export default async function AgentPage({
   let pastMemos: CounterNarrative[] = [];
   let channelSends: CampaignSend[] = [];
   let performanceRows: CampaignPerformance[] = [];
+  let enablementAssets: EnablementAsset[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -439,7 +460,26 @@ export default async function AgentPage({
                                               .eq("brand_id", DEMO_BRAND_ID)
                                               .order("created_at", { ascending: false })
                                               .limit(50)
-                                          : Promise.resolve({ data: [], error: null }),
+                                          : code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW"
+                                            ? admin
+                                                .from("enablement_assets")
+                                                .select(
+                                                  "id, asset_type, audience, title, body_markdown, source_refs, last_refreshed_at, freshness_state, version, produced_by, approval_status, risk_tier, created_at",
+                                                )
+                                                .eq("brand_id", DEMO_BRAND_ID)
+                                                .eq(
+                                                  "asset_type",
+                                                  code === "D-OB"
+                                                    ? "objection_handler"
+                                                    : code === "D-QB"
+                                                      ? "qbr_template"
+                                                      : code === "D-HP"
+                                                        ? "customer_health_playbook"
+                                                        : "win_wire",
+                                                )
+                                                .order("created_at", { ascending: false })
+                                                .limit(50)
+                                            : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -551,6 +591,8 @@ export default async function AgentPage({
       channelSends = (dataRes.data ?? []) as CampaignSend[];
     } else if (code === "S-CP") {
       performanceRows = (dataRes.data ?? []) as CampaignPerformance[];
+    } else if (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW") {
+      enablementAssets = (dataRes.data ?? []) as EnablementAsset[];
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
       const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
@@ -1129,6 +1171,30 @@ export default async function AgentPage({
               <div className="space-y-2">
                 {channelSends.map((s) => (
                   <DistributionCard key={s.id} send={s} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW") && (
+        <>
+          <section>
+            <SectionDivider
+              title="Library entries"
+              sub={`${enablementAssets.length} written · HITL-gated`}
+            />
+            {enablementAssets.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No assets yet. Click <strong className="text-text">Run now</strong>{" "}
+                to synthesize. Output lands in the unified enablement library
+                and the Review Queue.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {enablementAssets.map((a) => (
+                  <EnablementAssetCard key={a.id} asset={a} />
                 ))}
               </div>
             )}

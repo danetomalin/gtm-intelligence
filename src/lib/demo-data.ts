@@ -282,6 +282,38 @@ export const agentTooling = [
     cadence: "On-demand (weekly recommended)",
     status: "shipping",
   },
+  {
+    name: "Objection Handler",
+    code: "D-OB",
+    purpose:
+      "Synthesizes battlecards + win/loss patterns + buyer personas into structured objection-handler entries (objection, why it comes up, response framework, proof point, escalation path). Sales-facing collateral asset.",
+    cadence: "Quarterly + on demand",
+    status: "shipping",
+  },
+  {
+    name: "QBR Template",
+    code: "D-QB",
+    purpose:
+      "Generates a customer-segment-tailored QBR deck outline: success milestones, expansion signals, risk flags, recommended next-quarter agenda. Reads customer_evidence + product_feedback + feedback_themes.",
+    cadence: "Quarterly per segment",
+    status: "shipping",
+  },
+  {
+    name: "Customer Health Playbook",
+    code: "D-HP",
+    purpose:
+      "Customer-success playbook keyed to a health pattern: early-warning signals, intervention scripts, escalation paths, recovery proof. Reads product_feedback + feedback_themes + customer_evidence.",
+    cadence: "Monthly + on demand",
+    status: "shipping",
+  },
+  {
+    name: "Win Wire",
+    code: "D-WW",
+    purpose:
+      "Post-deal teardown for internal celebration + replication: deal arc, decisive moment, who said what, replicable plays. Reads win_loss_analyses + battlecards. Internal-facing.",
+    cadence: "Per closed-won deal",
+    status: "shipping",
+  },
 ];
 
 export const positioningElements = [

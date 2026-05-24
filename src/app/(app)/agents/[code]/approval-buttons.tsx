@@ -38,7 +38,8 @@ const STATUS_TONE: Record<ApprovalStatus, string> = {
 export type ApprovalTable =
   | "content_outputs"
   | "sales_collateral"
-  | "counter_narrative_memos";
+  | "counter_narrative_memos"
+  | "enablement_assets";
 
 export function ApprovalButtons({
   artifactId,

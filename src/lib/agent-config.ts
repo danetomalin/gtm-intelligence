@@ -36,6 +36,12 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   "X-OR": "/webhook/distribution-outreach-supabase",
   "X-AP": "/webhook/distribution-apollo-supabase",
   "S-CP": "/webhook/campaign-performance-supabase",
+  // Phase 6B: Cap 5 v1 collateral library sub-agents. All write into the
+  // unified enablement_assets table with different asset_type values.
+  "D-OB": "/webhook/objection-handler-supabase",
+  "D-QB": "/webhook/qbr-template-supabase",
+  "D-HP": "/webhook/health-playbook-supabase",
+  "D-WW": "/webhook/win-wire-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

@@ -38,6 +38,11 @@ describe("agent-config", () => {
         "X-OR",
         "X-AP",
         "S-CP",
+        // Phase 6B: Collateral sub-agents.
+        "D-OB",
+        "D-QB",
+        "D-HP",
+        "D-WW",
       ];
       for (const code of expectedCodes) {
         expect(AGENT_WEBHOOK_PATHS).toHaveProperty(code);
@@ -114,8 +119,8 @@ describe("agent-config", () => {
 
     it("returns false for unknown codes", () => {
       expect(isLiveAgent("A99")).toBe(false);
-      expect(isLiveAgent("D-OB")).toBe(false); // Phase 6B collateral sub-agent
-      expect(isLiveAgent("D-WW")).toBe(false); // Phase 6B win wire
+      expect(isLiveAgent("D-XP")).toBe(false); // Phase 7 expansion play
+      expect(isLiveAgent("D-RT")).toBe(false); // Phase 7 renewal talk track
       expect(isLiveAgent("")).toBe(false);
     });
   });

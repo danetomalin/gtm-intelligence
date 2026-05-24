@@ -45,8 +45,8 @@ describe("supabase/migrations", () => {
     migrations = loadMigrations();
   });
 
-  it("has at least the 14 expected migrations", () => {
-    expect(migrations.length).toBeGreaterThanOrEqual(14);
+  it("has at least the 15 expected migrations", () => {
+    expect(migrations.length).toBeGreaterThanOrEqual(15);
   });
 
   it("0009 backfills run_history.agent_code from A1-A8 to layer-prefixed codes", () => {
@@ -188,6 +188,10 @@ describe("supabase/migrations", () => {
       "campaign_sends",
       "campaign_metrics",
       "campaign_performance",
+      // Phase 6B: Enablement library.
+      "enablement_assets",
+      "enablement_asset_versions",
+      "enablement_distribution_log",
     ];
     for (const table of expectedTables) {
       const pattern = new RegExp(`create\\s+table(?:\\s+if\\s+not\\s+exists)?\\s+${table}\\b`);
