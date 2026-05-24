@@ -6,24 +6,40 @@ import {
   DEMO_BRAND_NAME,
   DEMO_BRAND_WEBSITE,
 } from "@/lib/demo-context";
-import { webhookPathFor } from "@/lib/agent-config";
+import { normalizeAgentCode, webhookPathFor } from "@/lib/agent-config";
 
 const N8N_BASE_URL =
   process.env.N8N_WEBHOOK_BASE_URL ?? "https://gtmintelligence.app.n8n.cloud";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code: rawCode } = await params;
-  const code = rawCode.toUpperCase();
-  const webhookPath = webhookPathFor(code);
+  // Canonicalize. Accepts new codes ("R-CI", "r-ci") and legacy A1–A8.
+  const code = normalizeAgentCode(rawCode);
+  const webhookPath = code ? webhookPathFor(code) : null;
 
-  if (!webhookPath) {
+  if (!code || !webhookPath) {
     return NextResponse.json(
-      { error: `Agent ${code} is not live yet.` },
+      { error: `Agent ${rawCode} is not live yet.` },
       { status: 404 },
     );
+  }
+
+  // Some agents (e.g. R-BR Brand Repository) need extra payload beyond the
+  // default tenant/brand/run identifiers. Accept an optional JSON body whose
+  // top-level fields get merged into the n8n payload.
+  let extras: Record<string, unknown> = {};
+  if (request.headers.get("content-type")?.includes("application/json")) {
+    try {
+      const body = await request.json();
+      if (body && typeof body === "object") {
+        extras = body as Record<string, unknown>;
+      }
+    } catch {
+      // Empty / malformed body is fine; agents that don't need extras still work.
+    }
   }
 
   const admin = await createAdminClient();
@@ -53,6 +69,7 @@ export async function POST(
     brandName: DEMO_BRAND_NAME,
     websiteUrl: DEMO_BRAND_WEBSITE,
     category: null as string | null,
+    ...extras,
   };
 
   try {

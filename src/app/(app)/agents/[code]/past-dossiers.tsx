@@ -28,7 +28,7 @@ export function PastDossiersArchive({ dossiers }: { dossiers: Dossier[] }) {
   if (dossiers.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-        No past dossiers yet. Run A1 a few times to build up the archive.
+        No past dossiers yet. Run R-CI a few times to build up the archive.
       </div>
     );
   }

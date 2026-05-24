@@ -38,9 +38,3 @@ alter table sales_collateral enable row level security;
 create policy sales_collateral_all on sales_collateral
   for all using (organization_id in (select current_org_ids()))
   with check (organization_id in (select current_org_ids()));
-
--- NOTE: A8 (Sales Narrative) workflow uses Gemini 2.5 Pro (not Flash).
--- Flash triggers an n8n Tools Agent V3 batch executor bug:
--- "Cannot read properties of undefined (reading 'parts')" when the model
--- returns a function-call-only candidate with no content.parts array.
--- Pro doesn't hit it. maxIterations capped at 8.

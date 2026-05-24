@@ -1,3 +1,5 @@
+import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+
 export type ContentOutput = {
   id: string;
   channel: string | null;
@@ -6,6 +8,7 @@ export type ContentOutput = {
   content: string | null;
   messaging_refs: string | null;
   proof_pending: boolean | null;
+  approval_status?: ApprovalStatus | null;
   created_at?: string | null;
 };
 
@@ -64,6 +67,13 @@ export function ContentCard({
           </div>
           <p className="text-sm text-text leading-relaxed">{content.messaging_refs}</p>
         </div>
+      )}
+      {!compact && (
+        <ApprovalButtons
+          artifactId={content.id}
+          tableName="content_outputs"
+          status={content.approval_status ?? null}
+        />
       )}
     </div>
   );

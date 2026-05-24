@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID } from "@/lib/demo-context";
+import { normalizeAgentCode } from "@/lib/agent-config";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code: rawCode } = await params;
-  const code = rawCode.toUpperCase();
+  // Accepts new codes and legacy A1–A8; for legacy, returns rows under either
+  // form since the run_history rename happens via migration not on read.
+  const code = normalizeAgentCode(rawCode) ?? rawCode.toUpperCase();
   const { searchParams } = new URL(request.url);
   const runId = searchParams.get("runId");
   const admin = await createAdminClient();

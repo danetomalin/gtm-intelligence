@@ -8,7 +8,7 @@ import {
 import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID } from "@/lib/demo-context";
-import { LIVE_AGENTS } from "@/lib/agent-config";
+import { LIVE_AGENTS, normalizeAgentCode } from "@/lib/agent-config";
 import { RunButton } from "./run-button";
 import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
@@ -26,43 +26,90 @@ import { BattlecardCard, type Battlecard } from "./battlecard-card";
 import { ThemeCard, type FeedbackTheme } from "./theme-card";
 import { ContentCard, type ContentOutput } from "./content-card";
 import { CollateralCard, type SalesCollateral } from "./collateral-card";
+import { PricingIntelCard, type PricingIntel } from "./pricing-intel-card";
+import { WinLossCard, type WinLoss } from "./win-loss-card";
+import { EvidenceCard, type CustomerEvidence } from "./evidence-card";
+import {
+  ProductFeedbackCard,
+  type ProductFeedback,
+} from "./product-feedback-card";
+import {
+  AnalystBriefingCard,
+  type AnalystBriefing,
+} from "./analyst-briefing-card";
+import { LaunchPlanCard, type LaunchPlan } from "./launch-plan-card";
+import { VoiceRuleCard, type VoiceRule } from "./voice-rule-card";
+import { ProofPointCard, type ProofPoint } from "./proof-point-card";
+import {
+  CapabilityCard,
+  type ProductCapability,
+} from "./capability-card";
+import { PersonaCard, type BuyerPersona } from "./persona-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
     name: "Brand Initializer",
     body: "Seeds Product Context, Business Rules, Buyer Personas, and Brand Competitors from a brand brief. Uses GPT-5 Mini with medium reasoning and no web access on this run.",
   },
-  A1: {
+  "R-CI": {
     name: "Competitive Intelligence Assessment",
     body: "Seven analysis categories per competitor: Strategic Move, Messaging Drift, Pricing Intelligence, Product Signals, Talent Signals, Competitive Landmines, Risk Assessment.",
   },
-  A2: {
+  "R-MS": {
     name: "Signal Engine Cognitive Filters",
     body: "So What test → Strategic Divergence → Impact Score (1–10) → Sentiment Classification. Every signal must pass all four filters or it gets dropped.",
   },
-  A3: {
+  "S-RM": {
     name: "UVFV Assessment Framework",
     body: "Usable / Valuable / Feasible / Viable, each scored 1–10 with pass threshold at 5+. Recommendation: BUILD (all pass) / INVESTIGATE / DEFER / KILL.",
   },
-  A4: {
+  "R-CF": {
     name: "Feedback Synthesis",
     body: "Clusters raw feedback (NPS, support tickets, call transcripts) into themes with summary, representative quotes, frequency, urgency, and revenue impact.",
   },
-  A5: {
+  "S-PO": {
     name: "Five-Element Positioning",
     body: "Five-element framework: Competitive Alternatives → Distinct Capabilities → Differentiated Value → Best-Fit Accounts → Market Category.",
   },
-  A6: {
+  "D-MG": {
     name: "Messaging Template",
     body: "Per channel and persona: Something Cool We Do | How It's Different | Show Some Proof. Each message ties back to a positioning element.",
   },
-  A7: {
+  "S-BC": {
     name: "Battlecard Structure",
     body: "Tight elevator pitch with target market, Kellogg functional/monetary/psychological value prop, single-person Target Buyer profile, kill points, objection handling, proof.",
   },
-  A8: {
+  "D-SN": {
     name: "Sales Narrative & Collateral",
     body: "5-act narrative arc: Inflection → Implementation Bottleneck → Differentiated Capability → Proof → Call to Action. Used for SKO, board updates, and exec-level customer convos.",
+  },
+  "R-PP": {
+    name: "Pricing & Packaging Intelligence",
+    body: "Per-competitor pricing model + tier breakdown + recent changes + positioning implications. Reads R-CI dossiers and R-MS signals. Output feeds S-BC battlecards and S-PO positioning.",
+  },
+  "R-WL": {
+    name: "Win/Loss Analyst",
+    body: "Per-deal teardown: outcome, primary factors, key quotes from rep notes, patterns across deals, and the recommendation. Reads dummy CRM data + R-CI dossiers.",
+  },
+  "R-EV": {
+    name: "Customer Evidence Curator",
+    body: "Library of quotes, case studies, NPS verbatims, and metrics with attribution and legal status. Source-of-truth for proof used in messaging, sales narratives, and analyst materials.",
+  },
+  "R-PF": {
+    name: "Product Feedback Synthesizer",
+    body: "Themed feedback from support tickets, sales calls, NPS, and interviews. Severity-scored, recurrence-tracked, linked to roadmap items where applicable.",
+  },
+  "S-AR": {
+    name: "Analyst Relations Prep",
+    body: "Briefing prep for Gartner / Forrester / IDC. Key messages, proof points, competitor framing, likely questions, positioning anchor. Synthesizes from S-PO + R-CI + S-RM + R-EV.",
+  },
+  "S-LP": {
+    name: "Launch Planning",
+    body: "Channel-aware launch plan: target personas, messaging pillars, channel plan, success metrics. Reads S-PO positioning, buyer_personas, and existing content_outputs.",
+  },
+  "R-BR": {
+    name: "Brand Code Ingestion",
+    body: "Conversational questionnaire (~12 questions) feeds Claude Sonnet for structured extraction. Outputs land in brand_voice_rules, brand_proof_points, product_capabilities, and buyer_personas. Every downstream agent reads from these tables on subsequent runs.",
   },
 };
 
@@ -74,31 +121,31 @@ const sampleOutputByCode: Record<
     { label: "Capabilities seeded", preview: "8 capabilities, 5 business rules, 4 personas, 6 competitors" },
     { label: "Initialization framework", preview: "GPT-5 Mini · medium reasoning · no web access" },
   ],
-  A1: [
+  "R-CI": [
     { label: "Latest dossier", preview: "Crayon — strategic move: Q1 AI feature launch · risk: MEDIUM" },
     { label: "Coverage", preview: "6 competitors tracked, 4 with dossiers in last 7 days" },
   ],
-  A3: [
+  "S-RM": [
     { label: "Roadmap items scored", preview: "14 items · 3 BUILD · 5 INVESTIGATE · 4 DEFER · 2 KILL" },
     { label: "Critical priority", preview: "Cross-tenant analytics rollup (overall 8.5/10)" },
   ],
-  A4: [
+  "R-CF": [
     { label: "Themes identified", preview: "6 themes from 47 feedback signals · 2 high-urgency" },
     { label: "Top theme", preview: "Onboarding friction at brand-init step · 14 mentions" },
   ],
-  A5: [
+  "S-PO": [
     { label: "Positioning elements", preview: "All 5 elements current · last refresh 3 days ago" },
     { label: "Composed statement", preview: "Ready on the Positioning page" },
   ],
-  A6: [
+  "D-MG": [
     { label: "Messages drafted", preview: "12 messages across 6 channels" },
     { label: "Campaign briefs", preview: "3 active briefs: email, LinkedIn, analyst relations" },
   ],
-  A7: [
+  "S-BC": [
     { label: "Battlecards live", preview: "4 battlecards (Crayon, Klue, Kompyte, in-house tooling)" },
     { label: "Last refresh", preview: "Crayon updated 2 days ago after pricing change signal" },
   ],
-  A8: [
+  "D-SN": [
     { label: "Collateral pieces", preview: "5-act narrative · 1-pager · sales kickoff deck outline" },
     { label: "Last refresh", preview: "Synced with positioning v1.2 yesterday" },
   ],
@@ -116,7 +163,10 @@ export default async function AgentPage({
   params: Promise<{ code: string }>;
 }) {
   const { code: rawCode } = await params;
-  const code = rawCode.toUpperCase();
+  // Accept either the new layer-prefixed code (R-CI, S-PO, …) or a legacy
+  // A1–A8 code from pre-rename URLs. `normalizeAgentCode` returns the canonical
+  // new form, or null for completely unknown codes.
+  const code = normalizeAgentCode(rawCode) ?? rawCode.toUpperCase();
   const agent = agentTooling.find((a) => a.code === code);
   if (!agent) notFound();
 
@@ -146,6 +196,22 @@ export default async function AgentPage({
   let pastThemes: FeedbackTheme[] = [];
   let pastContent: ContentOutput[] = [];
   let pastCollateral: SalesCollateral[] = [];
+  let latestPricing: PricingIntel[] = [];
+  let pastPricing: PricingIntel[] = [];
+  let latestWinLoss: WinLoss[] = [];
+  let pastWinLoss: WinLoss[] = [];
+  let latestEvidence: CustomerEvidence[] = [];
+  let pastEvidence: CustomerEvidence[] = [];
+  let latestFeedback: ProductFeedback[] = [];
+  let pastFeedback: ProductFeedback[] = [];
+  let latestBriefings: AnalystBriefing[] = [];
+  let pastBriefings: AnalystBriefing[] = [];
+  let latestLaunches: LaunchPlan[] = [];
+  let pastLaunches: LaunchPlan[] = [];
+  let voiceRules: VoiceRule[] = [];
+  let proofPoints: ProofPoint[] = [];
+  let capabilities: ProductCapability[] = [];
+  let personas: BuyerPersona[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -168,7 +234,7 @@ export default async function AgentPage({
         .eq("brand_id", DEMO_BRAND_ID)
         .eq("agent_code", code)
         .gte("started_at", thirtyDaysAgo),
-      code === "A2"
+      code === "R-MS"
         ? admin
             .from("market_signals")
             .select(
@@ -177,7 +243,7 @@ export default async function AgentPage({
             .eq("brand_id", DEMO_BRAND_ID)
             .order("created_at", { ascending: false })
             .limit(200)
-        : code === "A1"
+        : code === "R-CI"
           ? admin
               .from("competitive_dossiers")
               .select(
@@ -186,7 +252,7 @@ export default async function AgentPage({
               .eq("brand_id", DEMO_BRAND_ID)
               .order("created_at", { ascending: false })
               .limit(200)
-          : code === "A3"
+          : code === "S-RM"
             ? admin
                 .from("roadmap_items")
                 .select(
@@ -195,7 +261,7 @@ export default async function AgentPage({
                 .eq("brand_id", DEMO_BRAND_ID)
                 .order("overall_score", { ascending: false })
                 .limit(200)
-            : code === "A5"
+            : code === "S-PO"
               ? admin
                   .from("positioning_elements")
                   .select(
@@ -204,7 +270,7 @@ export default async function AgentPage({
                   .eq("brand_id", DEMO_BRAND_ID)
                   .order("created_at", { ascending: false })
                   .limit(200)
-              : code === "A7"
+              : code === "S-BC"
                 ? admin
                     .from("battlecards")
                     .select(
@@ -213,7 +279,7 @@ export default async function AgentPage({
                     .eq("brand_id", DEMO_BRAND_ID)
                     .order("created_at", { ascending: false })
                     .limit(200)
-                : code === "A4"
+                : code === "R-CF"
                   ? admin
                       .from("feedback_themes")
                       .select(
@@ -222,37 +288,93 @@ export default async function AgentPage({
                       .eq("brand_id", DEMO_BRAND_ID)
                       .order("created_at", { ascending: false })
                       .limit(200)
-                  : code === "A6"
+                  : code === "D-MG"
                     ? admin
                         .from("content_outputs")
                         .select(
-                          "id, channel, topic, target_persona, content, messaging_refs, proof_pending, created_at",
+                          "id, channel, topic, target_persona, content, messaging_refs, proof_pending, approval_status, created_at",
                         )
                         .eq("brand_id", DEMO_BRAND_ID)
                         .order("created_at", { ascending: false })
                         .limit(200)
-                    : code === "A8"
+                    : code === "D-SN"
                       ? admin
                           .from("sales_collateral")
                           .select(
-                            "id, collateral_type, target_account, target_segment, competitors, content, positioning_refs, messaging_refs, source_data_date, stale_flag, created_at",
+                            "id, collateral_type, target_account, target_segment, competitors, content, positioning_refs, messaging_refs, source_data_date, stale_flag, approval_status, created_at",
                           )
                           .eq("brand_id", DEMO_BRAND_ID)
                           .order("created_at", { ascending: false })
                           .limit(200)
-                      : Promise.resolve({ data: [], error: null }),
+                      : code === "R-PP"
+                        ? admin
+                            .from("pricing_intelligence")
+                            .select(
+                              "id, competitor_name, snapshot_date, pricing_model, tiers, packaging_observations, pricing_velocity, recent_changes, positioning_implications, sources, created_at",
+                            )
+                            .eq("brand_id", DEMO_BRAND_ID)
+                            .order("created_at", { ascending: false })
+                            .limit(200)
+                        : code === "R-WL"
+                          ? admin
+                              .from("win_loss_analyses")
+                              .select(
+                                "id, deal_id, deal_date, outcome, account_name, account_segment, account_size, competitor, primary_factors, key_quotes, patterns_observed, recommendation, sources, created_at",
+                              )
+                              .eq("brand_id", DEMO_BRAND_ID)
+                              .order("created_at", { ascending: false })
+                              .limit(200)
+                          : code === "R-EV"
+                            ? admin
+                                .from("customer_evidence")
+                                .select(
+                                  "id, customer_name, customer_segment, evidence_type, content, attribution, evidence_date, positioning_alignment, legal_status, sources, created_at",
+                                )
+                                .eq("brand_id", DEMO_BRAND_ID)
+                                .order("created_at", { ascending: false })
+                                .limit(200)
+                            : code === "R-PF"
+                              ? admin
+                                  .from("product_feedback")
+                                  .select(
+                                    "id, source, feedback_date, customer_segment, raw_excerpt, themed_summary, linked_roadmap_item_id, severity, recurrence_count, recommendation, sources, created_at",
+                                  )
+                                  .eq("brand_id", DEMO_BRAND_ID)
+                                  .order("created_at", { ascending: false })
+                                  .limit(200)
+                              : code === "S-AR"
+                                ? admin
+                                    .from("analyst_briefings")
+                                    .select(
+                                      "id, analyst_firm, analyst_name, briefing_date, briefing_type, key_messages, proof_points, competitor_framing, questions_likely, positioning_anchor, sources, created_at",
+                                    )
+                                    .eq("brand_id", DEMO_BRAND_ID)
+                                    .order("created_at", { ascending: false })
+                                    .limit(200)
+                                : code === "S-LP"
+                                  ? admin
+                                      .from("launch_plans")
+                                      .select(
+                                        "id, launch_name, launch_type, launch_date_target, target_personas, messaging_pillars, channel_plan, success_metrics, positioning_anchor, sources, created_at",
+                                      )
+                                      .eq("brand_id", DEMO_BRAND_ID)
+                                      .order("created_at", { ascending: false })
+                                      .limit(200)
+                                  : code === "R-BR"
+                                    ? Promise.resolve({ data: [], error: null }) // R-BR fans out below
+                                    : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
     runs30dCount = runCountRes.count ?? 0;
 
-    if (code === "A2") {
+    if (code === "R-MS") {
       const allSignals = (dataRes.data ?? []) as Signal[];
       pastSignals = allSignals;
       latestSignals = [...allSignals]
         .sort((a, b) => (b.impact_score ?? 0) - (a.impact_score ?? 0))
         .slice(0, 6);
-    } else if (code === "A1") {
+    } else if (code === "R-CI") {
       const allDossiers = (dataRes.data ?? []) as Dossier[];
       pastDossiers = allDossiers;
       // Latest = one per competitor (most recent run_date), up to all unique competitors
@@ -266,19 +388,19 @@ export default async function AgentPage({
         }
       }
       latestDossiers = latestPerCompetitor;
-    } else if (code === "A3") {
+    } else if (code === "S-RM") {
       const allItems = (dataRes.data ?? []) as RoadmapItem[];
       pastRoadmap = allItems;
       latestRoadmap = [...allItems]
         .sort((a, b) => (b.overall_score ?? 0) - (a.overall_score ?? 0))
         .slice(0, 8);
-    } else if (code === "A5") {
+    } else if (code === "S-PO") {
       const allElements = (dataRes.data ?? []) as PositioningElement[];
       pastPositioning = allElements;
       latestPositioning = sortPositioningElements(
         dedupeLatestPerType(allElements),
       );
-    } else if (code === "A7") {
+    } else if (code === "S-BC") {
       const allCards = (dataRes.data ?? []) as Battlecard[];
       pastBattlecards = allCards;
       const seen = new Set<string>();
@@ -291,7 +413,7 @@ export default async function AgentPage({
         }
       }
       latestBattlecards = latestPerCompetitor;
-    } else if (code === "A4") {
+    } else if (code === "R-CF") {
       const allThemes = (dataRes.data ?? []) as FeedbackTheme[];
       pastThemes = allThemes;
       const seen = new Set<string>();
@@ -304,10 +426,86 @@ export default async function AgentPage({
         }
       }
       latestThemes = latestPerTheme;
-    } else if (code === "A6") {
+    } else if (code === "D-MG") {
       pastContent = (dataRes.data ?? []) as ContentOutput[];
-    } else if (code === "A8") {
+    } else if (code === "D-SN") {
       pastCollateral = (dataRes.data ?? []) as SalesCollateral[];
+    } else if (code === "R-PP") {
+      const allPricing = (dataRes.data ?? []) as PricingIntel[];
+      pastPricing = allPricing;
+      // Latest snapshot per competitor (rows come created_at DESC).
+      const seen = new Set<string>();
+      const latestPerCompetitor: PricingIntel[] = [];
+      for (const p of allPricing) {
+        const name = p.competitor_name ?? "";
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          latestPerCompetitor.push(p);
+        }
+      }
+      latestPricing = latestPerCompetitor;
+    } else if (code === "R-WL") {
+      const all = (dataRes.data ?? []) as WinLoss[];
+      pastWinLoss = all;
+      latestWinLoss = all.slice(0, 8);
+    } else if (code === "R-EV") {
+      const all = (dataRes.data ?? []) as CustomerEvidence[];
+      pastEvidence = all;
+      latestEvidence = all.slice(0, 10);
+    } else if (code === "R-PF") {
+      const all = (dataRes.data ?? []) as ProductFeedback[];
+      pastFeedback = all;
+      latestFeedback = [...all]
+        .sort((a, b) => (b.recurrence_count ?? 0) - (a.recurrence_count ?? 0))
+        .slice(0, 8);
+    } else if (code === "S-AR") {
+      const all = (dataRes.data ?? []) as AnalystBriefing[];
+      pastBriefings = all;
+      latestBriefings = all.slice(0, 6);
+    } else if (code === "S-LP") {
+      const all = (dataRes.data ?? []) as LaunchPlan[];
+      pastLaunches = all;
+      latestLaunches = all.slice(0, 6);
+    } else if (code === "R-BR") {
+      // R-BR writes to four tables. Fan out the reads in parallel.
+      const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
+        admin
+          .from("brand_voice_rules")
+          .select(
+            "id, rule_type, rule, rationale, example_before, example_after, sources, created_at",
+          )
+          .eq("brand_id", DEMO_BRAND_ID)
+          .order("created_at", { ascending: false })
+          .limit(60),
+        admin
+          .from("brand_proof_points")
+          .select(
+            "id, proof_type, claim, attribution, customer_name, customer_segment, positioning_alignment, legal_status, sources, created_at",
+          )
+          .eq("brand_id", DEMO_BRAND_ID)
+          .order("created_at", { ascending: false })
+          .limit(60),
+        admin
+          .from("product_capabilities")
+          .select(
+            "id, capability_name, category, feature_description, buyer_benefit, competitive_gap, status, sources, created_at",
+          )
+          .eq("brand_id", DEMO_BRAND_ID)
+          .order("created_at", { ascending: false })
+          .limit(60),
+        admin
+          .from("buyer_personas")
+          .select(
+            "id, persona_name, title, segment, pain_points, goals, triggers, watering_holes, decision_criteria, created_at, updated_at",
+          )
+          .eq("brand_id", DEMO_BRAND_ID)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+      voiceRules = (voiceRes.data ?? []) as VoiceRule[];
+      proofPoints = (proofRes.data ?? []) as ProofPoint[];
+      capabilities = (capRes.data ?? []) as ProductCapability[];
+      personas = (personaRes.data ?? []) as BuyerPersona[];
     }
   }
 
@@ -376,7 +574,7 @@ export default async function AgentPage({
         </section>
       )}
 
-      {isLive && code === "A2" && (
+      {isLive && code === "R-MS" && (
         <>
           <section>
             <SectionDivider
@@ -409,7 +607,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && code === "A1" && (
+      {isLive && code === "R-CI" && (
         <>
           <section>
             <SectionDivider
@@ -420,7 +618,7 @@ export default async function AgentPage({
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No dossiers yet. Click{" "}
                 <strong className="text-text">Run now</strong> to fire the
-                agent — A1 generates one dossier per competitor in
+                agent — R-CI generates one dossier per competitor in
                 brand_competitors. ~30–60 seconds.
               </div>
             ) : (
@@ -442,7 +640,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && code === "A3" && (
+      {isLive && code === "S-RM" && (
         <>
           <section>
             <SectionDivider
@@ -453,7 +651,7 @@ export default async function AgentPage({
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No roadmap items yet. Click{" "}
                 <strong className="text-text">Run now</strong> to fire the
-                agent — A3 produces 5–8 UVFV-scored items in ~30–60 seconds.
+                agent — S-RM produces 5–8 UVFV-scored items in ~30–60 seconds.
               </div>
             ) : (
               <div className="space-y-2">
@@ -474,7 +672,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && code === "A6" && (
+      {isLive && code === "D-MG" && (
         <section>
           <SectionDivider
             title="Messaging library"
@@ -482,7 +680,7 @@ export default async function AgentPage({
           />
           {pastContent.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-              No messages yet. Click <strong className="text-text">Run now</strong> to fire A6 — it produces 6–10 channel-aware messages anchored to positioning.
+              No messages yet. Click <strong className="text-text">Run now</strong> to fire D-MG — it produces 6–10 channel-aware messages anchored to positioning.
             </div>
           ) : (
             <div className="space-y-2">
@@ -494,7 +692,7 @@ export default async function AgentPage({
         </section>
       )}
 
-      {isLive && code === "A8" && (
+      {isLive && code === "D-SN" && (
         <section>
           <SectionDivider
             title="Sales collateral"
@@ -502,7 +700,7 @@ export default async function AgentPage({
           />
           {pastCollateral.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-              No collateral yet. Click <strong className="text-text">Run now</strong> to fire A8 — it produces 4–6 collateral pieces (narrative arc, one-pager, SKO outline, exec briefing).
+              No collateral yet. Click <strong className="text-text">Run now</strong> to fire D-SN — it produces 4–6 collateral pieces (narrative arc, one-pager, SKO outline, exec briefing).
             </div>
           ) : (
             <div className="space-y-3">
@@ -514,7 +712,7 @@ export default async function AgentPage({
         </section>
       )}
 
-      {isLive && code === "A4" && (
+      {isLive && code === "R-CF" && (
         <>
           <section>
             <SectionDivider
@@ -524,7 +722,7 @@ export default async function AgentPage({
             {latestThemes.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No themes yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire A4 — it
+                <strong className="text-text">Run now</strong> to fire R-CF — it
                 synthesizes 5–8 feedback themes from the market context in
                 ~30–45 seconds.
               </div>
@@ -553,7 +751,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && code === "A7" && (
+      {isLive && code === "S-BC" && (
         <>
           <section>
             <SectionDivider
@@ -564,7 +762,7 @@ export default async function AgentPage({
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No battlecards yet. Click{" "}
                 <strong className="text-text">Run now</strong> to fire the
-                agent — A7 generates one battlecard per competitor in ~30–60
+                agent — S-BC generates one battlecard per competitor in ~30–60
                 seconds, pulling from positioning + dossiers.
               </div>
             ) : (
@@ -592,7 +790,7 @@ export default async function AgentPage({
         </>
       )}
 
-      {isLive && code === "A5" && (
+      {isLive && code === "S-PO" && (
         <>
           <section>
             <SectionDivider
@@ -603,7 +801,7 @@ export default async function AgentPage({
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
                 No positioning yet. Click{" "}
                 <strong className="text-text">Run now</strong> to fire the
-                agent — A5 produces all 5 elements in ~30–45 seconds.
+                agent — S-PO produces all 5 elements in ~30–45 seconds.
               </div>
             ) : (
               <div className="space-y-3">
@@ -632,6 +830,320 @@ export default async function AgentPage({
               <div className="space-y-2">
                 {pastPositioning.map((el) => (
                   <PositioningElementCard key={el.id} element={el} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "R-PP" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Latest pricing snapshots"
+              sub={`One per competitor · ${latestPricing.length}`}
+            />
+            {latestPricing.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No pricing snapshots yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — R-PP produces one snapshot per competitor in ~30–60
+                seconds.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestPricing.map((p) => (
+                  <PricingIntelCard key={p.id} intel={p} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {pastPricing.length > latestPricing.length && (
+            <section>
+              <SectionDivider
+                title="Past snapshots"
+                sub={`Archive · ${pastPricing.length} total`}
+              />
+              <div className="space-y-2">
+                {pastPricing.map((p) => (
+                  <PricingIntelCard key={p.id} intel={p} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "R-WL" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Recent win/loss"
+              sub={`Last 8 deals · ${latestWinLoss.length}`}
+            />
+            {latestWinLoss.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No win/loss data yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — R-WL synthesizes from dummy CRM data + R-CI dossiers.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestWinLoss.map((w) => (
+                  <WinLossCard key={w.id} analysis={w} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastWinLoss.length > latestWinLoss.length && (
+            <section>
+              <SectionDivider
+                title="Past deals"
+                sub={`Archive · ${pastWinLoss.length} total`}
+              />
+              <div className="space-y-2">
+                {pastWinLoss.map((w) => (
+                  <WinLossCard key={w.id} analysis={w} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "R-EV" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Customer evidence"
+              sub={`Recent · ${latestEvidence.length}`}
+            />
+            {latestEvidence.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No evidence yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire the
+                agent — R-EV curates quotes, case studies, and metrics from
+                review and NPS sources.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestEvidence.map((e) => (
+                  <EvidenceCard key={e.id} evidence={e} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastEvidence.length > latestEvidence.length && (
+            <section>
+              <SectionDivider
+                title="Full library"
+                sub={`Archive · ${pastEvidence.length} total`}
+              />
+              <div className="space-y-2">
+                {pastEvidence.map((e) => (
+                  <EvidenceCard key={e.id} evidence={e} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "R-PF" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Top product feedback"
+              sub={`By recurrence · ${latestFeedback.length}`}
+            />
+            {latestFeedback.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No feedback synthesized yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire R-PF —
+                it clusters support tickets, sales-call notes, and NPS verbatims
+                into themes with severity scoring.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestFeedback.map((f) => (
+                  <ProductFeedbackCard key={f.id} feedback={f} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastFeedback.length > latestFeedback.length && (
+            <section>
+              <SectionDivider
+                title="All feedback"
+                sub={`Archive · ${pastFeedback.length} total`}
+              />
+              <div className="space-y-2">
+                {pastFeedback.map((f) => (
+                  <ProductFeedbackCard key={f.id} feedback={f} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "S-AR" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Briefing prep"
+              sub={`Latest · ${latestBriefings.length}`}
+            />
+            {latestBriefings.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No briefings yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire S-AR —
+                it generates briefing prep using S-PO, R-CI, S-RM, and R-EV.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestBriefings.map((b) => (
+                  <AnalystBriefingCard key={b.id} briefing={b} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastBriefings.length > latestBriefings.length && (
+            <section>
+              <SectionDivider
+                title="Past briefings"
+                sub={`Archive · ${pastBriefings.length} total`}
+              />
+              <div className="space-y-2">
+                {pastBriefings.map((b) => (
+                  <AnalystBriefingCard key={b.id} briefing={b} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "R-BR" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Buyer personas"
+              sub={`${personas.length} extracted`}
+            />
+            {personas.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No personas yet. Start the{" "}
+                <Link
+                  href="/onboarding/brand-code"
+                  className="text-accent underline"
+                >
+                  conversational onboarding
+                </Link>{" "}
+                to populate brand-code from a ~12-question chat.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {personas.map((p) => (
+                  <PersonaCard key={p.id} persona={p} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Brand voice rules"
+              sub={`${voiceRules.length} rules · banned phrases, preferred terminology, tone guidance`}
+            />
+            {voiceRules.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No voice rules yet. R-BR extracts them from your &ldquo;3 words
+                marketing should never say&rdquo; / &ldquo;3 they should say more&rdquo;
+                answers in onboarding.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {voiceRules.map((r) => (
+                  <VoiceRuleCard key={r.id} rule={r} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Proof points"
+              sub={`${proofPoints.length} extracted · metrics, customer quotes, validation`}
+            />
+            {proofPoints.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No proof points yet. R-BR turns your customer-quote and proudest-metric
+                answers into structured, attribution-tagged records.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {proofPoints.map((p) => (
+                  <ProofPointCard key={p.id} point={p} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <SectionDivider
+              title="Product capabilities"
+              sub={`${capabilities.length} capabilities · feature → benefit → competitive gap`}
+            />
+            {capabilities.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No capabilities yet. R-BR maps your &ldquo;3 features prospects don&rsquo;t
+                fully understand&rdquo; answer into structured capability records.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {capabilities.map((c) => (
+                  <CapabilityCard key={c.id} capability={c} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "S-LP" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Active launch plans"
+              sub={`Latest · ${latestLaunches.length}`}
+            />
+            {latestLaunches.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No launches planned yet. Click{" "}
+                <strong className="text-text">Run now</strong> to fire S-LP —
+                it produces a channel-aware launch plan anchored to S-PO
+                positioning.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestLaunches.map((l) => (
+                  <LaunchPlanCard key={l.id} plan={l} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastLaunches.length > latestLaunches.length && (
+            <section>
+              <SectionDivider
+                title="Past launches"
+                sub={`Archive · ${pastLaunches.length} total`}
+              />
+              <div className="space-y-2">
+                {pastLaunches.map((l) => (
+                  <LaunchPlanCard key={l.id} plan={l} compact />
                 ))}
               </div>
             </section>

@@ -116,7 +116,7 @@ export const agentTooling = [
   },
   {
     name: "Competitive Intelligence",
-    code: "A1",
+    code: "R-CI",
     purpose:
       "Per-competitor dossier with strategic move, messaging drift, pricing intelligence, product signals, and competitive landmines.",
     cadence: "Weekly per competitor",
@@ -124,15 +124,15 @@ export const agentTooling = [
   },
   {
     name: "Market Signal Engine",
-    code: "A2",
+    code: "R-MS",
     purpose:
-      "News, funding rounds, product launches. Every signal passes through the Moloco-First filters: So What test, strategic divergence, impact 1–10, sentiment.",
+      "News, funding rounds, product launches. Every signal passes through the Throughline filters: So What test, strategic divergence, impact 1–10, sentiment.",
     cadence: "Daily scan",
     status: "shipping",
   },
   {
     name: "Roadmap Steering",
-    code: "A3",
+    code: "S-RM",
     purpose:
       "UVFV scoring (Usable, Valuable, Feasible, Viable) on every roadmap candidate. Output: BUILD / INVESTIGATE / DEFER / KILL with rationale.",
     cadence: "Monthly review",
@@ -140,7 +140,7 @@ export const agentTooling = [
   },
   {
     name: "Customer Feedback Synth",
-    code: "A4",
+    code: "R-CF",
     purpose:
       "Clusters NPS, support tickets, and call transcripts into theme rollups with urgency and revenue impact scoring.",
     cadence: "Weekly",
@@ -148,7 +148,7 @@ export const agentTooling = [
   },
   {
     name: "Positioning Engine",
-    code: "A5",
+    code: "S-PO",
     purpose:
       "Five-element framework: Competitive Alternatives, Distinct Capabilities, Differentiated Value, Best-Fit Accounts, Market Category.",
     cadence: "Monthly + on-demand",
@@ -156,7 +156,7 @@ export const agentTooling = [
   },
   {
     name: "Messaging Generator",
-    code: "A6",
+    code: "D-MG",
     purpose:
       "Channel-aware messaging library plus campaign briefs across 10 channels. Each message ties back to a positioning anchor.",
     cadence: "Weekly + on-demand",
@@ -164,7 +164,7 @@ export const agentTooling = [
   },
   {
     name: "Battlecard Generator",
-    code: "A7",
+    code: "S-BC",
     purpose:
       "Per-competitor battlecards using Kellogg functional/monetary/psychological value-prop structure plus kill points and objection handling.",
     cadence: "Quarterly + on-demand",
@@ -172,10 +172,66 @@ export const agentTooling = [
   },
   {
     name: "Sales Narrative",
-    code: "A8",
+    code: "D-SN",
     purpose:
       "5-act narrative arc tying competitive intel, market signals, and positioning into executive-ready storytelling for sales kickoff and board updates.",
     cadence: "Quarterly",
+    status: "shipping",
+  },
+  {
+    name: "Pricing & Packaging",
+    code: "R-PP",
+    purpose:
+      "Per-competitor pricing snapshot: model (tiered/usage/seat), tier breakdown, recent changes, and the positioning implications of each shift. Synthesizes from R-CI dossiers and R-MS pricing signals.",
+    cadence: "Weekly per competitor",
+    status: "shipping",
+  },
+  {
+    name: "Win/Loss Analyst",
+    code: "R-WL",
+    purpose:
+      "Per-deal teardown: outcome, primary factors, key quotes from rep notes, patterns across deals, and the recommendation that follows. Reads dummy CRM data + R-CI dossiers.",
+    cadence: "Weekly batch",
+    status: "shipping",
+  },
+  {
+    name: "Customer Evidence",
+    code: "R-EV",
+    purpose:
+      "Curated library of customer quotes, case studies, NPS verbatims, and metrics with attribution and legal status. Source-of-truth for proof in messaging and analyst materials.",
+    cadence: "Weekly + on-demand",
+    status: "shipping",
+  },
+  {
+    name: "Product Feedback",
+    code: "R-PF",
+    purpose:
+      "Themed product feedback from support tickets, sales calls, NPS, and interviews. Severity-scored, recurrence-tracked, linked back to roadmap items where applicable.",
+    cadence: "Weekly",
+    status: "shipping",
+  },
+  {
+    name: "Analyst Relations",
+    code: "S-AR",
+    purpose:
+      "Briefing prep for Gartner / Forrester / IDC: key messages, proof points, competitor framing, and likely questions. Synthesizes from S-PO, R-CI, S-RM, and R-EV.",
+    cadence: "Per briefing",
+    status: "shipping",
+  },
+  {
+    name: "Launch Planning",
+    code: "S-LP",
+    purpose:
+      "Channel-aware launch plan: target personas, messaging pillars, channel plan, and success metrics. Reads S-PO positioning, buyer_personas, and existing content_outputs.",
+    cadence: "Per launch",
+    status: "shipping",
+  },
+  {
+    name: "Brand Repository",
+    code: "R-BR",
+    purpose:
+      "Brand Code Ingestion. Conversational onboarding (~12 questions) feeds Claude Sonnet, which extracts brand voice rules, proof points, product capabilities, and buyer personas. Every downstream agent reads from these tables.",
+    cadence: "On brand onboarding + on demand",
     status: "shipping",
   },
 ];

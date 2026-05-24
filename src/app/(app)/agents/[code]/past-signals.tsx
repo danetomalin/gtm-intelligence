@@ -37,8 +37,8 @@ export function PastSignalsArchive({ signals }: { signals: Signal[] }) {
   if (signals.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-        No past signals yet. Once you run A2 a few times, the full history will
-        accumulate here.
+        No past signals yet. Once you run R-MS a few times, the full history
+        will accumulate here.
       </div>
     );
   }

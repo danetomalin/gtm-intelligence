@@ -1,3 +1,5 @@
+import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+
 export type SalesCollateral = {
   id: string;
   collateral_type: string | null;
@@ -9,6 +11,7 @@ export type SalesCollateral = {
   messaging_refs: string | null;
   source_data_date: string | null;
   stale_flag: boolean | null;
+  approval_status?: ApprovalStatus | null;
   created_at?: string | null;
 };
 
@@ -67,6 +70,13 @@ export function CollateralCard({
           </div>
           <p className="text-sm text-text leading-relaxed">{piece.positioning_refs}</p>
         </div>
+      )}
+      {!compact && (
+        <ApprovalButtons
+          artifactId={piece.id}
+          tableName="sales_collateral"
+          status={piece.approval_status ?? null}
+        />
       )}
     </div>
   );

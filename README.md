@@ -42,6 +42,21 @@ throughline-app/
 2. Apply the migration: `supabase db push` (or paste `supabase/migrations/0001_init.sql` into the SQL editor).
 3. `npm run dev` — local dev on http://localhost:3000.
 
+## Tests
+
+```bash
+npm test              # one-shot run (Vitest)
+npm run test:watch    # rerun on change
+npm run test:coverage # generate HTML coverage report under coverage/
+```
+
+Test infrastructure overview:
+
+- `vitest.config.ts` — jsdom environment, React via `@vitejs/plugin-react`, `@/` path alias resolved.
+- `src/**/*.{test,spec}.{ts,tsx}` — co-located unit tests next to source.
+- `tests/migrations.test.ts` — static validator for `supabase/migrations/*.sql` (file numbering, no destructive operations, RLS-paired-with-policies, expected tables present).
+- Run before opening any PR. Tests are the regression gate the rest of the build phases rely on.
+
 ## Multi-tenancy model
 
 - **Organization** = tenant. One per customer.
