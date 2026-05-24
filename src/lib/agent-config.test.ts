@@ -30,6 +30,8 @@ describe("agent-config", () => {
         "S-LP",
         // Phase 4: Brand Repository.
         "R-BR",
+        // Phase 5: Counter-Narrative Responder.
+        "D-CN",
       ];
       for (const code of expectedCodes) {
         expect(AGENT_WEBHOOK_PATHS).toHaveProperty(code);
@@ -106,8 +108,8 @@ describe("agent-config", () => {
 
     it("returns false for unknown codes", () => {
       expect(isLiveAgent("A99")).toBe(false);
-      expect(isLiveAgent("D-CN")).toBe(false); // Phase 5
       expect(isLiveAgent("D-OB")).toBe(false); // Phase 6 collateral sub-agent
+      expect(isLiveAgent("X-EM")).toBe(false); // Phase 6 distribution adapter
       expect(isLiveAgent("")).toBe(false);
     });
   });

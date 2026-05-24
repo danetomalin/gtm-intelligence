@@ -45,6 +45,10 @@ import {
   type ProductCapability,
 } from "./capability-card";
 import { PersonaCard, type BuyerPersona } from "./persona-card";
+import {
+  CounterNarrativeCard,
+  type CounterNarrative,
+} from "./counter-narrative-card";
 
 const frameworkByCode: Record<string, { name: string; body: string }> = {
   A0: {
@@ -110,6 +114,10 @@ const frameworkByCode: Record<string, { name: string; body: string }> = {
   "R-BR": {
     name: "Brand Code Ingestion",
     body: "Conversational questionnaire (~12 questions) feeds Claude Sonnet for structured extraction. Outputs land in brand_voice_rules, brand_proof_points, product_capabilities, and buyer_personas. Every downstream agent reads from these tables on subsequent runs.",
+  },
+  "D-CN": {
+    name: "Counter-Narrative Trigger",
+    body: "Autonomous-firing agent. Watches R-MS signals and fires on the compound rule (impact ≥ 8, OR impact ≥ 7 + bearish + competitive_positioning/regulatory). Reads S-BC battlecards for framing. Output draft (rep talking points + LinkedIn post + email reply) goes through the HITL review queue before publish.",
   },
 };
 
@@ -212,6 +220,8 @@ export default async function AgentPage({
   let proofPoints: ProofPoint[] = [];
   let capabilities: ProductCapability[] = [];
   let personas: BuyerPersona[] = [];
+  let latestMemos: CounterNarrative[] = [];
+  let pastMemos: CounterNarrative[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -362,7 +372,16 @@ export default async function AgentPage({
                                       .limit(200)
                                   : code === "R-BR"
                                     ? Promise.resolve({ data: [], error: null }) // R-BR fans out below
-                                    : Promise.resolve({ data: [], error: null }),
+                                    : code === "D-CN"
+                                      ? admin
+                                          .from("counter_narrative_memos")
+                                          .select(
+                                            "id, triggering_signal_id, triggering_signal_summary, competitor_named, category, rep_talking_points, suggested_linkedin_post, email_reply_template, positioning_anchor, sources, approval_status, risk_tier, created_at",
+                                          )
+                                          .eq("brand_id", DEMO_BRAND_ID)
+                                          .order("created_at", { ascending: false })
+                                          .limit(200)
+                                      : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -466,6 +485,10 @@ export default async function AgentPage({
       const all = (dataRes.data ?? []) as LaunchPlan[];
       pastLaunches = all;
       latestLaunches = all.slice(0, 6);
+    } else if (code === "D-CN") {
+      const all = (dataRes.data ?? []) as CounterNarrative[];
+      pastMemos = all;
+      latestMemos = all.slice(0, 8);
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
       const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
@@ -1019,6 +1042,44 @@ export default async function AgentPage({
               <div className="space-y-2">
                 {pastBriefings.map((b) => (
                   <AnalystBriefingCard key={b.id} briefing={b} compact />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {isLive && code === "D-CN" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Recent counter-narrative memos"
+              sub={`${latestMemos.length} drafted · gated by HITL approval`}
+            />
+            {latestMemos.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No memos yet. D-CN fires automatically when R-MS produces an
+                impact-8+ signal, or when impact ≥ 7 + bearish + a sensitive
+                category (competitive_positioning or regulatory_watch). Manual
+                run via the button above also works.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {latestMemos.map((m) => (
+                  <CounterNarrativeCard key={m.id} memo={m} />
+                ))}
+              </div>
+            )}
+          </section>
+          {pastMemos.length > latestMemos.length && (
+            <section>
+              <SectionDivider
+                title="Past memos"
+                sub={`Archive · ${pastMemos.length} total`}
+              />
+              <div className="space-y-2">
+                {pastMemos.map((m) => (
+                  <CounterNarrativeCard key={m.id} memo={m} compact />
                 ))}
               </div>
             </section>

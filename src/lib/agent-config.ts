@@ -26,6 +26,10 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   "S-LP": "/webhook/launch-planning-supabase",
   // Phase 4: Brand Repository (Brand Code Ingestion).
   "R-BR": "/webhook/brand-repository-supabase",
+  // Phase 5: Counter-Narrative Responder (the only autonomous-firing agent).
+  // Manual run still works via this webhook; the scheduled trigger on the
+  // n8n side fires this same flow on impact-8+ signals.
+  "D-CN": "/webhook/counter-narrative-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

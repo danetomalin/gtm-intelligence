@@ -35,13 +35,18 @@ const STATUS_TONE: Record<ApprovalStatus, string> = {
  * is in `pending_review` or `needs_revision`. Full Review Queue (diff viewer,
  * edit-in-place, bulk approve) lands in Phase 5.
  */
+export type ApprovalTable =
+  | "content_outputs"
+  | "sales_collateral"
+  | "counter_narrative_memos";
+
 export function ApprovalButtons({
   artifactId,
   tableName,
   status,
 }: {
   artifactId: string;
-  tableName: "content_outputs" | "sales_collateral";
+  tableName: ApprovalTable;
   status: ApprovalStatus | null;
 }) {
   const router = useRouter();

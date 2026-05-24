@@ -234,6 +234,14 @@ export const agentTooling = [
     cadence: "On brand onboarding + on demand",
     status: "shipping",
   },
+  {
+    name: "Counter-Narrative Responder",
+    code: "D-CN",
+    purpose:
+      "Autonomous-firing agent. Watches R-MS signals and drafts a one-page counter-narrative (rep talking points, suggested LinkedIn post, email reply template) when a signal meets the compound trigger rule (impact 8+ OR impact 7 + bearish + sensitive category).",
+    cadence: "Event-triggered + manual",
+    status: "shipping",
+  },
 ];
 
 export const positioningElements = [

@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 const APPROVAL_TABLES = new Set<string>([
   "content_outputs",
   "sales_collateral",
+  "counter_narrative_memos",
 ]);
 
 type Action = "approve" | "reject" | "request_revision" | "publish";

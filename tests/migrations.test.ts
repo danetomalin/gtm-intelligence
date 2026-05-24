@@ -45,8 +45,8 @@ describe("supabase/migrations", () => {
     migrations = loadMigrations();
   });
 
-  it("has at least the 12 expected migrations", () => {
-    expect(migrations.length).toBeGreaterThanOrEqual(12);
+  it("has at least the 13 expected migrations", () => {
+    expect(migrations.length).toBeGreaterThanOrEqual(13);
   });
 
   it("0009 backfills run_history.agent_code from A1-A8 to layer-prefixed codes", () => {
@@ -181,6 +181,8 @@ describe("supabase/migrations", () => {
       "brand_proof_points",
       "product_capabilities",
       "brand_assets",
+      // Phase 5: Counter-narrative.
+      "counter_narrative_memos",
     ];
     for (const table of expectedTables) {
       const pattern = new RegExp(`create\\s+table(?:\\s+if\\s+not\\s+exists)?\\s+${table}\\b`);
