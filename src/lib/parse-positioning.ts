@@ -30,8 +30,27 @@ export type ParsedPositioning =
 const NUMBERED_PREFIX = /(?:^|\s)(\d+)\.\s/g;
 const TRAILING_PUNCT = /[.,;]\s*$/;
 
+// Gemini sprays markdown markers all over its output — `**bold**` around
+// titles, leading `* ` bullet prefixes on values, sometimes orphan `**`
+// runs when the closing pair wraps across the parser's title/value split.
+// Strip aggressively so the structured card renders clean prose.
+function stripMarkdown(s: string): string {
+  return s
+    // Orphan `**` runs (leading or trailing, with optional whitespace)
+    .replace(/^\s*\*\*+\s*/g, "")
+    .replace(/\s*\*\*+\s*$/g, "")
+    // Inline `**bold**` → `bold`
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    // Leading single `*` bullet (must be followed by space to avoid eating
+    // inline emphasis in the middle of a sentence)
+    .replace(/^\s*\*\s+/, "")
+    // Stray leading `*` with no space (rare but happens)
+    .replace(/^\s*\*+\s*/, "")
+    .trim();
+}
+
 function cleanValue(s: string): string {
-  return s.replace(TRAILING_PUNCT, "").trim();
+  return stripMarkdown(s.replace(TRAILING_PUNCT, "")).trim();
 }
 
 // Splits on dash boundaries: "^- " at the very start, or " - " mid-text.
@@ -47,14 +66,14 @@ function parseAttributesFromTail(tail: string): {
   if (!t) return { leadText: "", attributes: [] };
 
   const parts = t.split(DASH_SPLIT);
-  const leadText = (parts[0] ?? "").trim();
+  const leadText = stripMarkdown((parts[0] ?? "").trim());
   const attributes: PositioningAttribute[] = [];
   for (let i = 1; i < parts.length; i++) {
     const chunk = parts[i].trim();
     if (!chunk) continue;
     const colonIdx = chunk.indexOf(":");
     if (colonIdx === -1) continue;
-    const label = chunk.slice(0, colonIdx).trim();
+    const label = stripMarkdown(chunk.slice(0, colonIdx).trim());
     const value = cleanValue(chunk.slice(colonIdx + 1));
     if (label && value) attributes.push({ label, value });
   }
@@ -115,7 +134,9 @@ export function parsePositioningBody(body: string | null | undefined): ParsedPos
       } else {
         titleEnd = Math.min(colonIdx, dashIdx);
       }
-      const title = rest.slice(0, titleEnd).replace(/[:.\s]+$/, "").trim();
+      const title = stripMarkdown(
+        rest.slice(0, titleEnd).replace(/[:.\s]+$/, "").trim(),
+      );
       const tail = rest.slice(titleEnd + 1).trim();
       const { leadText, attributes } = parseAttributesFromTail(tail);
       items.push({
