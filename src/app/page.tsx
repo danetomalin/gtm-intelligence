@@ -4,17 +4,16 @@ export default function HomePage() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen px-6 py-24 text-center">
       <div className="max-w-2xl space-y-8">
-        <div className="inline-block rounded-full border border-border bg-card/50 px-3 py-1 text-[11px] font-medium uppercase tracking-[1.5px] text-accent">
-          AI Native Workflow Modernization System
-        </div>
         <h1 className="text-5xl font-bold tracking-tight leading-[1.1] text-text sm:text-6xl">
-          Your GTM team,{" "}
-          <span className="text-accent">running on AI workflows.</span>
+          Welcome to <span className="text-accent">Throughline</span>
         </h1>
-        <p className="text-lg text-text-muted leading-relaxed max-w-xl mx-auto">
-          Throughline rebuilds the work product marketing, customer success,
-          sales, and product teams ship — as AI-native workflows that produce
-          intelligence on every brand you care about.
+        <p className="text-xl text-text-muted leading-relaxed max-w-xl mx-auto">
+          GTM work that compounds with the org, not the individual.
+        </p>
+        <p className="text-base text-text-dim leading-relaxed max-w-xl mx-auto pt-2">
+          Throughline rebuilds the work product marketing, sales, customer
+          success, and product teams ship as AI-native workflows that run
+          against every brand you care about.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           <Link
@@ -31,7 +30,7 @@ export default function HomePage() {
           </Link>
         </div>
         <p className="text-xs text-text-dim pt-4">
-          Demo mode — auth disabled while we build out the UI.
+          Demo mode. Auth disabled while we build out the UI.
         </p>
       </div>
     </main>
