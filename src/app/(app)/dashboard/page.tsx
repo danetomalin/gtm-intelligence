@@ -4,9 +4,27 @@ import {
   StatCard,
 } from "../_components/page-header";
 import { overviewBlurb, demoBrand, agentTooling } from "@/lib/demo-data";
+import { createAdminClient } from "@/lib/supabase/server";
+import { DEMO_BRAND_ID } from "@/lib/demo-context";
 import { ActivePipeline } from "./active-pipeline";
+import { DailyBrief, type BriefSnapshot } from "./daily-brief";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  // Pull the most recent brief server-side so the panel renders with content
+  // on first load (when one exists). If none exists yet, DailyBrief shows
+  // the empty-state with a 'Brief me' button.
+  const admin = await createAdminClient();
+  const { data: briefRow } = await admin
+    .from("daily_briefs")
+    .select("id, generated_at, headline, focus_items")
+    .eq("brand_id", DEMO_BRAND_ID)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const initialBrief = (briefRow ?? null) as BriefSnapshot | null;
+
   // Stats reflect the live state of the platform, not a stale hardcoded count.
   const workflowCount = agentTooling.length;
   const overviewStats = [
@@ -39,6 +57,8 @@ export default function DashboardPage() {
         title={demoBrand.name}
         subtitle={overviewBlurb}
       />
+
+      <DailyBrief initialBrief={initialBrief} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {overviewStats.map((s) => (

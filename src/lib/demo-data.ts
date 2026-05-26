@@ -412,6 +412,15 @@ export const agentTooling: AgentToolingItem[] = [
     status: "shipping",
     roles: ["marketing", "sales", "product"],
   },
+  {
+    name: "Daily Brief",
+    code: "S-DB",
+    purpose:
+      "Powers the 'what should I focus on today' panel at the top of the dashboard. Reads pending HITL load, high-impact market signals, launches in flight, margin floor breaches, and stale runs — synthesizes 3-5 ranked focus items via Gemini Flash. Operator-only surface; no HITL gate.",
+    cadence: "On demand (click the Brief me button)",
+    status: "shipping",
+    roles: ["marketing", "sales", "product", "customer_success", "admin"],
+  },
 ];
 
 export const positioningElements = [

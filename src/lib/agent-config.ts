@@ -54,6 +54,11 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   "R-CE": "/webhook/customer-enrichment-supabase",
   "R-VC": "/webhook/voice-of-customer-supabase",
   "S-IC": "/webhook/icp-synthesizer-supabase",
+  // Capability 11: Daily Brief synthesizer. Powers the "what should I focus
+  // on today" panel at the top of /dashboard. Reads pending HITL load,
+  // high-impact signals, launches in flight, margin floor breaches, stale
+  // runs — synthesizes 3-5 ranked focus items via Gemini Flash.
+  "S-DB": "/webhook/daily-brief-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in
