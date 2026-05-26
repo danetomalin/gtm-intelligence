@@ -665,7 +665,7 @@ export default async function AgentPage({
     <div className="px-8 py-10 max-w-6xl space-y-10">
       <div className="flex items-start justify-between gap-6">
         <PageHeader
-          eyebrow={`Agent ${agent.code}`}
+          eyebrow={`Workflow ${agent.code}`}
           title={agent.name}
           subtitle={agent.purpose}
         />

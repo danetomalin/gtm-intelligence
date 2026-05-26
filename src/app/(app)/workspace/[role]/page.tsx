@@ -140,7 +140,7 @@ async function MarketingWorkspace({
         href="/agents/r-ms"
         empty={
           signals.length === 0
-            ? "No signals yet. Run R-MS from the agent page to populate."
+            ? "No signals yet. Run R-MS from the workflow page to populate."
             : null
         }
       >
@@ -157,7 +157,7 @@ async function MarketingWorkspace({
         href="/agents/s-po"
         empty={
           positioning.length === 0
-            ? "No positioning yet. Run S-PO from the agent page."
+            ? "No positioning yet. Run S-PO from the workflow page."
             : null
         }
       >
@@ -174,7 +174,7 @@ async function MarketingWorkspace({
         href="/agents/d-mg"
         empty={
           messages.length === 0
-            ? "No messages yet. Run D-MG from the agent page."
+            ? "No messages yet. Run D-MG from the workflow page."
             : null
         }
       >
@@ -280,7 +280,7 @@ async function SalesWorkspace({
         href="/agents/s-bc"
         empty={
           latestBattlecards.length === 0
-            ? "No battlecards yet. Run S-BC from the agent page."
+            ? "No battlecards yet. Run S-BC from the workflow page."
             : null
         }
       >
@@ -297,7 +297,7 @@ async function SalesWorkspace({
         href="/agents/r-ci"
         empty={
           dossiers.length === 0
-            ? "No dossiers yet. Run R-CI from the agent page."
+            ? "No dossiers yet. Run R-CI from the workflow page."
             : null
         }
       >
@@ -314,7 +314,7 @@ async function SalesWorkspace({
         href="/agents/d-sn"
         empty={
           collateral.length === 0
-            ? "No collateral yet. Run D-SN from the agent page."
+            ? "No collateral yet. Run D-SN from the workflow page."
             : null
         }
       >
@@ -331,7 +331,7 @@ async function SalesWorkspace({
         href="/agents/r-pp"
         empty={
           latestPricing.length === 0
-            ? "No pricing snapshots yet. Run R-PP from the agent page."
+            ? "No pricing snapshots yet. Run R-PP from the workflow page."
             : null
         }
       >
@@ -348,7 +348,7 @@ async function SalesWorkspace({
         href="/agents/r-wl"
         empty={
           winLoss.length === 0
-            ? "No win/loss analyses yet. Run R-WL from the agent page."
+            ? "No win/loss analyses yet. Run R-WL from the workflow page."
             : null
         }
       >
@@ -420,7 +420,7 @@ async function ProductWorkspace({
         href="/agents/s-rm"
         empty={
           roadmap.length === 0
-            ? "No roadmap items yet. Run S-RM from the agent page."
+            ? "No roadmap items yet. Run S-RM from the workflow page."
             : null
         }
       >
@@ -437,7 +437,7 @@ async function ProductWorkspace({
         href="/agents/r-cf"
         empty={
           themes.length === 0
-            ? "No themes yet. Run R-CF from the agent page."
+            ? "No themes yet. Run R-CF from the workflow page."
             : null
         }
       >
@@ -454,7 +454,7 @@ async function ProductWorkspace({
         href="/agents/r-ci"
         empty={
           dossiers.length === 0
-            ? "No dossiers yet. Run R-CI from the agent page."
+            ? "No dossiers yet. Run R-CI from the workflow page."
             : null
         }
       >
@@ -471,7 +471,7 @@ async function ProductWorkspace({
         href="/agents/r-pf"
         empty={
           productFeedback.length === 0
-            ? "No product feedback synthesized yet. Run R-PF from the agent page."
+            ? "No product feedback synthesized yet. Run R-PF from the workflow page."
             : null
         }
       >
@@ -545,7 +545,7 @@ async function CustomerSuccessWorkspace({
         href="/agents/r-cf"
         empty={
           themes.length === 0
-            ? "No themes yet. Run R-CF from the agent page."
+            ? "No themes yet. Run R-CF from the workflow page."
             : null
         }
       >
@@ -579,7 +579,7 @@ async function CustomerSuccessWorkspace({
         href="/agents/r-ev"
         empty={
           evidence.length === 0
-            ? "No evidence curated yet. Run R-EV from the agent page."
+            ? "No evidence curated yet. Run R-EV from the workflow page."
             : null
         }
       >
@@ -596,7 +596,7 @@ async function CustomerSuccessWorkspace({
         href="/agents/r-pf"
         empty={
           escalations.length === 0
-            ? "No escalations flagged. Run R-PF from the agent page."
+            ? "No escalations flagged. Run R-PF from the workflow page."
             : null
         }
       >
@@ -690,7 +690,7 @@ function ComingSoonSection({
         </div>
         <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
           This agent isn't wired yet. The workspace shell is here so the card
-          slot is ready to flip live the moment the agent lands.
+          slot is ready to flip live the moment the workflow lands.
         </p>
       </div>
     </section>

@@ -121,8 +121,8 @@ export function BrandCodeQuestionnaire() {
         throw new Error(body.error ?? `Server returned ${res.status}`);
       }
       setStatus("running");
-      // R-BR is asynchronous; the agent processes in the background. Route to
-      // the agent page where the user can watch rows land.
+      // R-BR is asynchronous; the workflow processes in the background. Route
+      // to the workflow page where the user can watch rows land.
       setTimeout(() => router.push("/agents/r-br"), 600);
     } catch (err) {
       setStatus("error");
@@ -174,7 +174,7 @@ export function BrandCodeQuestionnaire() {
         )}
         <div className="text-xs text-text-dim mt-2">
           Skip with a blank answer — R-BR handles missing fields. You can always
-          edit later from the agent page.
+          edit later from the workflow page.
         </div>
       </div>
 
@@ -223,7 +223,7 @@ export function BrandCodeQuestionnaire() {
       {status === "running" && (
         <div className="rounded-md border border-accent/40 bg-accent-bg/30 px-4 py-3 text-sm text-text-muted">
           R-BR is processing your brand code. Sonnet extraction typically takes
-          30–90 seconds. Taking you to the agent page…
+          30–90 seconds. Taking you to the workflow page…
         </div>
       )}
     </div>

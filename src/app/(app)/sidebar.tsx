@@ -99,7 +99,7 @@ export function Sidebar() {
         <div>
           <div className="px-2 mb-2 flex items-baseline justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-              Agents
+              Workflows
             </span>
             <span className="text-[10px] text-text-dim">
               {agentTooling.length}

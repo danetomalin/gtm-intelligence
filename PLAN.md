@@ -1,6 +1,6 @@
 # Throughline — Strategic Build Plan
 
-Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers six product capabilities on top:
+Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers seven product capabilities on top:
 
 1. **Persona Lens** — make the same data render four different ways for Product / CS / Marketing / Sales
 2. **Brand Code Ingestion** — let each customer feed their own brand inputs in instead of relying on hardcoded brand context
@@ -8,6 +8,7 @@ Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shi
 4. **Distribution + Feedback Loop** — actually send the generated content to external audiences, capture real-world performance, feed it back into the model
 5. **Enablement Collateral Automation** — produce, refresh, and route the internal assets a Sales and CS org runs on (battlecards, one-pagers, talk tracks, QBR templates, playbooks, runbooks)
 6. **Human-in-the-Loop Review & Approval** — the cross-cutting governance layer that gates every Delivery and Distribution agent behind structured review, captures human edits as training signal, and lets safe items auto-publish
+7. **Launch Readiness** — coordinate every agent into a tier-driven readiness pack the team operates against for each release (Flagship / Feature / Bug Fix / Revenue Growth / Revenue Retention)
 
 Each capability is independent enough to ship in isolation, but the order below is the one that gives the product the strongest standalone story at each stage.
 
@@ -534,6 +535,115 @@ Touches every D-* and X-* agent. Doesn't need to fully ship before Capabilities 
 
 ---
 
+## Capability 7 — Launch Readiness
+
+**Problem we're solving.** Today S-LP (Launch Planning) is a single-artifact agent: it produces one `launch_plans` row. That's not the operating model a PMM team actually runs. A real release is a coordinated multi-artifact event the team works against for weeks. Messaging across channels, sales narrative, battlecard refresh, objection-handler set, distribution sequences, post-launch win wire, performance loop. No single object today ties these artifacts together. No tier-driven "what's required for this kind of release." No readiness state. No one-click "ship the readiness pack."
+
+**The model.** Make **`launches`** a first-class object that coordinates artifacts across agents. Each launch carries a **tier** that defines its required artifact matrix.
+
+### 7a. Tiers
+
+Five tiers cover the real release rhythm:
+
+- **Flagship** — major product or category-defining launch
+- **Feature** — net-new functionality, not flagship-scale
+- **Bug Fix** — meaningful fix that needs internal comms (sometimes customer notes)
+- **Revenue Growth** — pricing change, packaging change, expansion play, partnership
+- **Revenue Retention** — churn-prevention, renewal-driving, customer-success focused features
+
+### 7b. Tier matrix (artifact requirements)
+
+| Artifact | Flagship | Feature | Bug Fix | Revenue Growth | Revenue Retention |
+|---|---|---|---|---|---|
+| **S-LP** launch plan | required | required | optional | required | required |
+| **D-MG** messaging | 5 channels | 3 channels | internal only | 3 channels | 2 channels |
+| **D-SN** sales narrative | required | optional | — | required | optional |
+| **S-BC** battlecard refresh | all competitors | top 2 | — | top 2 | — |
+| **S-AR** analyst briefing | required | optional | — | — | — |
+| **D-OB** objection handler set | required | required | — | required | refresh |
+| **D-QB** QBR template update | section | — | — | required | required |
+| **D-HP** health playbook | — | — | — | — | required |
+| **D-XP** expansion play | optional | — | — | required | — |
+| **D-RT** renewal talk track | — | — | — | — | required |
+| **D-WW** win wire (post-launch) | required | optional | — | optional | — |
+| **D-CN** counter-narrative watch | enabled | — | — | — | — |
+| **X-EM** email distribution | required | required | optional | required | required |
+| **X-LI** LinkedIn | required | required | — | required | — |
+| **X-OR** Outreach sequence | required | — | — | required | — |
+| **X-AP** Apollo sequence | optional | — | — | required | — |
+
+Tier matrix is hard-coded in `src/lib/launch-tiers.ts` for v1. Per-tenant overrides via a `launch_tier_rules` table are a v2 ask driven by customer demand.
+
+### 7c. Schema
+
+```
+launches
+  id, organization_id, brand_id
+  name, tier (flagship | feature | bugfix | revenue_growth | revenue_retention)
+  product_summary (text)
+  launch_date_target (date)
+  status (draft | in_progress | ready | shipped | post_mortem)
+  readiness_pct (computed view)
+  linked_signal_id (optional R-MS signal that triggered)
+  created_by, created_at, updated_at, shipped_at, post_mortem_at
+
+launch_artifacts
+  id, launch_id, artifact_table, artifact_id (nullable until produced),
+  required (bool), produced (bool), agent_code,
+  status_when_produced (one of the approval_status enum)
+```
+
+No schema changes to existing delivery tables. `launch_artifacts` is the canonical link between a launch and its produced artifacts.
+
+### 7d. Orchestration (L-OR)
+
+New agent: **L-OR (Launch Orchestrator)**. Different from other agents in that it doesn't call an LLM. It reads the launch tier, looks up the artifact matrix, and posts to each required agent's webhook with `launch_id` in extras. The downstream agents do the LLM work as they always do.
+
+L-OR is on-demand only (still respecting the no-scheduled-runs rule). The `[code]/run` API route accepts a `launch_id` in extras and writes the `launch_artifacts` link row after the run completes.
+
+**Generation order:** positioning-anchored generation runs in sequence (S-LP → D-MG → D-OB so each reads the previous), independent ones in parallel. Default sequence keeps quality high; cost is small additional wall time.
+
+### 7e. UX flow
+
+1. PM clicks **+ New launch** on `/launches`
+2. Modal: launch name, tier, target date, product summary (paste a paragraph)
+3. System creates the launch + writes one `launch_artifacts` row per artifact required by the chosen tier
+4. Launch detail page shows readiness checklist: 0 / N produced
+5. PM clicks **Generate readiness pack** → L-OR fires the relevant agents in sequence, each tagged with `launch_id`
+6. Each generated artifact lands in the Review Queue tagged with the launch. Marketing reviews messaging. Sales lead reviews objection handlers. CSM lead reviews health playbook section.
+7. Readiness counter climbs as artifacts get approved
+8. At 100% approved, the **Ship readiness pack** button activates. Click → X-EM / X-LI / X-OR / X-AP fire for the approved artifacts in the tier's required distribution set
+9. After two weeks, **Run launch retrospective** triggers D-WW (first-deal win wire) and S-CP (campaign performance scoped to this launch). Closes the loop
+
+### 7f. Pages
+
+- `/launches` index — list with readiness pct, tier badge, target date, last activity
+- `/launches/[id]` detail — readiness matrix, per-artifact actions, Ship + Retrospective buttons
+- Dashboard + persona workspaces get an "Active launches" widget
+- Sidebar entry: "Launches" under Output
+
+### 7g. Build plan (Phase 9, split into sub-phases)
+
+- **Phase 9A — Foundation** (~3–4 hours): Migration `launches` + `launch_artifacts`, `launch-tiers.ts`, `/launches` index, `+ New launch` modal, `/launches/[id]` detail, sidebar entry
+- **Phase 9B — Orchestration** (~3 hours): L-OR n8n workflow, modify `[code]/run` route to accept `launch_id` and write `launch_artifacts` links, sweep existing 11 Delivery workflows so Build Context forwards `launch_id`
+- **Phase 9C — Distribution + Post-launch** (~2 hours): "Ship readiness pack" button → fires X-* per tier matrix, Retrospective button → S-CP scoped query + optional D-WW
+- **Phase 9D — Workspace integration** (~1 hour): Marketing workspace Active Launches widget, Sales workspace This-Quarter widget, Observability adds Launches-in-flight count
+
+Total: ~9–10 focused hours.
+
+### 7h. Strategic value
+
+The most operational piece in the platform once it ships. A launch is the dominant unit of GTM work that PMM, Sales, and CS all operate against simultaneously. Pulling that work into a single coordinated readiness object is what makes Throughline a recurring product rather than a tool the team opens when they remember to. It's also the natural surface for customer success conversations: "How is your Wegovy generic launch going?" with a real readiness dashboard to look at together.
+
+### 7i. Open questions
+
+1. **Tier list** — Five-tier cut above, or do we need Compliance / Platform / Internal-only?
+2. **Matrix tuning** — Anything to flip `required` ↔ `optional` per tier?
+3. **D-CN watch trigger** — Enabled only for Flagship in the matrix above. Should it stay paused (per the no-scheduled-runs policy) even when a Flagship is active, or is launching a Flagship the one case where temporarily auto-firing makes sense?
+4. **Trigger from a signal** — Should an R-MS impact-8+ signal pre-populate a launch (especially Revenue Retention triggered by a churn signal)? Default: manual with a "Create launch from this signal" button on the R-MS card.
+
+---
+
 ## Recommended phasing
 
 Ordered for **stability first, ease of implementation second** (Decision 2026-05-22). Estimates are realistic focused-work hours at our actual pace, not traditional developer-week estimates. Total: ~28–36 hours of focused work, plus external-account overhead for Phase 6 wildcards.
@@ -549,6 +659,10 @@ Ordered for **stability first, ease of implementation second** (Decision 2026-05
 | **6** | Cap 4 Distribution (X-EM via Resend, X-LI queue, **X-OR and X-AP as mock adapters by default, real-credential swap-in** — see §4d) + **S-CP** agent reading from `campaign_metrics` (real or mock) + closed-loop wiring into S-PO/D-MG Build Context prompts + Cap 5 v1 collateral library (4 asset types: D-OB, D-QB, D-HP, D-WW, with library UI and nightly staleness scanner) | ~6–9 hours focused work; external-account overhead variable |
 | **7** | Reviewer-edit feedback loop v1 (banned-phrase detection + structural pattern extraction over last 30 days of `reviewer_edits`) + observability dashboards (reviewer turnaround, agent edit-rate trends, run-history health) + remaining Cap 5 asset types (D-XP, D-RT) | ~4–5 hours |
 | **8** | Optional polish driven by real customer pull: Highspot/Seismic push, per-tenant HITL rules config UI, R-BR power-user doc-upload path, real Outreach/Apollo swap-in once credentials are secured | As demand pulls it |
+| **9A** | Capability 7 Foundation: migration for `launches` + `launch_artifacts`, `launch-tiers.ts`, `/launches` index, `+ New launch` modal, `/launches/[id]` detail with readiness checklist, sidebar entry | ~3–4 hours |
+| **9B** | Cap 7 Orchestration: L-OR n8n workflow, `[code]/run` route accepts `launch_id` and writes `launch_artifacts` link, sweep existing 11 Delivery workflows to forward `launch_id` | ~3 hours |
+| **9C** | Cap 7 Distribution + Post-launch: "Ship readiness pack" button → fires X-* per tier matrix. Retrospective button → S-CP scoped query + optional D-WW | ~2 hours |
+| **9D** | Cap 7 Workspace integration: Marketing workspace Active Launches widget, Sales workspace This-Quarter widget, Observability adds Launches-in-flight count | ~1 hour |
 
 ### Wildcards that could extend the timeline
 
@@ -578,7 +692,9 @@ New tables this plan adds:
 
 **Capability 6 (HITL):** approval_queue_items, reviewer_edits, approval_audit_log, artifact_type_review_rules. (4 tables.) Plus six new columns (`approval_status`, `risk_tier`, `assigned_reviewer_id`, `reviewer_comment`, `approved_at`, `approved_by`, `published_at`) added to every existing D-* and X-* output table.
 
-End state: ~38 Supabase tables. All multi-tenant via organization_id + RLS.
+**Capability 7 (Launch Readiness):** launches, launch_artifacts. (2 tables.)
+
+End state: ~40 Supabase tables. All multi-tenant via organization_id + RLS.
 
 ---
 
@@ -603,6 +719,10 @@ End state: ~38 Supabase tables. All multi-tenant via organization_id + RLS.
 10. **Reviewer-edit feedback loop — START SIMPLE.** Affects Capability 6. v1 implements banned-phrase detection (recurring stripped words/phrases) and structural pattern extraction (consistent reordering, section preferences, length targets). More sophisticated diff-to-prompt-update pipeline is a v2 ask.
 
 11. **Auto-publish on high confidence — TENANT-LEVEL OPT-IN.** Affects Capability 6. Default is everything requires human approval (Decision 6). Tenants can opt-in via admin settings to allow auto-publish of specific artifact types when the agent self-confidence score is above a tenant-set threshold (e.g., 8/10). This gives compliance-strict customers a defaults-off posture while letting fast-moving teams accelerate review.
+
+12. **No scheduled runs — ON-DEMAND ONLY (2026-05-23).** Every Throughline n8n workflow runs on-demand only. No Schedule Trigger nodes, no cron, no autonomous polling. Reason: avoid API credit consumption from unattended runs while the product is under active build. D-CN's 30-min scheduled scan was removed in this decision. Re-enable later when credits are unblocked; the reference two-trigger shape is preserved in commit `995feb0` for D-CN.
+
+13. **UI terminology — "Workflows" not "Agents" (2026-05-25).** User-facing labels say "Workflows" (sidebar section header, page eyebrows, empty-state copy, dashboard widgets). Internal code keeps `agent`, `agent_code`, `agent-config.ts`, `LIVE_AGENTS` etc. for technical accuracy and to avoid massive rename churn. URLs stay `/agents/[code]` since renaming routes breaks bookmarks. Rule of thumb: anything a customer reads says workflow; anything in code or DB says agent.
 
 ## Open questions still to resolve
 
