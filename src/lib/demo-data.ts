@@ -382,6 +382,33 @@ export const agentTooling: AgentToolingItem[] = [
     status: "shipping",
     roles: ["marketing", "sales", "product"],
   },
+  {
+    name: "Customer Enrichment",
+    code: "R-CE",
+    purpose:
+      "Second ICP sub-agent. Takes the approved super-user cohort domains and looks up firmographics, technographic stack, and corporate trigger signals via web search and (eventually) Apollo / Clearbit / BuiltWith APIs. Outputs a clustered enrichment matrix that feeds S-IC.",
+    cadence: "After every approved cohort",
+    status: "shipping",
+    roles: ["marketing", "sales", "product"],
+  },
+  {
+    name: "Voice of Customer",
+    code: "R-VC",
+    purpose:
+      "Third ICP sub-agent. Extracts the emotional why and compelling events behind purchases from customer evidence + win/loss notes + (eventually) Gong/Chorus transcripts. Captures pain vocabulary verbatim. Lands in HITL Gate 2 with a single-customer drift indicator so PMM can spot over-indexing on a vocal outlier before S-IC synthesizes.",
+    cadence: "After every approved cohort",
+    status: "shipping",
+    roles: ["marketing", "sales", "customer_success"],
+  },
+  {
+    name: "ICP Synthesizer",
+    code: "S-IC",
+    purpose:
+      "Final ICP sub-agent. Merges the quant cohort + enrichment with the qual voice-of-customer pains into the canonical ICP playbook: firmographics, technographics, triggers, primary pains, buying committee, anti-ICP. One active row per brand, versioned. On approval, auto-refreshes S-PO's best-fit-accounts element.",
+    cadence: "Quarterly + on demand",
+    status: "shipping",
+    roles: ["marketing", "sales", "product"],
+  },
 ];
 
 export const positioningElements = [

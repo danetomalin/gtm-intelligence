@@ -40,7 +40,9 @@ export type ApprovalTable =
   | "sales_collateral"
   | "counter_narrative_memos"
   | "enablement_assets"
-  | "super_user_cohorts";
+  | "super_user_cohorts"
+  | "voc_extractions"
+  | "icp_definitions";
 
 export function ApprovalButtons({
   artifactId,

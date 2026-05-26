@@ -45,9 +45,15 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   // Phase 7: Final two Cap 5 sub-agents (expansion + renewal talk track).
   "D-XP": "/webhook/expansion-play-supabase",
   "D-RT": "/webhook/renewal-talk-track-supabase",
-  // Capability 10: ICP sub-agents. R-CR is the first of four — produces a
-  // top-decile super-user cohort that downstream R-CE / R-VC / S-IC read from.
+  // Capability 10: ICP sub-agents. R-CR produces a top-decile super-user
+  // cohort, R-CE enriches it firmographically + technographically, R-VC pulls
+  // qualitative pain + compelling events from transcripts, S-IC synthesizes
+  // the boardroom-ready ICP playbook. HITL gates after R-CR and R-VC catch
+  // failure modes a single end-state approval can't.
   "R-CR": "/webhook/customer-revenue-supabase",
+  "R-CE": "/webhook/customer-enrichment-supabase",
+  "R-VC": "/webhook/voice-of-customer-supabase",
+  "S-IC": "/webhook/icp-synthesizer-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

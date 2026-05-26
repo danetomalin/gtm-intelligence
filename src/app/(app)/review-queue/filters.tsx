@@ -9,6 +9,8 @@ type Counts = {
   collateral: number;
   counter_narrative: number;
   icp_cohort: number;
+  voc: number;
+  icp: number;
   high: number;
   medium: number;
   low: number;
@@ -61,6 +63,16 @@ export function ReviewQueueFilters({
           label={`ICP cohort (${counts.icp_cohort})`}
           href={urlFor("icp_cohort", tierFilter)}
           active={artifactFilter === "icp_cohort"}
+        />
+        <FilterPill
+          label={`VoC (${counts.voc})`}
+          href={urlFor("voc", tierFilter)}
+          active={artifactFilter === "voc"}
+        />
+        <FilterPill
+          label={`ICP playbook (${counts.icp})`}
+          href={urlFor("icp", tierFilter)}
+          active={artifactFilter === "icp"}
         />
       </div>
 

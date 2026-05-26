@@ -18,6 +18,14 @@ import {
   SuperUserCohortCard,
   type SuperUserCohort,
 } from "../agents/[code]/super-user-cohort-card";
+import {
+  VoCExtractionCard,
+  type VoCExtraction,
+} from "../agents/[code]/voc-extraction-card";
+import {
+  ICPDefinitionCard,
+  type ICPDefinition,
+} from "../agents/[code]/icp-definition-card";
 import { ReviewQueueFilters } from "./filters";
 
 export const dynamic = "force-dynamic";
@@ -75,12 +83,35 @@ export default async function ReviewQueuePage({
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const [messagingRes, collateralRes, memosRes, cohortRes] = await Promise.all([
-    messagingQuery,
-    collateralQuery,
-    counterNarrativeQuery,
-    cohortQuery,
-  ]);
+  const vocQuery = admin
+    .from("voc_extractions")
+    .select(
+      "id, super_user_cohort_id, top_pains, pain_vocabulary, compelling_events, buying_committee, source_transcript_count, single_customer_pct, cohort_coverage_pct, sources, approval_status, risk_tier, created_at",
+    )
+    .eq("brand_id", DEMO_BRAND_ID)
+    .in("approval_status", PENDING_STATUSES as unknown as string[])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const icpQuery = admin
+    .from("icp_definitions")
+    .select(
+      "id, version, is_active, super_user_cohort_id, customer_enrichment_id, voc_extraction_id, segment_name, one_line_definition, firmographics, technographics, trigger_signals, primary_pains, buying_committee, typical_sales_cycle, anti_icp, evidence_basis, sources, approval_status, risk_tier, spo_refreshed_at, created_at",
+    )
+    .eq("brand_id", DEMO_BRAND_ID)
+    .in("approval_status", PENDING_STATUSES as unknown as string[])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const [messagingRes, collateralRes, memosRes, cohortRes, vocRes, icpRes] =
+    await Promise.all([
+      messagingQuery,
+      collateralQuery,
+      counterNarrativeQuery,
+      cohortQuery,
+      vocQuery,
+      icpQuery,
+    ]);
 
   const messaging = (messagingRes.data ?? []) as (ContentOutput & {
     risk_tier?: string | null;
@@ -90,6 +121,8 @@ export default async function ReviewQueuePage({
   })[];
   const memos = (memosRes.data ?? []) as CounterNarrative[];
   const cohortsList = (cohortRes.data ?? []) as SuperUserCohort[];
+  const vocList = (vocRes.data ?? []) as VoCExtraction[];
+  const icpList = (icpRes.data ?? []) as ICPDefinition[];
 
   const tierMatches = (rowTier: string | null | undefined) =>
     tierFilter === "all" ? true : rowTier === tierFilter;
@@ -110,14 +143,29 @@ export default async function ReviewQueuePage({
     artifactFilter === "all" || artifactFilter === "icp_cohort"
       ? cohortsList.filter((c) => tierMatches(c.risk_tier))
       : [];
+  const visibleVoc =
+    artifactFilter === "all" || artifactFilter === "voc"
+      ? vocList.filter((v) => tierMatches(v.risk_tier))
+      : [];
+  const visibleIcp =
+    artifactFilter === "all" || artifactFilter === "icp"
+      ? icpList.filter((i) => tierMatches(i.risk_tier))
+      : [];
 
   const totalVisible =
     visibleMessaging.length +
     visibleCollateral.length +
     visibleMemos.length +
-    visibleCohorts.length;
+    visibleCohorts.length +
+    visibleVoc.length +
+    visibleIcp.length;
   const totalPending =
-    messaging.length + collateral.length + memos.length + cohortsList.length;
+    messaging.length +
+    collateral.length +
+    memos.length +
+    cohortsList.length +
+    vocList.length +
+    icpList.length;
 
   const tierBucket = (rt: string) =>
     [
@@ -125,6 +173,8 @@ export default async function ReviewQueuePage({
       ...collateral,
       ...memos,
       ...cohortsList,
+      ...vocList,
+      ...icpList,
     ].filter((r) => r.risk_tier === rt).length;
 
   const counts = {
@@ -133,6 +183,8 @@ export default async function ReviewQueuePage({
     collateral: collateral.length,
     counter_narrative: memos.length,
     icp_cohort: cohortsList.length,
+    voc: vocList.length,
+    icp: icpList.length,
     high: tierBucket("high"),
     medium: tierBucket("medium"),
     low: tierBucket("low"),
@@ -225,6 +277,34 @@ export default async function ReviewQueuePage({
               <div className="space-y-3">
                 {visibleCohorts.map((c) => (
                   <SuperUserCohortCard key={c.id} cohort={c} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleVoc.length > 0 && (
+            <section>
+              <SectionDivider
+                title="Voice of Customer extractions (R-VC · Gate 2)"
+                sub={`${visibleVoc.length} pending`}
+              />
+              <div className="space-y-3">
+                {visibleVoc.map((v) => (
+                  <VoCExtractionCard key={v.id} extraction={v} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleIcp.length > 0 && (
+            <section>
+              <SectionDivider
+                title="ICP playbook (S-IC · final)"
+                sub={`${visibleIcp.length} pending · approval refreshes S-PO`}
+              />
+              <div className="space-y-3">
+                {visibleIcp.map((i) => (
+                  <ICPDefinitionCard key={i.id} icp={i} />
                 ))}
               </div>
             </section>

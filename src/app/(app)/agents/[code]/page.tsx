@@ -32,6 +32,18 @@ import {
   SuperUserCohortCard,
   type SuperUserCohort,
 } from "./super-user-cohort-card";
+import {
+  CustomerEnrichmentCard,
+  type CustomerEnrichment,
+} from "./enrichment-card";
+import {
+  VoCExtractionCard,
+  type VoCExtraction,
+} from "./voc-extraction-card";
+import {
+  ICPDefinitionCard,
+  type ICPDefinition,
+} from "./icp-definition-card";
 import { WinLossCard, type WinLoss } from "./win-loss-card";
 import { EvidenceCard, type CustomerEvidence } from "./evidence-card";
 import {
@@ -288,6 +300,9 @@ export default async function AgentPage({
   let performanceRows: CampaignPerformance[] = [];
   let enablementAssets: EnablementAsset[] = [];
   let cohorts: SuperUserCohort[] = [];
+  let enrichments: CustomerEnrichment[] = [];
+  let vocExtractions: VoCExtraction[] = [];
+  let icpDefinitions: ICPDefinition[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -507,7 +522,34 @@ export default async function AgentPage({
                                                   .eq("brand_id", DEMO_BRAND_ID)
                                                   .order("created_at", { ascending: false })
                                                   .limit(50)
-                                              : Promise.resolve({ data: [], error: null }),
+                                              : code === "R-CE"
+                                                ? admin
+                                                    .from("customer_enrichment")
+                                                    .select(
+                                                      "id, super_user_cohort_id, firmographic_clusters, technographic_signals, trigger_signals, enrichment_sources, total_accounts_enriched, coverage_pct, notes, created_at",
+                                                    )
+                                                    .eq("brand_id", DEMO_BRAND_ID)
+                                                    .order("created_at", { ascending: false })
+                                                    .limit(50)
+                                                : code === "R-VC"
+                                                  ? admin
+                                                      .from("voc_extractions")
+                                                      .select(
+                                                        "id, super_user_cohort_id, top_pains, pain_vocabulary, compelling_events, buying_committee, source_transcript_count, single_customer_pct, cohort_coverage_pct, sources, approval_status, risk_tier, created_at",
+                                                      )
+                                                      .eq("brand_id", DEMO_BRAND_ID)
+                                                      .order("created_at", { ascending: false })
+                                                      .limit(50)
+                                                  : code === "S-IC"
+                                                    ? admin
+                                                        .from("icp_definitions")
+                                                        .select(
+                                                          "id, version, is_active, super_user_cohort_id, customer_enrichment_id, voc_extraction_id, segment_name, one_line_definition, firmographics, technographics, trigger_signals, primary_pains, buying_committee, typical_sales_cycle, anti_icp, evidence_basis, sources, approval_status, risk_tier, spo_refreshed_at, created_at",
+                                                        )
+                                                        .eq("brand_id", DEMO_BRAND_ID)
+                                                        .order("created_at", { ascending: false })
+                                                        .limit(50)
+                                                    : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -635,6 +677,12 @@ export default async function AgentPage({
       enablementAssets = (dataRes.data ?? []) as EnablementAsset[];
     } else if (code === "R-CR") {
       cohorts = (dataRes.data ?? []) as SuperUserCohort[];
+    } else if (code === "R-CE") {
+      enrichments = (dataRes.data ?? []) as CustomerEnrichment[];
+    } else if (code === "R-VC") {
+      vocExtractions = (dataRes.data ?? []) as VoCExtraction[];
+    } else if (code === "S-IC") {
+      icpDefinitions = (dataRes.data ?? []) as ICPDefinition[];
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
       const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
@@ -1276,6 +1324,83 @@ export default async function AgentPage({
               <div className="space-y-3">
                 {cohorts.map((c) => (
                   <SuperUserCohortCard key={c.id} cohort={c} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "R-CE" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Customer enrichment"
+              sub={`${enrichments.length} runs`}
+            />
+            {enrichments.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No enrichment runs yet. R-CE fires automatically after a
+                super-user cohort is approved (Gate 1). It looks up
+                firmographics, scrapes technographic stack, and searches for
+                corporate triggers across the cohort. Output feeds S-IC.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {enrichments.map((e) => (
+                  <CustomerEnrichmentCard key={e.id} enrichment={e} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "R-VC" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Voice of Customer extractions"
+              sub={`${vocExtractions.length} versions · Gate 2`}
+            />
+            {vocExtractions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No VoC extractions yet. R-VC fires after a cohort is approved
+                (Gate 1). It scans customer evidence + win/loss notes (real
+                Gong / Chorus transcripts in v2) for pain vocabulary and
+                compelling events. Output lands in HITL Gate 2 with a
+                single-customer drift indicator before S-IC synthesizes.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {vocExtractions.map((v) => (
+                  <VoCExtractionCard key={v.id} extraction={v} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "S-IC" && (
+        <>
+          <section>
+            <SectionDivider
+              title="ICP playbook"
+              sub={`${icpDefinitions.length} versions · canonical`}
+            />
+            {icpDefinitions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No ICP yet. S-IC fires after R-CR + R-CE + R-VC complete,
+                merging the quantitative cohort + enrichment with the
+                qualitative pain extraction into the canonical ICP playbook.
+                On approval, S-PO&apos;s best-fit-accounts element refreshes
+                automatically so positioning stays in sync.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {icpDefinitions.map((icp) => (
+                  <ICPDefinitionCard key={icp.id} icp={icp} />
                 ))}
               </div>
             )}

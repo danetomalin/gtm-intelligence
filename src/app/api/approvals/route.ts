@@ -16,6 +16,8 @@ const APPROVAL_TABLES = new Set<string>([
   "counter_narrative_memos",
   "enablement_assets",
   "super_user_cohorts",
+  "voc_extractions",
+  "icp_definitions",
 ]);
 
 type Action = "approve" | "reject" | "request_revision" | "publish";
@@ -94,5 +96,77 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ id: data.id, approval_status: data.approval_status });
+  // Decision 16 (2026-05-26): on approval of an icp_definitions row, the
+  // approved version becomes the active canonical ICP and S-PO's
+  // best-fit-accounts element is refreshed automatically so positioning
+  // stays in sync. Both actions are best-effort — the approval itself is
+  // already committed, so any post-hook failure surfaces in run_history
+  // rather than blocking the approval response.
+  let sideEffects: Record<string, unknown> | null = null;
+  if (table === "icp_definitions" && action === "approve") {
+    sideEffects = await activateIcpAndRefreshSpo(admin, id);
+  }
+
+  return NextResponse.json({
+    id: data.id,
+    approval_status: data.approval_status,
+    side_effects: sideEffects,
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function activateIcpAndRefreshSpo(admin: any, icpId: string) {
+  const out: Record<string, unknown> = {};
+  // Look up the approved ICP so we know which brand to scope the activation to
+  const { data: icpRow } = await admin
+    .from("icp_definitions")
+    .select("id, brand_id, organization_id, version")
+    .eq("id", icpId)
+    .single();
+  if (!icpRow) return { error: "icp_lookup_failed" };
+
+  // Deactivate any other active ICP for this brand
+  const { error: deactErr } = await admin
+    .from("icp_definitions")
+    .update({ is_active: false })
+    .eq("brand_id", icpRow.brand_id)
+    .neq("id", icpId)
+    .eq("is_active", true);
+  if (deactErr) out.deactivate_error = deactErr.message;
+
+  // Mark this row active + stamp spo_refreshed_at as the trigger time
+  const nowIso = new Date().toISOString();
+  const { error: actErr } = await admin
+    .from("icp_definitions")
+    .update({ is_active: true, spo_refreshed_at: nowIso })
+    .eq("id", icpId);
+  if (actErr) out.activate_error = actErr.message;
+  out.activated = !actErr;
+
+  // Fire S-PO via the existing webhook map, passing icp_definition_id in
+  // the payload so the workflow can read the approved ICP for the refresh.
+  // Imported here to avoid a circular import at module load.
+  try {
+    const { AGENT_WEBHOOK_PATHS } = await import("@/lib/agent-config");
+    const spoPath = AGENT_WEBHOOK_PATHS["S-PO"];
+    if (spoPath && process.env.N8N_BASE_URL) {
+      const url = `${process.env.N8N_BASE_URL.replace(/\/$/, "")}${spoPath}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brand_id: icpRow.brand_id,
+          organization_id: icpRow.organization_id,
+          icp_definition_id: icpId,
+          source: "icp_approval_hook",
+        }),
+      });
+      out.spo_refresh_status = resp.status;
+    } else {
+      out.spo_refresh_status = "skipped_no_webhook";
+    }
+  } catch (e) {
+    out.spo_refresh_error = e instanceof Error ? e.message : String(e);
+  }
+  return out;
 }

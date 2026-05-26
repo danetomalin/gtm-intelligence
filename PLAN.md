@@ -877,30 +877,13 @@ When the real integrations land (likely a sibling to Cap 8's I-* launch integrat
 ### 10e. Phasing
 
 - **Phase 12A — R-CR Customer Revenue Analyst** ✅ shipped 2026-05-26
-  - Migration 0019 with `super_user_cohorts` (HITL columns from inception, legacy + segment drift indicators, partial unique index for one-active-per-brand)
-  - SuperUserCohortCard with cohort table + excluded accounts + drift warnings + approval buttons
-  - R-CR registered in agent-config webhook map (n8n workflow build on Dane's side when ready)
-  - R-CR branch on `/agents/r-cr` with empty-state CTA
-  - Review Queue includes ICP cohort section with filter pill + tier counts
-  - 121/121 platform tests passing
-- **Phase 12B — R-CE Customer Enrichment** (~1.5 hours, deferred)
-  - Migration with `customer_enrichment` (FK to super_user_cohorts), firmographic_clusters jsonb, technographic_signals jsonb, trigger_signals jsonb
-  - R-CE n8n workflow: web search + mock Apollo / Clearbit enrichment loops
-  - EnrichmentCard component with cluster visualization
-  - R-CE branch on agent page
-- **Phase 12C — R-VC Voice of Customer** (~2 hours, deferred)
-  - Migration with `voc_extractions` (FK to super_user_cohorts, HITL Gate 2 columns), top_pains jsonb ordered, pain_vocabulary jsonb, compelling_events jsonb, buying_committee jsonb, single_customer_pct drift indicator
-  - R-VC n8n workflow: semantic search over customer_evidence + thematic clustering
-  - VoCExtractionCard component with drift indicator + pain ordering UI
-  - Review Queue includes VoC extraction section
-- **Phase 12D — S-IC ICP Synthesizer** (~1.5 hours, deferred)
-  - Migration with `icp_definitions` (FK chain to all three feeders, anti_icp jsonb, full HITL columns), partial unique index for one-active-per-brand
-  - S-IC n8n workflow: long-context synthesis of cohort + enrichment + VoC into the boardroom-ready ICP
-  - IcpDefinitionCard component
-  - On approval: auto-refresh S-PO best-fit-accounts element via a post-approve hook
-  - `/agents/s-ic` page with full lineage panel
+- **Phase 12B — R-CE Customer Enrichment** ✅ shipped 2026-05-26
+- **Phase 12C — R-VC Voice of Customer + Gate 2** ✅ shipped 2026-05-26
+- **Phase 12D — S-IC ICP Synthesizer + S-PO auto-refresh hook** ✅ shipped 2026-05-26
 
-Total deferred work: ~5 hours focused for the full pipeline.
+All four ICP sub-agents now exist with their schemas, cards, agent-page branches, and Review Queue integration. The n8n workflows behind each webhook path (`/webhook/customer-revenue-supabase`, `/webhook/customer-enrichment-supabase`, `/webhook/voice-of-customer-supabase`, `/webhook/icp-synthesizer-supabase`) remain to be built on Dane's side. The app gracefully shows empty-state CTAs until the workflows exist and a row lands.
+
+Post-approval S-PO refresh hook lives in `/api/approvals` and fires when an `icp_definitions` row transitions to `approved`. Logic: deactivate any prior active ICP for the brand, mark this row `is_active=true`, stamp `spo_refreshed_at`, POST to the S-PO webhook with `icp_definition_id` in extras so the workflow can read the approved ICP and refresh `positioning_elements.best_fit_accounts` accordingly.
 
 ### 10f. Decisions (locked 2026-05-26)
 
@@ -954,9 +937,9 @@ Ordered for **stability first, ease of implementation second** (Decision 2026-05
 | **11C** | Cap 9 Sensitivity analysis: per-tier "what if LLM costs drop 40%" / "compute doubles" scenarios card on R-PP | ~1 hour |
 | **11D** | Cap 9 HITL margin gating: pricing-change-bearing artifacts read `product_cost_model`, auto-promote to `risk_tier=high` if floor breached, margin-impact banner in Review Queue | ~1 hour |
 | **12A** | ✅ Cap 10 R-CR foundation: migration `super_user_cohorts`, agent-config + demo-data registration, SuperUserCohortCard with drift indicators, R-CR branch on agent page, Review Queue ICP cohort section + filter pill + approval whitelist | shipped |
-| **12B** | Cap 10 R-CE Enrichment: migration `customer_enrichment`, R-CE n8n workflow, EnrichmentCard, agent page branch | ~1.5 hours |
-| **12C** | Cap 10 R-VC Voice of Customer: migration `voc_extractions` with HITL Gate 2 + single-customer drift indicator, R-VC n8n workflow, VoCExtractionCard, Review Queue VoC section | ~2 hours |
-| **12D** | Cap 10 S-IC ICP Synthesizer: migration `icp_definitions` (FK chain to feeders, anti_icp jsonb), S-IC n8n workflow, IcpDefinitionCard, S-PO auto-refresh hook on approval, /agents/s-ic page with lineage panel | ~1.5 hours |
+| **12B** | ✅ Cap 10 R-CE Enrichment: migration `customer_enrichment` (FK to cohort), EnrichmentCard with firmographic clusters + technographic + triggers, R-CE branch on agent page | shipped |
+| **12C** | ✅ Cap 10 R-VC Voice of Customer: migration `voc_extractions` with Gate 2 + single-customer drift threshold (25%), VoCExtractionCard with pain ordering + buying committee, Review Queue VoC section | shipped |
+| **12D** | ✅ Cap 10 S-IC ICP Synthesizer: migration `icp_definitions` (FK chain + anti_icp jsonb + partial unique index for active), IcpDefinitionCard with anti-ICP block + lineage panel, S-PO auto-refresh hook in /api/approvals, Review Queue ICP playbook section | shipped |
 
 ### Wildcards that could extend the timeline
 
