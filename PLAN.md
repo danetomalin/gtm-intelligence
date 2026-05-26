@@ -1,6 +1,6 @@
 # Throughline — Strategic Build Plan
 
-Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers eight product capabilities on top:
+Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers nine product capabilities on top:
 
 1. **Persona Lens** — make the same data render four different ways for Product / CS / Marketing / Sales
 2. **Brand Code Ingestion** — let each customer feed their own brand inputs in instead of relying on hardcoded brand context
@@ -10,6 +10,7 @@ Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shi
 6. **Human-in-the-Loop Review & Approval** — the cross-cutting governance layer that gates every Delivery and Distribution agent behind structured review, captures human edits as training signal, and lets safe items auto-publish
 7. **Launch Readiness** — coordinate every agent into a tier-driven readiness pack the team operates against for each release (Flagship / Feature / Bug Fix / Revenue Growth / Revenue Retention)
 8. **External Integrations** — bridge launches to the engineering source of truth (Linear / Jira / Asana / GitHub Projects); inbound auto-creates launches from tickets, outbound syncs GTM readiness back to the ticket
+9. **Gross Margin Intelligence** — give R-PP a profitability lens: per-tier cost model on our side, estimated GM on the competitor side, margin sensitivity analysis, and HITL gating on pricing changes that would breach the margin floor
 
 Each capability is independent enough to ship in isolation, but the order below is the one that gives the product the strongest standalone story at each stage.
 
@@ -737,6 +738,90 @@ This is the operational seam that turns Throughline from "the tool PMM opens whe
 
 ---
 
+## Capability 9 — Gross Margin Intelligence
+
+**Problem we're solving.** R-PP today snapshots competitor pricing without any profitability lens. You can answer "what is Linear charging" but not "is our Pro tier even profitable, and can we afford to undercut them." Pricing decisions made without margin context routinely ship pricing changes that look good on revenue and quietly destroy margin, or leave defensible price floors on the table because nobody knows the actual COGS.
+
+**The model.** Two distinct margin surfaces:
+
+- **Our margin** — authoritative. PMM enters per-tier COGS via onboarding; gross margin is a derived field. Floor breach triggers HITL gating on any D-* artifact that proposes a pricing change.
+- **Competitor margin** — estimated. Public 10-Ks where available, industry benchmarks otherwise, reverse-engineered from observable stack + pricing for everyone else. Always a range with a confidence rating.
+
+### 9a. Decisions (locked 2026-05-26)
+
+1. **COGS source: PMM enters manually via onboarding.** Stripe + cloud-billing integrations are a v2 concern. PMM grabs the numbers from finance once and re-confirms quarterly.
+2. **Granularity: per pricing tier.** Free / Pro / Enterprise each get their own COGS row. Matches how PMMs think about pricing.
+3. **Payment processing: variable COGS component.** Stripe's 2.9% + $0.30 hits gross margin directly. Stored as a percentage + fixed-fee pair on each tier.
+4. **Competitor GM: range plus confidence pip.** Low–high band with a high/medium/low confidence indicator. PMM sees uncertainty explicitly.
+5. **Margin floor: per-tier.** Free can run negative intentionally, Pro floors at 70%, Enterprise at 75%. Different tiers serve different strategies.
+
+### 9b. Schema
+
+`product_cost_model` (new, Phase A shipped):
+
+```
+id, organization_id, brand_id
+tier_name, tier_order
+cogs_compute_usd, cogs_storage_usd, cogs_llm_usd
+cogs_third_party_usd, cogs_support_usd, cogs_other_usd
+cogs_payments_pct, cogs_payments_fixed_usd
+list_price_usd, effective_price_usd
+gross_margin_pct (STORED generated column)
+margin_floor_pct
+notes, effective_date, updated_at
+unique (brand_id, tier_name)
+```
+
+Extends `pricing_intelligence` (Phase B):
+
+```
++ est_gross_margin_low_pct  numeric(5,2)
++ est_gross_margin_high_pct numeric(5,2)
++ margin_basis              text   -- '10-K', 'industry benchmark', 'reverse-engineered'
++ margin_confidence         text   -- 'high' | 'medium' | 'low' | 'unknown'
+```
+
+### 9c. Phasing
+
+- **Phase A — Foundation** ✅ shipped 2026-05-26 (commit `d475d9b`)
+  - Migration 0018 with `product_cost_model` + generated `gross_margin_pct` column
+  - `/cost-model` page with conversational tier-by-tier editor (AI-SaaS defaults pre-filled)
+  - `/api/cost-model` upsert endpoint
+  - R-PP page leads with "Your gross margin" section, one card per tier with revenue / COGS / top driver / floor status
+  - 14 unit tests covering the math; 121/121 platform tests green
+
+- **Phase B — Competitor margin estimation** (~2 hours, deferred)
+  - Add the four columns above to `pricing_intelligence` via migration 0020
+  - Update R-PP n8n workflow system prompt: research and estimate competitor GM range with confidence rating per snapshot
+  - Sources hint to the prompt: 10-K filings (public companies), industry benchmarks (SaaS GM by category), reverse-engineering when the competitor's stack is public
+  - Competitor margin badge added to `PricingIntelCard` with confidence pip color
+  - Margin gap analysis on R-PP page: "Linear est GM 70–78%, our Pro is 78% — margin room to undercut" comparison row
+
+- **Phase C — Sensitivity analysis** (~1 hour, deferred)
+  - New "Margin sensitivity" card on R-PP showing what happens to each tier's GM if the biggest cost driver moves ±N%
+  - Headline scenarios: LLM token prices drop 40% (industry trend), compute prices double (worst case), volume scales 10× (support cost dilutes)
+  - Driver attribution chart: which COGS line is the biggest lever in each scenario
+
+- **Phase D — HITL margin-floor gating** (~1 hour, deferred)
+  - When a D-MG / D-SN / S-LP artifact is generated with pricing in the body, the post-process detects the pricing claim, computes the implied margin against `product_cost_model`, compares to `margin_floor_pct`
+  - If the change would push margin below the floor: auto-promote the artifact to `risk_tier='high'`, surface a "Margin impact: 65% → below your 70% floor" banner in the Review Queue card
+  - Audit trail in `approval_audit_log` (from Cap 6 schema): which floor was breached, by which artifact, on which tier
+
+Phase A delivers the foundational view (our-margin only) and is demoable on its own. Phases B–D layer on competitor context, scenarios, and governance. Total deferred work: ~4 hours focused.
+
+### 9d. Strategic value
+
+This is the difference between PMM as a content function and PMM as a commercial function. Pricing decisions made with margin context are dramatically better than pricing decisions made on revenue alone. Throughline becomes the system that surfaces margin reality on every pricing artifact instead of the system that produces pricing changes finance has to rescue after the fact.
+
+### 9e. Open questions
+
+1. **Negative-margin Free tiers** — Free is allowed to run negative (loss leader). Should the editor warn when Free's negative margin exceeds a threshold (CAC payback math), or stay silent?
+2. **Multi-product brands** — A brand with multiple SKUs (e.g. Throughline Core + Throughline Insights add-on) needs separate cost models per product. Phase A assumes one product. v2 schema additions?
+3. **Discount-band modeling** — Current model uses a single `effective_price_usd` per tier. Some brands need discount bands (deal-stage-based discounting). Phase B+ concern.
+4. **Margin floor at the org level** — Decisions §5 picked per-tier floors. Should an org-wide "absolute minimum acceptable" exist as a hard stop on top of the per-tier floors?
+
+---
+
 ## Recommended phasing
 
 Ordered for **stability first, ease of implementation second** (Decision 2026-05-22). Estimates are realistic focused-work hours at our actual pace, not traditional developer-week estimates. Total: ~28–36 hours of focused work, plus external-account overhead for Phase 6 wildcards.
@@ -759,6 +844,10 @@ Ordered for **stability first, ease of implementation second** (Decision 2026-05
 | **10A** | Cap 8 Linear: `integration_channels` + `launch_external_links` schema + `launches.source` enum extension, `I-LN` n8n workflow (mock-first), Setup → Integrations page, launch detail External Links card, Launches index Source filter + Unclaimed tab | ~6 hours |
 | **10B** | Cap 8 Jira: `I-JI` workflow (Cloud OAuth variant first; Server deferred), Setup page Jira card | ~5 hours |
 | **10C** | Cap 8 Asana + GitHub Projects: `I-AS` + `I-GH` workflows mock-first, Setup page entries | ~4 hours |
+| **11A** | ✅ Cap 9 Foundation: migration `product_cost_model`, /cost-model editor + API, R-PP "Your gross margin" section | shipped |
+| **11B** | Cap 9 Competitor margin: extend `pricing_intelligence` with est GM range + confidence + basis, R-PP system prompt updated, competitor margin badge + gap analysis row | ~2 hours |
+| **11C** | Cap 9 Sensitivity analysis: per-tier "what if LLM costs drop 40%" / "compute doubles" scenarios card on R-PP | ~1 hour |
+| **11D** | Cap 9 HITL margin gating: pricing-change-bearing artifacts read `product_cost_model`, auto-promote to `risk_tier=high` if floor breached, margin-impact banner in Review Queue | ~1 hour |
 
 ### Wildcards that could extend the timeline
 
@@ -792,7 +881,9 @@ New tables this plan adds:
 
 **Capability 8 (External Integrations):** integration_channels, launch_external_links. (2 tables.) Plus `launches.source` enum extended and `launches.external_link_id` FK column added.
 
-End state: ~42 Supabase tables. All multi-tenant via organization_id + RLS.
+**Capability 9 (Gross Margin Intelligence):** product_cost_model. (1 table.) Plus four columns added to `pricing_intelligence` for competitor margin estimation (Phase B).
+
+End state: ~43 Supabase tables. All multi-tenant via organization_id + RLS.
 
 ---
 
