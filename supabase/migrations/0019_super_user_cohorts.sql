@@ -51,7 +51,7 @@ create table if not exists super_user_cohorts (
   risk_tier                text not null default 'high'
     check (risk_tier in ('low','medium','high')),
   reviewer_comment         text,
-  approved_by              uuid references profiles(id) on delete set null,
+  approved_by              uuid references profiles(user_id) on delete set null,
   approved_at              timestamptz,
   published_at             timestamptz,
 

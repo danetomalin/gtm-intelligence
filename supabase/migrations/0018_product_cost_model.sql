@@ -69,7 +69,7 @@ create table if not exists product_cost_model (
   notes                    text,
   effective_date           date not null default current_date,
 
-  created_by               uuid references profiles(id) on delete set null,
+  created_by               uuid references profiles(user_id) on delete set null,
   created_at               timestamptz not null default now(),
   updated_at               timestamptz not null default now(),
 
