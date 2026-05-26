@@ -156,22 +156,67 @@ export function filterWorkflowsForLens<T extends { roles: Role[] }>(
   return workflows.filter((w) => w.roles.includes(lens));
 }
 
-// Returns the static output items for a lens. "all" merges every role's items,
-// de-duplicated by href, preserving first-occurrence order.
-export function outputsForLens(lens: Lens): WorkspaceOutput[] {
+// Returns the static output items for a lens.
+//
+// For the "all" lens, the layout is:
+//   1. Every role dashboard, ordered by workflow count desc (Marketing first
+//      because it has the most workflow coverage today, then Sales, Product,
+//      CS). This way the sidebar lead-with what's most operationally relevant.
+//   2. Non-dashboard outputs (Market Context, Brand Voice, Positioning) after,
+//      preserving role-source order for stability.
+//
+// If `workflows` is omitted we fall back to LENS_ORDER (alphabetical-ish role
+// order). When sidebar passes the live agentTooling list, the dashboards
+// re-rank as workflows are added.
+export function outputsForLens(
+  lens: Lens,
+  workflows?: { roles: Role[] }[],
+): WorkspaceOutput[] {
   if (lens !== "all") {
     return LENS_OUTPUTS[lens] ?? [];
   }
-  const seen = new Set<string>();
-  const merged: WorkspaceOutput[] = [];
-  for (const role of WORKSPACE_ROLES) {
-    for (const item of LENS_OUTPUTS[role]) {
-      if (seen.has(item.href)) continue;
-      seen.add(item.href);
-      merged.push(item);
+
+  // Per-role workflow count powers dashboard ordering.
+  const counts: Partial<Record<Role, number>> = {};
+  if (workflows && workflows.length > 0) {
+    for (const w of workflows) {
+      for (const role of w.roles) {
+        counts[role] = (counts[role] ?? 0) + 1;
+      }
     }
   }
-  return merged;
+
+  // Sort the customer-facing roles by count desc. Ties break by the static
+  // WORKSPACE_ROLES order (marketing → sales → product → CS) so behavior is
+  // stable when the agentTooling list isn't provided.
+  const sortedRoles = [...WORKSPACE_ROLES].sort((a, b) => {
+    const diff = (counts[b] ?? 0) - (counts[a] ?? 0);
+    if (diff !== 0) return diff;
+    return WORKSPACE_ROLES.indexOf(a) - WORKSPACE_ROLES.indexOf(b);
+  });
+
+  const seen = new Set<string>();
+  const dashboards: WorkspaceOutput[] = [];
+  const extras: WorkspaceOutput[] = [];
+
+  for (const role of sortedRoles) {
+    const items = LENS_OUTPUTS[role] ?? [];
+    // First item per role is the role dashboard by convention; everything
+    // after it is a non-dashboard output (only Marketing has any currently).
+    const [dashboard, ...rest] = items;
+    if (dashboard && !seen.has(dashboard.href)) {
+      seen.add(dashboard.href);
+      dashboards.push(dashboard);
+    }
+    for (const item of rest) {
+      if (!seen.has(item.href)) {
+        seen.add(item.href);
+        extras.push(item);
+      }
+    }
+  }
+
+  return [...dashboards, ...extras];
 }
 
 // ─── Workflow layer grouping (sidebar) ───────────────────────────────────────

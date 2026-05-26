@@ -198,6 +198,45 @@ describe("outputsForLens", () => {
     // No duplicates
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
+
+  it("ranks role dashboards by workflow count when workflows list is provided", () => {
+    // Synthetic workflow set: product (4) > marketing (2) > customer_success (1) > sales (0)
+    const workflows = [
+      { roles: ["product"] as Role[] },
+      { roles: ["product"] as Role[] },
+      { roles: ["product"] as Role[] },
+      { roles: ["product", "marketing"] as Role[] },
+      { roles: ["marketing"] as Role[] },
+      { roles: ["customer_success"] as Role[] },
+    ];
+    const all = outputsForLens("all", workflows);
+    // First items should be dashboards in count order
+    expect(all[0].href).toBe("/workspace/product");
+    expect(all[1].href).toBe("/workspace/marketing");
+    expect(all[2].href).toBe("/workspace/customer_success");
+    expect(all[3].href).toBe("/workspace/sales");
+  });
+
+  it("places dashboards before non-dashboard outputs in 'all' view", () => {
+    const all = outputsForLens("all");
+    const dashboardHrefs = [
+      "/workspace/marketing",
+      "/workspace/sales",
+      "/workspace/product",
+      "/workspace/customer_success",
+    ];
+    const lastDashboardIdx = Math.max(
+      ...dashboardHrefs.map((h) => all.findIndex((o) => o.href === h)),
+    );
+    const firstExtraIdx = all.findIndex((o) => o.href === "/positioning");
+    expect(firstExtraIdx).toBeGreaterThan(lastDashboardIdx);
+  });
+
+  it("falls back to WORKSPACE_ROLES order when no workflow list is supplied", () => {
+    const all = outputsForLens("all");
+    // First dashboard is Marketing (first in WORKSPACE_ROLES)
+    expect(all[0].href).toBe("/workspace/marketing");
+  });
 });
 
 describe("layerForCode", () => {

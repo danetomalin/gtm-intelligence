@@ -8,6 +8,7 @@ import { agentTooling } from "@/lib/demo-data";
 import {
   filterWorkflowsForLens,
   groupWorkflowsByLayer,
+  layerForCode,
   LENS_LABEL,
   LENS_OPTIONS,
   outputsForLens,
@@ -75,11 +76,18 @@ export function Sidebar() {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  const outputs = useMemo(() => outputsForLens(lens), [lens]);
-  const workflows = useMemo(
-    () => filterWorkflowsForLens(agentTooling, lens),
-    [lens],
-  );
+  // Pass the unfiltered agentTooling so outputsForLens can rank role
+  // dashboards by per-role workflow count when the lens is "all".
+  const outputs = useMemo(() => outputsForLens(lens, agentTooling), [lens]);
+  const workflows = useMemo(() => {
+    // Setup-layer workflows (A0 Brand Initializer) are covered by the
+    // dedicated "SETUP" group at the bottom of the sidebar — Brand Code
+    // intake handles the same motion. Hide them from the Workflows section
+    // to keep navigation non-duplicative. The dashboard's Active Pipeline
+    // still surfaces A0 for completeness.
+    const all = filterWorkflowsForLens(agentTooling, lens);
+    return all.filter((w) => layerForCode(w.code) !== "A");
+  }, [lens]);
 
   return (
     <aside className="w-64 border-r border-border bg-surface/40 flex-shrink-0 sticky top-0 h-screen flex flex-col">
