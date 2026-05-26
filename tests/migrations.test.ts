@@ -45,8 +45,8 @@ describe("supabase/migrations", () => {
     migrations = loadMigrations();
   });
 
-  it("has at least the 16 expected migrations", () => {
-    expect(migrations.length).toBeGreaterThanOrEqual(16);
+  it("has at least the 17 expected migrations", () => {
+    expect(migrations.length).toBeGreaterThanOrEqual(17);
   });
 
   it("0009 backfills run_history.agent_code from A1-A8 to layer-prefixed codes", () => {
@@ -194,6 +194,9 @@ describe("supabase/migrations", () => {
       "enablement_distribution_log",
       // Phase 7: Reviewer-edit feedback loop schema.
       "reviewer_edits",
+      // Phase 9A: Launch readiness.
+      "launches",
+      "launch_artifacts",
     ];
     for (const table of expectedTables) {
       const pattern = new RegExp(`create\\s+table(?:\\s+if\\s+not\\s+exists)?\\s+${table}\\b`);
