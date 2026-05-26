@@ -27,6 +27,7 @@ import { ThemeCard, type FeedbackTheme } from "./theme-card";
 import { ContentCard, type ContentOutput } from "./content-card";
 import { CollateralCard, type SalesCollateral } from "./collateral-card";
 import { PricingIntelCard, type PricingIntel } from "./pricing-intel-card";
+import { MarginOverview, type CostModelTier } from "./margin-overview";
 import { WinLossCard, type WinLoss } from "./win-loss-card";
 import { EvidenceCard, type CustomerEvidence } from "./evidence-card";
 import {
@@ -262,6 +263,7 @@ export default async function AgentPage({
   let pastCollateral: SalesCollateral[] = [];
   let latestPricing: PricingIntel[] = [];
   let pastPricing: PricingIntel[] = [];
+  let costModelTiers: CostModelTier[] = [];
   let latestWinLoss: WinLoss[] = [];
   let pastWinLoss: WinLoss[] = [];
   let latestEvidence: CustomerEvidence[] = [];
@@ -573,6 +575,18 @@ export default async function AgentPage({
         }
       }
       latestPricing = latestPerCompetitor;
+      // Pull the active brand's cost model so R-PP can show our-side margin
+      // alongside competitor pricing. Separate query so the R-PP path stays
+      // independent of the main dataRes branch.
+      const adminForCost = await createAdminClient();
+      const { data: costRows } = await adminForCost
+        .from("product_cost_model")
+        .select(
+          "id, tier_name, tier_order, cogs_compute_usd, cogs_storage_usd, cogs_llm_usd, cogs_third_party_usd, cogs_payments_pct, cogs_payments_fixed_usd, cogs_support_usd, cogs_other_usd, list_price_usd, effective_price_usd, gross_margin_pct, margin_floor_pct",
+        )
+        .eq("brand_id", DEMO_BRAND_ID)
+        .order("tier_order", { ascending: true });
+      costModelTiers = (costRows ?? []) as CostModelTier[];
     } else if (code === "R-WL") {
       const all = (dataRes.data ?? []) as WinLoss[];
       pastWinLoss = all;
@@ -978,6 +992,18 @@ export default async function AgentPage({
 
       {isLive && code === "R-PP" && (
         <>
+          <section>
+            <SectionDivider
+              title="Your gross margin"
+              sub={
+                costModelTiers.length > 0
+                  ? `Per tier · ${costModelTiers.length}`
+                  : "Configure cost model"
+              }
+            />
+            <MarginOverview tiers={costModelTiers} />
+          </section>
+
           <section>
             <SectionDivider
               title="Latest pricing snapshots"

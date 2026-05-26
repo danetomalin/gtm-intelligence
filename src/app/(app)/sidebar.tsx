@@ -22,6 +22,7 @@ const OPERATIONS_ITEMS = [
   { name: "Review Queue", href: "/review-queue", hint: "HITL approvals" },
   { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
   { name: "Collateral Library", href: "/collateral", hint: "All enablement assets" },
+  { name: "Cost Model", href: "/cost-model", hint: "Per-tier COGS & margin" },
 ];
 
 const SETUP_ITEMS = [
