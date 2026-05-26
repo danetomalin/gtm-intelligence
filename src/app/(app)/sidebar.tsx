@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { agentTooling } from "@/lib/demo-data";
 import {
   filterWorkflowsForLens,
+  groupWorkflowsByLayer,
   LENS_LABEL,
   LENS_OPTIONS,
   outputsForLens,
@@ -175,38 +176,44 @@ export function Sidebar() {
               No workflows tagged for this lens yet.
             </div>
           ) : (
-            <ul className="space-y-0.5">
-              {workflows.map((agent) => {
-                const href = `/agents/${agent.code.toLowerCase()}`;
-                const active = isActive(href);
-                return (
-                  <li key={agent.code}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
-                        active
-                          ? "bg-accent-bg text-accent"
-                          : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "font-mono text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 flex-shrink-0",
-                          active
-                            ? "bg-accent text-bg"
-                            : "bg-card text-text-dim",
-                        )}
-                      >
-                        {agent.code}
-                      </span>
-                      <span className="font-medium truncate">{agent.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-3">
+              {groupWorkflowsByLayer(workflows).map((group) => (
+                <div key={group.key}>
+                  <div className="px-2 mb-1 flex items-baseline justify-between">
+                    <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
+                      {group.label}
+                    </span>
+                    <span className="text-[10px] text-text-dim">
+                      {group.workflows.length}
+                    </span>
+                  </div>
+                  <ul className="space-y-0.5">
+                    {group.workflows.map((agent) => {
+                      const href = `/agents/${agent.code.toLowerCase()}`;
+                      const active = isActive(href);
+                      return (
+                        <li key={agent.code}>
+                          <Link
+                            href={href}
+                            aria-current={active ? "page" : undefined}
+                            className={cn(
+                              "block rounded-md px-3 py-1.5 text-sm transition",
+                              active
+                                ? "bg-accent-bg text-accent"
+                                : "text-text-muted hover:text-text hover:bg-card-hover/50",
+                            )}
+                          >
+                            <span className="font-medium truncate block">
+                              {agent.name}
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

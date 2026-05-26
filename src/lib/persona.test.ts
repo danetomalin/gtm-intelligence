@@ -10,6 +10,9 @@ import {
   outputsForLens,
   LENS_OPTIONS,
   LENS_LABEL,
+  groupWorkflowsByLayer,
+  layerForCode,
+  LAYER_ORDER,
   type Role,
 } from "./persona";
 
@@ -194,5 +197,76 @@ describe("outputsForLens", () => {
     expect(hrefs).toContain("/workspace/customer_success");
     // No duplicates
     expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+});
+
+describe("layerForCode", () => {
+  it("recognizes R / S / D / X / I prefixes", () => {
+    expect(layerForCode("R-CI")).toBe("R");
+    expect(layerForCode("S-PO")).toBe("S");
+    expect(layerForCode("D-MG")).toBe("D");
+    expect(layerForCode("X-EM")).toBe("X");
+    expect(layerForCode("I-LN")).toBe("I");
+  });
+
+  it("treats A0 (and any unknown prefix) as A / Setup", () => {
+    expect(layerForCode("A0")).toBe("A");
+    expect(layerForCode("Z-XX")).toBe("A");
+    expect(layerForCode("")).toBe("A");
+  });
+
+  it("is case-insensitive on the prefix letter", () => {
+    expect(layerForCode("r-ci")).toBe("R");
+    expect(layerForCode("d-mg")).toBe("D");
+  });
+});
+
+describe("LAYER_ORDER", () => {
+  it("places research first and setup last", () => {
+    expect(LAYER_ORDER[0]).toBe("R");
+    expect(LAYER_ORDER[LAYER_ORDER.length - 1]).toBe("A");
+  });
+});
+
+describe("groupWorkflowsByLayer", () => {
+  const sample = [
+    { code: "R-CI" },
+    { code: "S-PO" },
+    { code: "D-MG" },
+    { code: "X-EM" },
+    { code: "A0" },
+    { code: "R-MS" },
+    { code: "D-WW" },
+  ];
+
+  it("groups workflows by layer prefix in LAYER_ORDER", () => {
+    const groups = groupWorkflowsByLayer(sample);
+    const keys = groups.map((g) => g.key);
+    expect(keys).toEqual(["R", "S", "D", "X", "A"]);
+  });
+
+  it("preserves source order within each group", () => {
+    const groups = groupWorkflowsByLayer(sample);
+    const research = groups.find((g) => g.key === "R");
+    expect(research?.workflows.map((w) => w.code)).toEqual(["R-CI", "R-MS"]);
+    const delivery = groups.find((g) => g.key === "D");
+    expect(delivery?.workflows.map((w) => w.code)).toEqual(["D-MG", "D-WW"]);
+  });
+
+  it("omits empty groups", () => {
+    const onlyResearch = [{ code: "R-CI" }, { code: "R-MS" }];
+    const groups = groupWorkflowsByLayer(onlyResearch);
+    expect(groups.length).toBe(1);
+    expect(groups[0].key).toBe("R");
+  });
+
+  it("returns an empty list when no workflows are supplied", () => {
+    expect(groupWorkflowsByLayer([])).toEqual([]);
+  });
+
+  it("attaches the human-readable label to each group", () => {
+    const groups = groupWorkflowsByLayer([{ code: "S-PO" }, { code: "X-EM" }]);
+    expect(groups.find((g) => g.key === "S")?.label).toBe("Synthesis");
+    expect(groups.find((g) => g.key === "X")?.label).toBe("Distribution");
   });
 });

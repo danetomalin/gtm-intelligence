@@ -173,3 +173,63 @@ export function outputsForLens(lens: Lens): WorkspaceOutput[] {
   }
   return merged;
 }
+
+// ─── Workflow layer grouping (sidebar) ───────────────────────────────────────
+// Each workflow's code starts with a layer prefix (R-/S-/D-/X- plus the
+// legacy A0). The sidebar groups workflows under layer-named subheaders so
+// the section header carries the layer info and individual rows can drop the
+// per-workflow code badge.
+
+export type LayerKey = "R" | "S" | "D" | "X" | "A" | "I";
+
+export const LAYER_ORDER: LayerKey[] = ["R", "S", "D", "X", "I", "A"];
+
+export const LAYER_LABEL: Record<LayerKey, string> = {
+  R: "Research",
+  S: "Synthesis",
+  D: "Delivery",
+  X: "Distribution",
+  I: "Integrations",
+  A: "Setup",
+};
+
+export type WorkflowGroup<T> = {
+  key: LayerKey;
+  label: string;
+  workflows: T[];
+};
+
+/**
+ * Returns the layer key for a workflow code. Falls back to "A" for anything
+ * that doesn't match a known prefix so unexpected codes don't disappear.
+ */
+export function layerForCode(code: string): LayerKey {
+  const first = code?.[0]?.toUpperCase();
+  if (first === "R" || first === "S" || first === "D" || first === "X" || first === "I") {
+    return first;
+  }
+  return "A";
+}
+
+/**
+ * Groups workflows by layer prefix and returns groups in LAYER_ORDER, omitting
+ * empty groups. Caller is expected to have already filtered the workflow list
+ * to the current lens via filterWorkflowsForLens.
+ */
+export function groupWorkflowsByLayer<T extends { code: string }>(
+  workflows: T[],
+): WorkflowGroup<T>[] {
+  const buckets = new Map<LayerKey, T[]>();
+  for (const w of workflows) {
+    const layer = layerForCode(w.code);
+    if (!buckets.has(layer)) buckets.set(layer, []);
+    buckets.get(layer)!.push(w);
+  }
+  const groups: WorkflowGroup<T>[] = [];
+  for (const key of LAYER_ORDER) {
+    const items = buckets.get(key);
+    if (!items || items.length === 0) continue;
+    groups.push({ key, label: LAYER_LABEL[key], workflows: items });
+  }
+  return groups;
+}
