@@ -20,7 +20,7 @@ export default function HomePage() {
             href="/dashboard"
             className="inline-flex items-center justify-center rounded-md bg-accent-strong px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-accent"
           >
-            Open dashboard
+            Let&apos;s go
           </Link>
           <Link
             href="/onboarding"
