@@ -517,7 +517,7 @@ export default async function AgentPage({
                                               ? admin
                                                   .from("super_user_cohorts")
                                                   .select(
-                                                    "id, version, is_active, cohort_name, methodology, filter_criteria, cohort_accounts, account_count, excluded_accounts, legacy_concentration_pct, segment_dominance_pct, sources, approval_status, risk_tier, created_at",
+                                                    "id, version, is_active, cohort_name, methodology, filter_criteria, cohort_accounts, excluded_accounts, legacy_concentration_pct, segment_dominance_pct, sources, approval_status, risk_tier, created_at",
                                                   )
                                                   .eq("brand_id", DEMO_BRAND_ID)
                                                   .order("created_at", { ascending: false })

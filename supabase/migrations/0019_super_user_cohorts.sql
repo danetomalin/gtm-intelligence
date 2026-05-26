@@ -32,7 +32,11 @@ create table if not exists super_user_cohorts (
   --   { name, domain, segment, nrr_pct, ltv_usd, adoption_score,
   --     support_ticket_volume, included_reason, ... }
   cohort_accounts          jsonb not null default '[]'::jsonb,
-  account_count            integer generated always as (jsonb_array_length(cohort_accounts)) stored,
+  -- account_count was a STORED generated column using jsonb_array_length but
+  -- n8n's supabaseTool sometimes stores $fromAI JSON output as a jsonb
+  -- scalar string instead of a true array, which makes jsonb_array_length()
+  -- fail at insert time. Dropped 2026-05-26; the card reads from
+  -- jsonb_array_length(cohort_accounts) at render time instead.
 
   -- Accounts the agent FLAGGED but excluded. PMM reviews these too in case
   -- the agent over-filtered.

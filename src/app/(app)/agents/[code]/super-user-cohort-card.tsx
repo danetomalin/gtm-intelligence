@@ -23,10 +23,12 @@ export type SuperUserCohort = {
   is_active: boolean | null;
   cohort_name: string | null;
   methodology: string | null;
-  filter_criteria: Record<string, unknown> | null;
-  cohort_accounts: CohortAccount[] | null;
-  account_count: number | null;
-  excluded_accounts: ExcludedAccount[] | null;
+  filter_criteria: Record<string, unknown> | string | null;
+  // n8n's supabaseTool sometimes stringifies $fromAI JSON output rather than
+  // sending it as nested JSON, so jsonb columns can come back as either an
+  // array or a JSON-encoded string. The normalize helpers below handle both.
+  cohort_accounts: CohortAccount[] | string | null;
+  excluded_accounts: ExcludedAccount[] | string | null;
   legacy_concentration_pct: number | null;
   segment_dominance_pct: number | null;
   sources: string | null;
@@ -34,6 +36,20 @@ export type SuperUserCohort = {
   risk_tier?: string | null;
   created_at?: string | null;
 };
+
+function normalizeArray<T>(value: T[] | string | null | undefined): T[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 function fmtUsd(n: number | null | undefined): string {
   if (n == null) return "—";
@@ -53,8 +69,8 @@ export function SuperUserCohortCard({
   cohort: SuperUserCohort;
   compact?: boolean;
 }) {
-  const accounts = cohort.cohort_accounts ?? [];
-  const excluded = cohort.excluded_accounts ?? [];
+  const accounts = normalizeArray<CohortAccount>(cohort.cohort_accounts);
+  const excluded = normalizeArray<ExcludedAccount>(cohort.excluded_accounts);
   const visibleAccounts = compact ? accounts.slice(0, 5) : accounts;
   const legacyConcentration = cohort.legacy_concentration_pct;
   const segmentDominance = cohort.segment_dominance_pct;
@@ -97,7 +113,7 @@ export function SuperUserCohortCard({
             Accounts
           </div>
           <div className="text-2xl font-semibold tabular-nums text-text">
-            {cohort.account_count ?? accounts.length}
+            {accounts.length}
           </div>
         </div>
       </div>
