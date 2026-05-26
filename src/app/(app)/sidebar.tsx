@@ -2,28 +2,82 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { agentTooling } from "@/lib/demo-data";
-import { ROLE_LABEL_SHORT, ROLE_TAGLINE, WORKSPACE_ROLES } from "@/lib/persona";
+import {
+  filterWorkflowsForLens,
+  LENS_LABEL,
+  LENS_OPTIONS,
+  outputsForLens,
+  type Lens,
+} from "@/lib/persona";
 
-const outputItems = [
-  { name: "Overview", href: "/dashboard", hint: "Exec summary" },
+// Role-independent sections that surface for every lens. Launches lives here
+// per Dane's call (cross-functional operational object — every role touches
+// it but it doesn't belong inside any one workspace).
+const OPERATIONS_ITEMS = [
   { name: "Launches", href: "/launches", hint: "Release readiness packs" },
-  { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
   { name: "Review Queue", href: "/review-queue", hint: "HITL approvals" },
-  { name: "Collateral Library", href: "/collateral", hint: "Cap 5 enablement assets" },
-  { name: "Market Context", href: "/market-context", hint: "Category dynamics" },
-  { name: "Brand Voice", href: "/brand-voice", hint: "Thesis + pillars" },
-  { name: "Positioning", href: "/positioning", hint: "5-element framework" },
+  { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
+  { name: "Collateral Library", href: "/collateral", hint: "All enablement assets" },
 ];
+
+const SETUP_ITEMS = [
+  {
+    name: "+ Brand Code intake",
+    href: "/onboarding/brand-code",
+    hint: "Conversational R-BR onboarding",
+  },
+  {
+    name: "+ New brand (legacy form)",
+    href: "/onboarding",
+    hint: "",
+  },
+];
+
+const LENS_STORAGE_KEY = "throughline:lens";
 
 export function Sidebar() {
   const pathname = usePathname();
+  // SSR-safe default — render "all" until client hydrates, then read the
+  // persisted lens. Avoids a hydration flash by keeping the same default in
+  // both passes; the hydration `useEffect` swaps in the persisted value.
+  const [lens, setLens] = useState<Lens>("all");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LENS_STORAGE_KEY);
+      if (stored && (LENS_OPTIONS as string[]).includes(stored)) {
+        setLens(stored as Lens);
+      }
+    } catch {
+      // localStorage unavailable (private mode, server, etc.) — silently fall
+      // back to the default lens.
+    }
+    setHydrated(true);
+  }, []);
+
+  function updateLens(next: Lens) {
+    setLens(next);
+    try {
+      localStorage.setItem(LENS_STORAGE_KEY, next);
+    } catch {
+      // ignore
+    }
+  }
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   }
+
+  const outputs = useMemo(() => outputsForLens(lens), [lens]);
+  const workflows = useMemo(
+    () => filterWorkflowsForLens(agentTooling, lens),
+    [lens],
+  );
 
   return (
     <aside className="w-64 border-r border-border bg-surface/40 flex-shrink-0 sticky top-0 h-screen flex flex-col">
@@ -38,44 +92,131 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {/* Overview — top-level landing, no group header */}
+        <div>
+          <Link
+            href="/dashboard"
+            aria-current={isActive("/dashboard") ? "page" : undefined}
+            className={cn(
+              "block rounded-md px-3 py-2 text-sm transition",
+              isActive("/dashboard")
+                ? "bg-accent-bg text-accent"
+                : "text-text-muted hover:text-text hover:bg-card-hover/50",
+            )}
+          >
+            <div className="font-medium">Overview</div>
+            <div className="text-[11px] text-text-dim mt-0.5">
+              Exec summary
+            </div>
+          </Link>
+        </div>
+
+        {/* Workspace lens — dropdown + filtered outputs + filtered workflows */}
         <div>
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
             Workspace
           </div>
-          <ul className="space-y-0.5">
-            {WORKSPACE_ROLES.map((role) => {
-              const href = `/workspace/${role}`;
-              const active = isActive(href);
-              return (
-                <li key={role}>
+          <div className="px-2 mb-3">
+            <label className="sr-only" htmlFor="lens-picker">
+              Workspace lens
+            </label>
+            <select
+              id="lens-picker"
+              value={lens}
+              onChange={(e) => updateLens(e.target.value as Lens)}
+              disabled={!hydrated}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-60"
+            >
+              {LENS_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {LENS_LABEL[opt]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {outputs.length > 0 && (
+            <ul className="space-y-0.5 mb-3">
+              {outputs.map((item) => (
+                <li key={item.href}>
                   <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
+                    href={item.href}
+                    aria-current={isActive(item.href) ? "page" : undefined}
                     className={cn(
                       "block rounded-md px-3 py-2 text-sm transition",
-                      active
+                      isActive(item.href)
                         ? "bg-accent-bg text-accent"
                         : "text-text-muted hover:text-text hover:bg-card-hover/50",
                     )}
                   >
-                    <div className="font-medium">{ROLE_LABEL_SHORT[role]}</div>
-                    <div className="text-[11px] text-text-dim mt-0.5 truncate">
-                      {ROLE_TAGLINE[role]}
-                    </div>
+                    <div className="font-medium">{item.name}</div>
+                    {item.hint && (
+                      <div className="text-[11px] text-text-dim mt-0.5">
+                        {item.hint}
+                      </div>
+                    )}
                   </Link>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+            </ul>
+          )}
+
+          <div className="px-2 mb-2 flex items-baseline justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
+              Workflows
+            </span>
+            <span className="text-[10px] text-text-dim">
+              {workflows.length}
+            </span>
+          </div>
+          {workflows.length === 0 ? (
+            <div className="px-3 py-2 text-[11px] text-text-dim italic">
+              No workflows tagged for this lens yet.
+            </div>
+          ) : (
+            <ul className="space-y-0.5">
+              {workflows.map((agent) => {
+                const href = `/agents/${agent.code.toLowerCase()}`;
+                const active = isActive(href);
+                return (
+                  <li key={agent.code}>
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
+                        active
+                          ? "bg-accent-bg text-accent"
+                          : "text-text-muted hover:text-text hover:bg-card-hover/50",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "font-mono text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 flex-shrink-0",
+                          active
+                            ? "bg-accent text-bg"
+                            : "bg-card text-text-dim",
+                        )}
+                      >
+                        {agent.code}
+                      </span>
+                      <span className="font-medium truncate">{agent.name}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
+        {/* Operations — role-independent ops/admin surfaces */}
         <div>
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-            Output
+            Operations
           </div>
           <ul className="space-y-0.5">
-            {outputItems.map((item) => (
+            {OPERATIONS_ITEMS.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
@@ -97,84 +238,33 @@ export function Sidebar() {
           </ul>
         </div>
 
-        <div>
-          <div className="px-2 mb-2 flex items-baseline justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-              Workflows
-            </span>
-            <span className="text-[10px] text-text-dim">
-              {agentTooling.length}
-            </span>
-          </div>
-          <ul className="space-y-0.5">
-            {agentTooling.map((agent) => {
-              const href = `/agents/${agent.code.toLowerCase()}`;
-              const active = isActive(href);
-              return (
-                <li key={agent.code}>
-                  <Link
-                    href={href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
-                      active
-                        ? "bg-accent-bg text-accent"
-                        : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "font-mono text-[10px] uppercase tracking-wider rounded px-1.5 py-0.5 flex-shrink-0",
-                        active
-                          ? "bg-accent text-bg"
-                          : "bg-card text-text-dim",
-                      )}
-                    >
-                      {agent.code}
-                    </span>
-                    <span className="font-medium truncate">{agent.name}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
+        {/* Setup — onboarding entry points */}
         <div>
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-            Workspace
+            Setup
           </div>
           <ul className="space-y-0.5">
-            <li>
-              <Link
-                href="/onboarding/brand-code"
-                className={cn(
-                  "block rounded-md px-3 py-2 text-sm transition",
-                  isActive("/onboarding/brand-code")
-                    ? "bg-accent-bg text-accent"
-                    : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                )}
-              >
-                <div className="font-medium">+ Brand Code intake</div>
-                <div className="text-[11px] text-text-dim mt-0.5">
-                  Conversational R-BR onboarding
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/onboarding"
-                className={cn(
-                  "block rounded-md px-3 py-2 text-sm transition",
-                  isActive("/onboarding") &&
-                    !isActive("/onboarding/brand-code")
-                    ? "bg-accent-bg text-accent"
-                    : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                )}
-              >
-                <div className="font-medium">+ New brand (legacy form)</div>
-              </Link>
-            </li>
+            {SETUP_ITEMS.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className={cn(
+                    "block rounded-md px-3 py-2 text-sm transition",
+                    isActive(item.href)
+                      ? "bg-accent-bg text-accent"
+                      : "text-text-muted hover:text-text hover:bg-card-hover/50",
+                  )}
+                >
+                  <div className="font-medium">{item.name}</div>
+                  {item.hint && (
+                    <div className="text-[11px] text-text-dim mt-0.5">
+                      {item.hint}
+                    </div>
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
       </nav>

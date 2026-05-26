@@ -6,6 +6,11 @@ import {
   ROLE_LABEL_SHORT,
   ROLE_TAGLINE,
   isValidRole,
+  filterWorkflowsForLens,
+  outputsForLens,
+  LENS_OPTIONS,
+  LENS_LABEL,
+  type Role,
 } from "./persona";
 
 describe("titleToRole", () => {
@@ -105,5 +110,89 @@ describe("isValidRole", () => {
     expect(isValidRole("operations")).toBe(false);
     expect(isValidRole("")).toBe(false);
     expect(isValidRole("MARKETING")).toBe(false); // case-sensitive on purpose
+  });
+});
+
+describe("LENS_OPTIONS / LENS_LABEL", () => {
+  it("starts with 'all' and includes every workspace role", () => {
+    expect(LENS_OPTIONS[0]).toBe("all");
+    for (const role of WORKSPACE_ROLES) {
+      expect(LENS_OPTIONS).toContain(role);
+    }
+  });
+
+  it("has a label for every lens option", () => {
+    for (const opt of LENS_OPTIONS) {
+      expect(LENS_LABEL[opt]).toBeTruthy();
+    }
+  });
+});
+
+describe("filterWorkflowsForLens", () => {
+  const sample = [
+    { code: "R-CI", roles: ["marketing", "sales", "product"] as Role[] },
+    { code: "D-MG", roles: ["marketing"] as Role[] },
+    { code: "D-QB", roles: ["customer_success"] as Role[] },
+    { code: "A0", roles: ["admin"] as Role[] },
+  ];
+
+  it("returns the full list when lens is 'all'", () => {
+    expect(filterWorkflowsForLens(sample, "all")).toEqual(sample);
+  });
+
+  it("returns only workflows tagged with the selected role", () => {
+    const marketing = filterWorkflowsForLens(sample, "marketing").map((w) => w.code);
+    expect(marketing).toEqual(["R-CI", "D-MG"]);
+
+    const cs = filterWorkflowsForLens(sample, "customer_success").map((w) => w.code);
+    expect(cs).toEqual(["D-QB"]);
+  });
+
+  it("preserves source list order in the filtered output", () => {
+    const sales = filterWorkflowsForLens(sample, "sales").map((w) => w.code);
+    expect(sales).toEqual(["R-CI"]);
+  });
+
+  it("returns an empty array when no workflows match the lens", () => {
+    expect(filterWorkflowsForLens(sample, "sales").length).toBe(1);
+    const empty = filterWorkflowsForLens(
+      [{ code: "X-only-admin", roles: ["admin"] as Role[] }],
+      "sales",
+    );
+    expect(empty).toEqual([]);
+  });
+});
+
+describe("outputsForLens", () => {
+  it("returns the marketing list when lens is marketing", () => {
+    const out = outputsForLens("marketing");
+    expect(out.some((o) => o.href === "/workspace/marketing")).toBe(true);
+    expect(out.some((o) => o.href === "/positioning")).toBe(true);
+  });
+
+  it("returns just the role dashboard when lens is sales/product/customer_success", () => {
+    expect(outputsForLens("sales")).toEqual([
+      expect.objectContaining({ href: "/workspace/sales" }),
+    ]);
+    expect(outputsForLens("product")).toEqual([
+      expect.objectContaining({ href: "/workspace/product" }),
+    ]);
+    expect(outputsForLens("customer_success")).toEqual([
+      expect.objectContaining({ href: "/workspace/customer_success" }),
+    ]);
+  });
+
+  it("merges every role's outputs without duplicates when lens is 'all'", () => {
+    const all = outputsForLens("all");
+    const hrefs = all.map((o) => o.href);
+    // Each marketing surface present
+    expect(hrefs).toContain("/workspace/marketing");
+    expect(hrefs).toContain("/positioning");
+    // Each non-marketing role dashboard present
+    expect(hrefs).toContain("/workspace/sales");
+    expect(hrefs).toContain("/workspace/product");
+    expect(hrefs).toContain("/workspace/customer_success");
+    // No duplicates
+    expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 });

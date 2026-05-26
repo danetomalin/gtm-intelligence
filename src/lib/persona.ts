@@ -74,3 +74,102 @@ export const ROLE_TAGLINE: Record<Role, string> = {
 export function isValidRole(input: string): input is Role {
   return (WORKSPACE_ROLES as string[]).includes(input) || input === "admin";
 }
+
+// ─── Workspace lens (sidebar) ────────────────────────────────────────────────
+// `Lens` extends `Role` with an "all" option for the admin view that shows
+// every role's outputs and workflows. The sidebar dropdown switches between
+// these. Default lens is "all" until the user picks (persisted via localStorage).
+
+export type Lens = Role | "all";
+
+export const LENS_OPTIONS: Lens[] = [
+  "all",
+  "marketing",
+  "sales",
+  "product",
+  "customer_success",
+];
+
+export const LENS_LABEL: Record<Lens, string> = {
+  all: "All workspaces",
+  marketing: "Marketing",
+  sales: "Sales",
+  product: "Product",
+  customer_success: "Customer Success",
+  admin: "Admin",
+};
+
+export type WorkspaceOutput = {
+  name: string;
+  href: string;
+  hint: string;
+};
+
+// Per-role static output pages (non-workflow surfaces). The workspace
+// dashboard always leads; role-specific deliverable pages follow.
+export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
+  marketing: [
+    {
+      name: "Marketing dashboard",
+      href: "/workspace/marketing",
+      hint: "Role-specific landing",
+    },
+    {
+      name: "Market Context",
+      href: "/market-context",
+      hint: "Category dynamics",
+    },
+    { name: "Brand Voice", href: "/brand-voice", hint: "Thesis + pillars" },
+    { name: "Positioning", href: "/positioning", hint: "5-element framework" },
+  ],
+  sales: [
+    {
+      name: "Sales dashboard",
+      href: "/workspace/sales",
+      hint: "Role-specific landing",
+    },
+  ],
+  product: [
+    {
+      name: "Product dashboard",
+      href: "/workspace/product",
+      hint: "Role-specific landing",
+    },
+  ],
+  customer_success: [
+    {
+      name: "CS dashboard",
+      href: "/workspace/customer_success",
+      hint: "Role-specific landing",
+    },
+  ],
+  admin: [],
+};
+
+// Filters a workflow list to those tagged with `lensRole`. When the lens is
+// "all", every workflow is returned. Stable iteration order: source list order.
+export function filterWorkflowsForLens<T extends { roles: Role[] }>(
+  workflows: T[],
+  lens: Lens,
+): T[] {
+  if (lens === "all") return workflows;
+  return workflows.filter((w) => w.roles.includes(lens));
+}
+
+// Returns the static output items for a lens. "all" merges every role's items,
+// de-duplicated by href, preserving first-occurrence order.
+export function outputsForLens(lens: Lens): WorkspaceOutput[] {
+  if (lens !== "all") {
+    return LENS_OUTPUTS[lens] ?? [];
+  }
+  const seen = new Set<string>();
+  const merged: WorkspaceOutput[] = [];
+  for (const role of WORKSPACE_ROLES) {
+    for (const item of LENS_OUTPUTS[role]) {
+      if (seen.has(item.href)) continue;
+      seen.add(item.href);
+      merged.push(item);
+    }
+  }
+  return merged;
+}
