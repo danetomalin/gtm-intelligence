@@ -1,3 +1,5 @@
+import { parsePositioningBody } from "@/lib/parse-positioning";
+
 export type PositioningElement = {
   id: string;
   element_type: string | null;
@@ -28,6 +30,7 @@ export function PositioningElementCard({
     : undefined;
   const label = meta?.label ?? element.element_type ?? "Element";
   const order = index ?? meta?.order ?? 0;
+  const parsed = parsePositioningBody(element.content);
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -37,14 +40,10 @@ export function PositioningElementCard({
         </div>
         <div className="flex-1 min-w-0 space-y-3">
           <div>
-            <div className="text-[11px] uppercase tracking-[1.5px] text-accent font-semibold mb-1">
+            <div className="text-[11px] uppercase tracking-[1.5px] text-accent font-semibold mb-2">
               {label}
             </div>
-            {element.content && (
-              <p className="text-base text-text leading-relaxed">
-                {element.content}
-              </p>
-            )}
+            {element.content && <PositioningBody parsed={parsed} fallback={element.content} />}
           </div>
           {element.evidence && (
             <div className="border-t border-border pt-3">
@@ -69,6 +68,75 @@ export function PositioningElementCard({
         </div>
       </div>
     </div>
+  );
+}
+
+// Renders the parsed structure when present, falls back to plain prose otherwise.
+function PositioningBody({
+  parsed,
+  fallback,
+}: {
+  parsed: ReturnType<typeof parsePositioningBody>;
+  fallback: string;
+}) {
+  if (parsed?.kind === "items") {
+    return (
+      <ul className="space-y-2.5">
+        {parsed.items.map((item, i) => (
+          <li
+            key={`${item.index}-${i}`}
+            className="rounded-md border border-border/60 bg-surface/40 px-4 py-3"
+          >
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="font-mono text-[10px] text-text-dim tabular-nums">
+                {String(item.index).padStart(2, "0")}
+              </span>
+              <span className="text-sm font-semibold text-text leading-snug">
+                {item.title}
+              </span>
+            </div>
+            {item.leadText && (
+              <p className="text-sm text-text-muted leading-relaxed mb-2">
+                {item.leadText}
+              </p>
+            )}
+            {item.attributes.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                {item.attributes.map((a, j) => (
+                  <div key={j} className="contents">
+                    <dt className="text-[10px] uppercase tracking-wider text-text-dim font-semibold pt-0.5 whitespace-nowrap">
+                      {a.label}
+                    </dt>
+                    <dd className="text-sm text-text leading-relaxed">
+                      {a.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (parsed?.kind === "attributes") {
+    return (
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+        {parsed.attributes.map((a, i) => (
+          <div key={i} className="contents">
+            <dt className="text-[10px] uppercase tracking-wider text-text-dim font-semibold pt-0.5 whitespace-nowrap">
+              {a.label}
+            </dt>
+            <dd className="text-sm text-text leading-relaxed">{a.value}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  return (
+    <p className="text-base text-text leading-relaxed">{fallback}</p>
   );
 }
 
