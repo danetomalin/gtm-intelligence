@@ -10,7 +10,9 @@ export type PricingIntel = {
   competitor_name: string | null;
   snapshot_date: string | null;
   pricing_model: string | null;
-  tiers: PricingTier[] | null;
+  // n8n's $fromAI writes jsonb values as JSON-encoded strings rather than
+  // native arrays. The render code normalizes either shape into a real array.
+  tiers: PricingTier[] | string | null;
   packaging_observations: string | null;
   pricing_velocity: string | null;
   recent_changes: string | null;
@@ -18,6 +20,24 @@ export type PricingIntel = {
   sources: string | null;
   created_at?: string | null;
 };
+
+// Tolerate three shapes from the DB:
+//   1. proper jsonb array — return as-is
+//   2. JSON-encoded string (n8n $fromAI quirk) — parse and use
+//   3. null / undefined / malformed — return empty
+function normalizeTiers(raw: PricingTier[] | string | null | undefined): PricingTier[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 const MODEL_LABEL: Record<string, string> = {
   tiered: "Tiered",
@@ -56,6 +76,7 @@ export function PricingIntelCard({
   const velocityKey = intel.pricing_velocity ?? "unknown";
   const velocityLabel = VELOCITY_LABEL[velocityKey] ?? velocityKey;
   const velocityTone = VELOCITY_TONE[velocityKey] ?? "bg-card text-text-dim";
+  const tiers = normalizeTiers(intel.tiers);
 
   return (
     <div className="rounded-lg border border-border bg-card px-5 py-4">
@@ -78,9 +99,9 @@ export function PricingIntelCard({
         </span>
       </div>
 
-      {!compact && intel.tiers && intel.tiers.length > 0 && (
+      {!compact && tiers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-          {intel.tiers.map((tier, idx) => (
+          {tiers.map((tier, idx) => (
             <div
               key={idx}
               className="rounded-md border border-border bg-surface/40 px-3 py-2"
