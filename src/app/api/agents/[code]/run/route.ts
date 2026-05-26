@@ -7,6 +7,7 @@ import {
   DEMO_BRAND_WEBSITE,
 } from "@/lib/demo-context";
 import { normalizeAgentCode, webhookPathFor } from "@/lib/agent-config";
+import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
 
 const N8N_BASE_URL =
   process.env.N8N_WEBHOOK_BASE_URL ?? "https://gtmintelligence.app.n8n.cloud";
@@ -60,6 +61,33 @@ export async function POST(
       { error: runErr?.message ?? "Failed to create run row" },
       { status: 500 },
     );
+  }
+
+  // S-DB compiles the platform snapshot server-side and feeds it to n8n as
+  // extras. The simplified S-DB workflow only has to call Gemini and write
+  // the brief — no Supabase reads inside n8n. We do this for S-DB because
+  // a 12-read chain inside n8n cloud kept instant-failing for reasons that
+  // aren't clearly diagnosable from the MCP execution detail.
+  if (code === "S-DB") {
+    try {
+      const snapshot = await buildDailyBriefSnapshot(admin, DEMO_BRAND_ID);
+      extras = { ...extras, snapshot, today: new Date().toISOString().slice(0, 10) };
+    } catch (err) {
+      await admin
+        .from("run_history")
+        .update({
+          status: "error",
+          finished_at: new Date().toISOString(),
+          error_message:
+            "snapshot build failed: " +
+            (err instanceof Error ? err.message : String(err)),
+        })
+        .eq("id", run.id);
+      return NextResponse.json(
+        { error: "Snapshot build failed" },
+        { status: 500 },
+      );
+    }
   }
 
   const payload = {
