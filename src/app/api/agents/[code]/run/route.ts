@@ -28,15 +28,29 @@ export async function POST(
     );
   }
 
-  // Some agents (e.g. R-BR Brand Repository) need extra payload beyond the
-  // default tenant/brand/run identifiers. Accept an optional JSON body whose
-  // top-level fields get merged into the n8n payload.
+  // Optional JSON body. Two reserved keys:
+  //   brandId: target a brand other than the demo Throughline brand (used by
+  //     the end-to-end orchestrator script for cold-start tests on new brands)
+  //   organizationId: matching tenant override
+  // Everything else gets passed through to n8n via extras.
   let extras: Record<string, unknown> = {};
+  let targetBrandId = DEMO_BRAND_ID;
+  let targetOrgId = DEMO_TENANT_ID;
+  let targetBrandName = DEMO_BRAND_NAME;
   if (request.headers.get("content-type")?.includes("application/json")) {
     try {
       const body = await request.json();
       if (body && typeof body === "object") {
         extras = body as Record<string, unknown>;
+        if (typeof extras.brandId === "string") {
+          targetBrandId = extras.brandId;
+        }
+        if (typeof extras.organizationId === "string") {
+          targetOrgId = extras.organizationId;
+        }
+        if (typeof extras.brandName === "string") {
+          targetBrandName = extras.brandName;
+        }
       }
     } catch {
       // Empty / malformed body is fine; agents that don't need extras still work.
@@ -48,8 +62,8 @@ export async function POST(
   const { data: run, error: runErr } = await admin
     .from("run_history")
     .insert({
-      organization_id: DEMO_TENANT_ID,
-      brand_id: DEMO_BRAND_ID,
+      organization_id: targetOrgId,
+      brand_id: targetBrandId,
       agent_code: code,
       status: "running",
     })
@@ -65,12 +79,10 @@ export async function POST(
 
   // S-DB compiles the platform snapshot server-side and feeds it to n8n as
   // extras. The simplified S-DB workflow only has to call Gemini and write
-  // the brief — no Supabase reads inside n8n. We do this for S-DB because
-  // a 12-read chain inside n8n cloud kept instant-failing for reasons that
-  // aren't clearly diagnosable from the MCP execution detail.
+  // the brief — no Supabase reads inside n8n.
   if (code === "S-DB") {
     try {
-      const snapshot = await buildDailyBriefSnapshot(admin, DEMO_BRAND_ID);
+      const snapshot = await buildDailyBriefSnapshot(admin, targetBrandId);
       extras = { ...extras, snapshot, today: new Date().toISOString().slice(0, 10) };
     } catch (err) {
       await admin
@@ -91,10 +103,10 @@ export async function POST(
   }
 
   const payload = {
-    tenantId: DEMO_TENANT_ID,
-    brandId: DEMO_BRAND_ID,
+    tenantId: targetOrgId,
+    brandId: targetBrandId,
     runId: run.id,
-    brandName: DEMO_BRAND_NAME,
+    brandName: targetBrandName,
     websiteUrl: DEMO_BRAND_WEBSITE,
     category: null as string | null,
     ...extras,
