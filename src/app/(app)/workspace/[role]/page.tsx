@@ -53,6 +53,8 @@ import {
   ProductFeedbackCard,
   type ProductFeedback,
 } from "../../agents/[code]/product-feedback-card";
+import { LaunchSummaryCard } from "../../launches/launch-summary-card";
+import { fetchActiveLaunches } from "../../launches/fetch-launches";
 
 export const dynamic = "force-dynamic";
 
@@ -131,9 +133,29 @@ async function MarketingWorkspace({
     dedupeLatestPerType((positioningRes.data ?? []) as PositioningElement[]),
   );
   const messages = (messagingRes.data ?? []) as ContentOutput[];
+  const activeLaunches = await fetchActiveLaunches(admin, DEMO_BRAND_ID, {
+    limit: 4,
+  });
 
   return (
     <WorkspaceShell role="marketing">
+      <WorkspaceSection
+        title="Active launches"
+        sub={`${activeLaunches.length} in flight · Capability 7`}
+        href="/launches"
+        empty={
+          activeLaunches.length === 0
+            ? "No active launches. Create one from /launches to coordinate messaging, sales, and CS workflows behind a release."
+            : null
+        }
+      >
+        <div className="space-y-2">
+          {activeLaunches.map((l) => (
+            <LaunchSummaryCard key={l.id} launch={l} />
+          ))}
+        </div>
+      </WorkspaceSection>
+
       <WorkspaceSection
         title="Top market signals"
         sub={`R-MS · ${signals.length} above fold`}
@@ -272,8 +294,29 @@ async function SalesWorkspace({
     }
   }
 
+  const activeLaunches = await fetchActiveLaunches(admin, DEMO_BRAND_ID, {
+    limit: 4,
+  });
+
   return (
     <WorkspaceShell role="sales">
+      <WorkspaceSection
+        title="Launching this quarter"
+        sub={`${activeLaunches.length} in flight · readiness pack per release`}
+        href="/launches"
+        empty={
+          activeLaunches.length === 0
+            ? "No active launches. Create one from /launches; sales-tier launches kick S-BC battlecard refreshes + D-OB objection sets + Outreach/Apollo sequences."
+            : null
+        }
+      >
+        <div className="space-y-2">
+          {activeLaunches.map((l) => (
+            <LaunchSummaryCard key={l.id} launch={l} />
+          ))}
+        </div>
+      </WorkspaceSection>
+
       <WorkspaceSection
         title="Battlecards"
         sub={`S-BC · ${latestBattlecards.length} competitors`}

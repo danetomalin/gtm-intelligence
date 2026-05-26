@@ -50,7 +50,7 @@ function relTime(iso: string | null | undefined): string {
 export default async function ObservabilityPage() {
   const admin = await createAdminClient();
 
-  const [runsRes, sendsRes, perfRes, contentPendingRes, collatPendingRes, memoPendingRes, assetPendingRes] =
+  const [runsRes, sendsRes, perfRes, contentPendingRes, collatPendingRes, memoPendingRes, assetPendingRes, launchesRes] =
     await Promise.all([
       admin
         .from("run_history")
@@ -88,7 +88,18 @@ export default async function ObservabilityPage() {
         .select("id", { count: "exact", head: true })
         .eq("brand_id", DEMO_BRAND_ID)
         .eq("approval_status", "pending_review"),
+      admin
+        .from("launches")
+        .select("id, status, tier")
+        .eq("brand_id", DEMO_BRAND_ID),
     ]);
+
+  const launches = (launchesRes.data ?? []) as { id: string; status: string; tier: string }[];
+  const launchesInFlight = launches.filter(
+    (l) => l.status !== "shipped" && l.status !== "post_mortem",
+  ).length;
+  const launchesShipped = launches.filter((l) => l.status === "shipped").length;
+  const launchesPostMortem = launches.filter((l) => l.status === "post_mortem").length;
 
   const runs = (runsRes.data ?? []) as RunRow[];
   const sends = (sendsRes.data ?? []) as SendSource[];
@@ -161,7 +172,7 @@ export default async function ObservabilityPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          label="Agents wired"
+          label="Workflows wired"
           value={`${totalAgentsLive}`}
           sublabel="active webhooks"
         />
@@ -173,12 +184,35 @@ export default async function ObservabilityPage() {
         <StatCard
           label="Errored runs"
           value={`${errorRuns}`}
-          sublabel="across all agents"
+          sublabel="across all workflows"
         />
         <StatCard
           label="Pending HITL"
           value={`${totalPending}`}
           sublabel="across all D-*"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard
+          label="Launches in flight"
+          value={`${launchesInFlight}`}
+          sublabel="draft / in progress / ready"
+        />
+        <StatCard
+          label="Launches shipped"
+          value={`${launchesShipped}`}
+          sublabel="distribution fired"
+        />
+        <StatCard
+          label="Post-mortems run"
+          value={`${launchesPostMortem}`}
+          sublabel="retrospective complete"
+        />
+        <StatCard
+          label="Total launches"
+          value={`${launches.length}`}
+          sublabel="all time"
         />
       </div>
 
