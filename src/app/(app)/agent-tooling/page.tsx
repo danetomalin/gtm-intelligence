@@ -5,13 +5,13 @@ export default function AgentToolingPage() {
   return (
     <div className="px-8 py-10 max-w-6xl space-y-10">
       <PageHeader
-        eyebrow="Automation & agent tooling"
-        title="The nine-agent pipeline"
-        subtitle="A founding PMM doesn't have the luxury of a large team. Nine buildable agents close the gap — brand initialization, competitive intel, market signals, roadmap steering, customer feedback, positioning, messaging, battlecards, and sales narrative."
+        eyebrow="Automation & workflow tooling"
+        title="The workflow pipeline"
+        subtitle="A founding PMM doesn't have the luxury of a large team. The platform now ships dozens of buildable workflows across Research, Synthesis, Delivery, and Distribution layers, covering brand initialization, competitive intel, market signals, roadmap steering, customer feedback, positioning, messaging, battlecards, sales narrative, and beyond."
       />
 
       <section>
-        <SectionDivider title="Pipeline" sub={`${agentTooling.length} agents`} />
+        <SectionDivider title="Pipeline" sub={`${agentTooling.length} workflows`} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {agentTooling.map((agent) => (
             <div

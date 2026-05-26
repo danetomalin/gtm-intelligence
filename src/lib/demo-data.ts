@@ -1,6 +1,6 @@
 // Demo content for the Throughline app. Mirrors the Gradial-portfolio
 // narrative style but written from Throughline's perspective. Real data
-// comes from Supabase once A0–A9 is wired to write back to the tenant.
+// comes from Supabase once the full workflow chain is wired to write back to the tenant.
 
 export const demoBrand = {
   id: "demo-brand-id",
@@ -9,10 +9,13 @@ export const demoBrand = {
   category: "AI Native Workflow Modernization System",
 };
 
+// Stat row values that don't drift with platform changes. The "Workflows
+// shipping" stat is computed at render time from agentTooling.length so it
+// always reflects reality. Keeping this export for any consumer that needs
+// the non-count stats; the dashboard derives the full set inline.
 export const overviewStats = [
   { label: "Time saved per week", value: "12 hrs", sublabel: "per PMM seat" },
   { label: "Brands monitored", value: "1", sublabel: "Throughline pilot" },
-  { label: "Agents shipping", value: "9", sublabel: "A0 → A9 chain" },
   { label: "Tenant isolation", value: "RLS", sublabel: "Postgres-enforced" },
 ];
 
@@ -43,7 +46,7 @@ export const marketContextStats = [
 ];
 
 export const marketContextNarrative =
-  "Product marketing is hitting an inflection in 2026. The work is moving from artisanal (briefs, narratives, battlecards built by hand) to operational (the same outputs shipped weekly, scoped per brand, fed by structured intelligence). Most PMM teams haven't made the jump because the tooling treats marketing as content production instead of operational reasoning. Throughline closes the gap by deploying a nine-agent pipeline that produces the actual work product PMM owns — not generated drafts to be edited, finished intelligence to be shipped.";
+  "Product marketing is hitting an inflection in 2026. The work is moving from artisanal (briefs, narratives, battlecards built by hand) to operational (the same outputs shipped weekly, scoped per brand, fed by structured intelligence). Most PMM teams haven't made the jump because the tooling treats marketing as content production instead of operational reasoning. Throughline closes the gap by deploying a multi-agent pipeline that produces the actual work product PMM owns. Finished intelligence ready to ship, not drafts to edit.";
 
 export const competitiveLandscape = [
   {

@@ -50,7 +50,7 @@ export default function PositioningPage() {
         <div className="rounded-lg border border-border bg-surface px-6 py-6">
           <p className="text-base text-text leading-relaxed">
             <strong className="text-accent">For PMM and product leaders at 50–500 person B2B SaaS companies</strong> who need to ship intelligent positioning, messaging, and battlecards on a weekly cadence,{" "}
-            <strong>Throughline</strong> is the AI Native Workflow Modernization System that runs a nine-agent pipeline against your brand and writes the finished work product into a tenant-scoped store.{" "}
+            <strong>Throughline</strong> is the AI Native Workflow Modernization System that runs a multi-agent pipeline against your brand and writes the finished work product into a tenant-scoped store.{" "}
             <strong className="text-text">Unlike</strong> point tooling that monitors competitors but stops short of synthesis, or in-house Notion-and-Slack workflows that reset every time a PMM rotates,{" "}
             <strong>Throughline</strong> ships operational PMM work product that compounds with the org instead of the individual.
           </p>
