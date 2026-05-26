@@ -17,7 +17,7 @@ export const overviewStats = [
 ];
 
 export const overviewBlurb =
-  "Throughline runs the GTM intelligence work product marketing, customer success, sales, and product teams have always built by hand. Nine agents move in sequence from brand initialization through positioning, battlecards, and sales narrative, with every output landing in a tenant-scoped store the team can read like a dashboard.";
+  "Throughline runs the GTM intelligence work product marketing, customer success, sales, and product teams have always built by hand. Agents move in sequence from brand initialization through positioning, battlecards, and sales narrative, with every output landing in a tenant-scoped store the team can read like a dashboard.";
 
 export const marketContextStats = [
   {
