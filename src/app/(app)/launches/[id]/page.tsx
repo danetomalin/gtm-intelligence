@@ -12,6 +12,7 @@ import {
   TIER_TAGLINE,
   type LaunchTier,
 } from "@/lib/launch-tiers";
+import { GenerateReadinessPackButton } from "./generate-button";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,7 @@ export default async function LaunchDetailPage({
   const required = artifacts.filter((a) => a.required);
   const optional = artifacts.filter((a) => !a.required);
   const producedRequired = required.filter((a) => a.produced).length;
+  const remainingRequired = required.length - producedRequired;
   const pct =
     required.length > 0 ? Math.round((producedRequired / required.length) * 100) : 0;
 
@@ -122,13 +124,19 @@ export default async function LaunchDetailPage({
         ← Launches
       </Link>
 
-      <PageHeader
-        eyebrow={`${TIER_LABEL[launch.tier]} launch`}
-        title={launch.name}
-        subtitle={
-          launch.product_summary ?? TIER_TAGLINE[launch.tier]
-        }
-      />
+      <div className="flex items-start justify-between gap-6">
+        <PageHeader
+          eyebrow={`${TIER_LABEL[launch.tier]} launch`}
+          title={launch.name}
+          subtitle={
+            launch.product_summary ?? TIER_TAGLINE[launch.tier]
+          }
+        />
+        <GenerateReadinessPackButton
+          launchId={launch.id}
+          remaining={remainingRequired}
+        />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Tier" value={TIER_LABEL[launch.tier]} />
