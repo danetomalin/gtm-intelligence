@@ -30,7 +30,7 @@ const SETUP_ITEMS = [
     hint: "Conversational R-BR onboarding",
   },
   {
-    name: "+ New brand (legacy form)",
+    name: "+ New brand",
     href: "/onboarding",
     hint: "",
   },
