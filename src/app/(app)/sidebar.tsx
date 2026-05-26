@@ -287,7 +287,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-5 py-4 border-t border-border text-[11px] text-text-dim">
-        Demo data — Throughline tenant only (pre-multi-brand).
+        Demo mode — single-tenant view (pre-multi-brand switcher).
       </div>
     </aside>
   );

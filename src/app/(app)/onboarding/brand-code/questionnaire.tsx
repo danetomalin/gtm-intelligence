@@ -10,13 +10,13 @@ const QUESTIONS: { key: string; prompt: string; placeholder: string; long?: bool
   {
     key: "competitors",
     prompt: "Who are your top 3–5 competitors? Paste their names and domains.",
-    placeholder: "Crayon (crayon.co), Klue (klue.com), …",
+    placeholder: "Acme (acme.com), Globex (globex.com), …",
     long: true,
   },
   {
     key: "value_prop_sentence",
     prompt: "What's your value proposition in one sentence?",
-    placeholder: "Throughline runs the GTM-intelligence work product for org-scale PMM teams.",
+    placeholder: "[Brand] runs the [core workflow] for [target customer].",
   },
   {
     key: "swap_test",
@@ -28,13 +28,13 @@ const QUESTIONS: { key: string; prompt: string; placeholder: string; long?: bool
   {
     key: "homepage_quote",
     prompt: "Drop in a customer quote you wish every prospect saw on your homepage.",
-    placeholder: "“Throughline gave our PMM team continuity through two leadership changes…”",
+    placeholder: "“[Customer] said [the brand] solved [their core problem]…”",
     long: true,
   },
   {
     key: "proudest_number",
     prompt: "What's one number your team is proudest of?",
-    placeholder: "Cut competitive intel cycle from 6 hrs/week to 45 min/week per PMM.",
+    placeholder: "e.g. Cut [metric] from X to Y across [N] customers.",
   },
   {
     key: "never_say",
