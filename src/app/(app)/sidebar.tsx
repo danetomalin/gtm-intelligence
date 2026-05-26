@@ -84,7 +84,7 @@ export function Sidebar() {
       <div className="px-5 py-5 border-b border-border">
         <Link href="/dashboard" className="block">
           <div className="text-[10px] uppercase tracking-[2px] text-text-dim mb-1">
-            AI Native System
+            AI Native GTM
           </div>
           <div className="text-base font-semibold tracking-tight">
             <span className="text-accent">Throughline</span>
