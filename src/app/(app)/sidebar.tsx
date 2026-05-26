@@ -176,16 +176,17 @@ export function Sidebar() {
               No workflows tagged for this lens yet.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {groupWorkflowsByLayer(workflows).map((group) => (
                 <div key={group.key}>
-                  <div className="px-2 mb-1 flex items-baseline justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-                      {group.label}
-                    </span>
-                    <span className="text-[10px] text-text-dim">
-                      {group.workflows.length}
-                    </span>
+                  {/*
+                   * Layer subheader is intentionally quiet — sentence case, no
+                   * tracking, smaller and dimmer than the outer WORKFLOWS
+                   * section head so the hierarchy reads as parent/child rather
+                   * than as peers. Count dropped to reduce label competition.
+                   */}
+                  <div className="px-3 mb-1 text-[11px] text-text-dim/70">
+                    {group.label}
                   </div>
                   <ul className="space-y-0.5">
                     {group.workflows.map((agent) => {
