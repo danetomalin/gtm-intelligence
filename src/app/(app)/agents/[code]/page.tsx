@@ -28,6 +28,10 @@ import { ContentCard, type ContentOutput } from "./content-card";
 import { CollateralCard, type SalesCollateral } from "./collateral-card";
 import { PricingIntelCard, type PricingIntel } from "./pricing-intel-card";
 import { MarginOverview, type CostModelTier } from "./margin-overview";
+import {
+  SuperUserCohortCard,
+  type SuperUserCohort,
+} from "./super-user-cohort-card";
 import { WinLossCard, type WinLoss } from "./win-loss-card";
 import { EvidenceCard, type CustomerEvidence } from "./evidence-card";
 import {
@@ -283,6 +287,7 @@ export default async function AgentPage({
   let channelSends: CampaignSend[] = [];
   let performanceRows: CampaignPerformance[] = [];
   let enablementAssets: EnablementAsset[] = [];
+  let cohorts: SuperUserCohort[] = [];
 
   if (isLive) {
     const admin = await createAdminClient();
@@ -493,7 +498,16 @@ export default async function AgentPage({
                                                 )
                                                 .order("created_at", { ascending: false })
                                                 .limit(50)
-                                            : Promise.resolve({ data: [], error: null }),
+                                            : code === "R-CR"
+                                              ? admin
+                                                  .from("super_user_cohorts")
+                                                  .select(
+                                                    "id, version, is_active, cohort_name, methodology, filter_criteria, cohort_accounts, account_count, excluded_accounts, legacy_concentration_pct, segment_dominance_pct, sources, approval_status, risk_tier, created_at",
+                                                  )
+                                                  .eq("brand_id", DEMO_BRAND_ID)
+                                                  .order("created_at", { ascending: false })
+                                                  .limit(50)
+                                              : Promise.resolve({ data: [], error: null }),
     ]);
 
     latestRun = latestRunRes.data ?? null;
@@ -619,6 +633,8 @@ export default async function AgentPage({
       performanceRows = (dataRes.data ?? []) as CampaignPerformance[];
     } else if (code === "D-OB" || code === "D-QB" || code === "D-HP" || code === "D-WW" || code === "D-XP" || code === "D-RT") {
       enablementAssets = (dataRes.data ?? []) as EnablementAsset[];
+    } else if (code === "R-CR") {
+      cohorts = (dataRes.data ?? []) as SuperUserCohort[];
     } else if (code === "R-BR") {
       // R-BR writes to four tables. Fan out the reads in parallel.
       const [voiceRes, proofRes, capRes, personaRes] = await Promise.all([
@@ -1233,6 +1249,33 @@ export default async function AgentPage({
               <div className="space-y-2">
                 {enablementAssets.map((a) => (
                   <EnablementAssetCard key={a.id} asset={a} />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {isLive && code === "R-CR" && (
+        <>
+          <section>
+            <SectionDivider
+              title="Super user cohorts"
+              sub={`${cohorts.length} versions · Gate 1`}
+            />
+            {cohorts.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
+                No cohorts yet. Click{" "}
+                <strong className="text-text">Run now</strong> to analyze the
+                customer base. R-CR ranks accounts by NRR + LTV + adoption,
+                filters support-burdened or low-adoption accounts, and writes
+                a top-decile cohort that lands in HITL Gate 1 before
+                downstream R-CE / R-VC / S-IC read from it.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {cohorts.map((c) => (
+                  <SuperUserCohortCard key={c.id} cohort={c} />
                 ))}
               </div>
             )}

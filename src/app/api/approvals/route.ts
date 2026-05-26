@@ -15,6 +15,7 @@ const APPROVAL_TABLES = new Set<string>([
   "sales_collateral",
   "counter_narrative_memos",
   "enablement_assets",
+  "super_user_cohorts",
 ]);
 
 type Action = "approve" | "reject" | "request_revision" | "publish";

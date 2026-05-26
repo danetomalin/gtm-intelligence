@@ -373,6 +373,15 @@ export const agentTooling: AgentToolingItem[] = [
     status: "shipping",
     roles: ["customer_success"],
   },
+  {
+    name: "Customer Revenue Analyst",
+    code: "R-CR",
+    purpose:
+      "First of four ICP sub-agents. Sorts the customer base by NRR + LTV + adoption signals, filters out support-burdened or low-adoption accounts, outputs a top-decile 'super user' cohort. Lands in HITL Gate 1 so PMM can scrub legacy whales before R-CE enrichment + R-VC voice extraction run downstream.",
+    cadence: "Quarterly + on demand",
+    status: "shipping",
+    roles: ["marketing", "sales", "product"],
+  },
 ];
 
 export const positioningElements = [

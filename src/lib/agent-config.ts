@@ -45,6 +45,9 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   // Phase 7: Final two Cap 5 sub-agents (expansion + renewal talk track).
   "D-XP": "/webhook/expansion-play-supabase",
   "D-RT": "/webhook/renewal-talk-track-supabase",
+  // Capability 10: ICP sub-agents. R-CR is the first of four — produces a
+  // top-decile super-user cohort that downstream R-CE / R-VC / S-IC read from.
+  "R-CR": "/webhook/customer-revenue-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

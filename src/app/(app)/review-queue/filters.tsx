@@ -8,6 +8,7 @@ type Counts = {
   messaging: number;
   collateral: number;
   counter_narrative: number;
+  icp_cohort: number;
   high: number;
   medium: number;
   low: number;
@@ -55,6 +56,11 @@ export function ReviewQueueFilters({
           label={`Counter-narrative (${counts.counter_narrative})`}
           href={urlFor("counter_narrative", tierFilter)}
           active={artifactFilter === "counter_narrative"}
+        />
+        <FilterPill
+          label={`ICP cohort (${counts.icp_cohort})`}
+          href={urlFor("icp_cohort", tierFilter)}
+          active={artifactFilter === "icp_cohort"}
         />
       </div>
 

@@ -1,6 +1,6 @@
 # Throughline — Strategic Build Plan
 
-Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers nine product capabilities on top:
+Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers ten product capabilities on top:
 
 1. **Persona Lens** — make the same data render four different ways for Product / CS / Marketing / Sales
 2. **Brand Code Ingestion** — let each customer feed their own brand inputs in instead of relying on hardcoded brand context
@@ -11,6 +11,7 @@ Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shi
 7. **Launch Readiness** — coordinate every agent into a tier-driven readiness pack the team operates against for each release (Flagship / Feature / Bug Fix / Revenue Growth / Revenue Retention)
 8. **External Integrations** — bridge launches to the engineering source of truth (Linear / Jira / Asana / GitHub Projects); inbound auto-creates launches from tickets, outbound syncs GTM readiness back to the ticket
 9. **Gross Margin Intelligence** — give R-PP a profitability lens: per-tier cost model on our side, estimated GM on the competitor side, margin sensitivity analysis, and HITL gating on pricing changes that would breach the margin floor
+10. **ICP Intelligence** — four sub-agents (R-CR Customer Revenue Analyst, R-CE Customer Enrichment, R-VC Voice of Customer, S-IC ICP Synthesizer) that produce a boardroom-ready ICP playbook; HITL Gate 1 after R-CR catches the wrong starting cohort before downstream work compounds the error, Gate 2 after R-VC catches over-indexing on a single vocal customer
 
 Each capability is independent enough to ship in isolation, but the order below is the one that gives the product the strongest standalone story at each stage.
 
@@ -822,6 +823,110 @@ This is the difference between PMM as a content function and PMM as a commercial
 
 ---
 
+## Capability 10 — ICP Intelligence
+
+**Problem we're solving.** ICP today gets shallow treatment as one of five elements in S-PO's positioning framework. R-BR's `buyer_personas` table covers individual buyers, not accounts. There's no canonical account-level ICP doc, no anti-ICP, no quant-then-qual workflow, and no guardrails on the synthesis itself. PMM teams that don't articulate ICP precisely waste reps on lookalike-but-wrong accounts and write messaging for the wrong segment.
+
+**The model.** Four specialized sub-agents in sequence, with two mid-flow HITL gates that catch failure modes a single end-state approval can't. Pattern matches Cap 5's split (one workflow per asset type) and the framework Dane shared 2026-05-26.
+
+### 10a. Sub-agent decomposition
+
+| Code | Name | Layer | Job |
+|---|---|---|---|
+| **R-CR** | Customer Revenue Analyst | Research | Sort the customer base by NRR + LTV + adoption signals. Filter support-burdened or low-adoption accounts. Output a top-decile super-user cohort. |
+| **R-CE** | Customer Enrichment | Research | Take the cohort domains, look up firmographics (industry, headcount, revenue), scrape technographic stack, search for corporate triggers (funding, leadership changes, hiring patterns). Output a clustered enrichment matrix. |
+| **R-VC** | Voice of Customer | Research | Scan call transcripts + customer evidence for the emotional why and compelling events. Extract pain vocabulary verbatim. Output top 3 pains + buying committee + compelling events. |
+| **S-IC** | ICP Synthesizer | Synthesis | Merge quant (R-CR + R-CE) with qual (R-VC). Produce the canonical ICP playbook + anti-ICP. Writes the single active `icp_definitions` row. |
+
+### 10b. HITL gates (the structural value-add)
+
+**Gate 1 after R-CR.** Review Queue shows a "Super User cohort · N accounts" card with two drift indicators surfaced explicitly: *legacy concentration* (% of cohort > 3 years old; trigger > 50%) and *single-segment dominance* (% of cohort in one segment; trigger > 70%). PMM can approve, edit (remove specific accounts with a comment), or reject + restart with adjusted filter criteria. Catches "biggest paying customer is a 5-year-old whale that doesn't represent the future" before downstream R-CE / R-VC waste compute on it.
+
+**Gate 2 after R-VC.** Review Queue shows "VoC extraction" card with a *drift indicator*: % of top-pain text drawn from a single customer transcript. Trigger > 25% surfaces "verify this represents the cohort, not a vocal outlier." PMM can approve, edit pain ordering or vocabulary, or mark a customer as over-weighted (R-VC re-runs with that customer down-weighted).
+
+**Final gate on S-IC.** Standard `pending_review` on `icp_definitions`. On approval, S-PO's best-fit-accounts element auto-refreshes to align with the new ICP (per Decision 16 below).
+
+### 10c. Schema
+
+Four new tables with FK chain icp_definitions → voc_extractions + customer_enrichment → super_user_cohorts. Lineage is auditable — click an ICP and trace exactly which super-user cohort it derived from.
+
+```
+super_user_cohorts     (R-CR output, HITL Gate 1) — shipped Phase 12A
+customer_enrichment    (R-CE output) — Phase 12B
+voc_extractions        (R-VC output, HITL Gate 2) — Phase 12C
+icp_definitions        (S-IC output, final HITL gate) — Phase 12D
+```
+
+`super_user_cohorts` schema (shipped 2026-05-26, migration 0019):
+- versioning + is_active partial unique index
+- cohort_accounts jsonb (per-account NRR / LTV / adoption_score / support_volume)
+- excluded_accounts jsonb (flagged-but-filtered, for PMM visibility)
+- legacy_concentration_pct + segment_dominance_pct (Gate 1 drift indicators)
+- Full HITL columns from inception (approval_status / risk_tier / approved_at / approved_by)
+
+### 10d. Data source reality
+
+Today Throughline has no direct Salesforce / HubSpot / Mixpanel / Gong connections. Same mock-first adapter pattern as Cap 4:
+
+- **R-CR v1:** reads dummy CRM data + `customer_evidence`. v2: real Salesforce / HubSpot via OAuth.
+- **R-CE v1:** web search via existing pattern + mock Apollo / Clearbit responses. v2: real API connections.
+- **R-VC v1:** reads `customer_evidence` + `feedback_themes` + `win_loss_analyses`. v2: ingests real Gong / Chorus / Zoom transcripts.
+
+When the real integrations land (likely a sibling to Cap 8's I-* launch integrations), the agents swap source without code changes.
+
+### 10e. Phasing
+
+- **Phase 12A — R-CR Customer Revenue Analyst** ✅ shipped 2026-05-26
+  - Migration 0019 with `super_user_cohorts` (HITL columns from inception, legacy + segment drift indicators, partial unique index for one-active-per-brand)
+  - SuperUserCohortCard with cohort table + excluded accounts + drift warnings + approval buttons
+  - R-CR registered in agent-config webhook map (n8n workflow build on Dane's side when ready)
+  - R-CR branch on `/agents/r-cr` with empty-state CTA
+  - Review Queue includes ICP cohort section with filter pill + tier counts
+  - 121/121 platform tests passing
+- **Phase 12B — R-CE Customer Enrichment** (~1.5 hours, deferred)
+  - Migration with `customer_enrichment` (FK to super_user_cohorts), firmographic_clusters jsonb, technographic_signals jsonb, trigger_signals jsonb
+  - R-CE n8n workflow: web search + mock Apollo / Clearbit enrichment loops
+  - EnrichmentCard component with cluster visualization
+  - R-CE branch on agent page
+- **Phase 12C — R-VC Voice of Customer** (~2 hours, deferred)
+  - Migration with `voc_extractions` (FK to super_user_cohorts, HITL Gate 2 columns), top_pains jsonb ordered, pain_vocabulary jsonb, compelling_events jsonb, buying_committee jsonb, single_customer_pct drift indicator
+  - R-VC n8n workflow: semantic search over customer_evidence + thematic clustering
+  - VoCExtractionCard component with drift indicator + pain ordering UI
+  - Review Queue includes VoC extraction section
+- **Phase 12D — S-IC ICP Synthesizer** (~1.5 hours, deferred)
+  - Migration with `icp_definitions` (FK chain to all three feeders, anti_icp jsonb, full HITL columns), partial unique index for one-active-per-brand
+  - S-IC n8n workflow: long-context synthesis of cohort + enrichment + VoC into the boardroom-ready ICP
+  - IcpDefinitionCard component
+  - On approval: auto-refresh S-PO best-fit-accounts element via a post-approve hook
+  - `/agents/s-ic` page with full lineage panel
+
+Total deferred work: ~5 hours focused for the full pipeline.
+
+### 10f. Decisions (locked 2026-05-26)
+
+14. **ICP count: single canonical per brand.** Versioning preserves history. Forces the team to pick instead of running 3 motions in parallel. Anti-ICP captured inside the same row so it stays versioned with the rest of the doc.
+15. **Anti-ICP scope: jsonb column inside icp_definitions.** Single source of truth. Each anti-segment is `{description, why_excluded, observable_signal}`.
+16. **S-PO auto-refresh on ICP approval.** When PMM approves a new ICP version, S-PO's best-fit-accounts element refreshes automatically. Keeps positioning aligned without manual sync.
+17. **First ICP seeded by auto-run at brand onboarding.** S-IC fires after R-BR onboarding completes and writes a draft from whatever data is available. PMM reviews + approves.
+
+### 10g. Strategic value
+
+ICP is the prior that everything downstream depends on. Messaging, sales narrative, analyst briefings, outbound sequences — all of them are downstream of "who are we selling to." Most PMM teams write an ICP and stop. The high-leverage thing this capability adds:
+
+1. **Anti-ICP captured explicitly.** Documents who looks right but isn't, which is where reps waste cycles.
+2. **Two mid-flow HITL gates.** Catch the wrong starting cohort and the over-indexed pain before they compound into a wrong ICP.
+3. **Drift indicators surface bias automatically.** Legacy concentration and single-customer pain percentage are computed every run, no manual checking.
+4. **Lineage is auditable end-to-end.** You can trace any field in an ICP back to the transcripts and CRM data that produced it.
+
+### 10h. Open questions
+
+1. **Cohort refresh cadence** — Quarterly is the default. Should R-CR auto-fire (against the no-scheduled-runs rule) when win_loss_analyses cross a threshold of new rows, or stay strictly on-demand?
+2. **Multi-segment companies** — Decision 14 locks single canonical ICP. Some brands legitimately have a Land + Expand structure (SMB self-serve + Enterprise sales-led). Is that two ICPs or one ICP with two motions? Defer to first real customer with this need.
+3. **Customer-level vs account-level pain** — R-VC extracts pain from individual transcripts (customer-level) but rolls up to cohort-level pains. Should the rollup show the contributing transcripts inline, or just the synthesized pain?
+4. **Buying committee detail in v1** — Schema captures roles + influence weights. Should the buying-committee output also include role × pain mapping (which committee member cares about which pain), or is that v2?
+
+---
+
 ## Recommended phasing
 
 Ordered for **stability first, ease of implementation second** (Decision 2026-05-22). Estimates are realistic focused-work hours at our actual pace, not traditional developer-week estimates. Total: ~28–36 hours of focused work, plus external-account overhead for Phase 6 wildcards.
@@ -848,6 +953,10 @@ Ordered for **stability first, ease of implementation second** (Decision 2026-05
 | **11B** | Cap 9 Competitor margin: extend `pricing_intelligence` with est GM range + confidence + basis, R-PP system prompt updated, competitor margin badge + gap analysis row | ~2 hours |
 | **11C** | Cap 9 Sensitivity analysis: per-tier "what if LLM costs drop 40%" / "compute doubles" scenarios card on R-PP | ~1 hour |
 | **11D** | Cap 9 HITL margin gating: pricing-change-bearing artifacts read `product_cost_model`, auto-promote to `risk_tier=high` if floor breached, margin-impact banner in Review Queue | ~1 hour |
+| **12A** | ✅ Cap 10 R-CR foundation: migration `super_user_cohorts`, agent-config + demo-data registration, SuperUserCohortCard with drift indicators, R-CR branch on agent page, Review Queue ICP cohort section + filter pill + approval whitelist | shipped |
+| **12B** | Cap 10 R-CE Enrichment: migration `customer_enrichment`, R-CE n8n workflow, EnrichmentCard, agent page branch | ~1.5 hours |
+| **12C** | Cap 10 R-VC Voice of Customer: migration `voc_extractions` with HITL Gate 2 + single-customer drift indicator, R-VC n8n workflow, VoCExtractionCard, Review Queue VoC section | ~2 hours |
+| **12D** | Cap 10 S-IC ICP Synthesizer: migration `icp_definitions` (FK chain to feeders, anti_icp jsonb), S-IC n8n workflow, IcpDefinitionCard, S-PO auto-refresh hook on approval, /agents/s-ic page with lineage panel | ~1.5 hours |
 
 ### Wildcards that could extend the timeline
 
@@ -883,7 +992,9 @@ New tables this plan adds:
 
 **Capability 9 (Gross Margin Intelligence):** product_cost_model. (1 table.) Plus four columns added to `pricing_intelligence` for competitor margin estimation (Phase B).
 
-End state: ~43 Supabase tables. All multi-tenant via organization_id + RLS.
+**Capability 10 (ICP Intelligence):** super_user_cohorts (shipped), customer_enrichment, voc_extractions, icp_definitions. (4 tables.) FK chain enforces lineage from cohort → enrichment + VoC → ICP.
+
+End state: ~47 Supabase tables. All multi-tenant via organization_id + RLS.
 
 ---
 

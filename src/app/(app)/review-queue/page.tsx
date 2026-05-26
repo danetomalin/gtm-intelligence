@@ -14,6 +14,10 @@ import {
   CounterNarrativeCard,
   type CounterNarrative,
 } from "../agents/[code]/counter-narrative-card";
+import {
+  SuperUserCohortCard,
+  type SuperUserCohort,
+} from "../agents/[code]/super-user-cohort-card";
 import { ReviewQueueFilters } from "./filters";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +65,21 @@ export default async function ReviewQueuePage({
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const [messagingRes, collateralRes, memosRes] = await Promise.all([
+  const cohortQuery = admin
+    .from("super_user_cohorts")
+    .select(
+      "id, version, is_active, cohort_name, methodology, filter_criteria, cohort_accounts, account_count, excluded_accounts, legacy_concentration_pct, segment_dominance_pct, sources, approval_status, risk_tier, created_at",
+    )
+    .eq("brand_id", DEMO_BRAND_ID)
+    .in("approval_status", PENDING_STATUSES as unknown as string[])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const [messagingRes, collateralRes, memosRes, cohortRes] = await Promise.all([
     messagingQuery,
     collateralQuery,
     counterNarrativeQuery,
+    cohortQuery,
   ]);
 
   const messaging = (messagingRes.data ?? []) as (ContentOutput & {
@@ -74,6 +89,7 @@ export default async function ReviewQueuePage({
     risk_tier?: string | null;
   })[];
   const memos = (memosRes.data ?? []) as CounterNarrative[];
+  const cohortsList = (cohortRes.data ?? []) as SuperUserCohort[];
 
   const tierMatches = (rowTier: string | null | undefined) =>
     tierFilter === "all" ? true : rowTier === tierFilter;
@@ -90,25 +106,36 @@ export default async function ReviewQueuePage({
     artifactFilter === "all" || artifactFilter === "counter_narrative"
       ? memos.filter((m) => tierMatches(m.risk_tier))
       : [];
+  const visibleCohorts =
+    artifactFilter === "all" || artifactFilter === "icp_cohort"
+      ? cohortsList.filter((c) => tierMatches(c.risk_tier))
+      : [];
 
   const totalVisible =
-    visibleMessaging.length + visibleCollateral.length + visibleMemos.length;
-  const totalPending = messaging.length + collateral.length + memos.length;
+    visibleMessaging.length +
+    visibleCollateral.length +
+    visibleMemos.length +
+    visibleCohorts.length;
+  const totalPending =
+    messaging.length + collateral.length + memos.length + cohortsList.length;
+
+  const tierBucket = (rt: string) =>
+    [
+      ...messaging,
+      ...collateral,
+      ...memos,
+      ...cohortsList,
+    ].filter((r) => r.risk_tier === rt).length;
 
   const counts = {
     all: totalPending,
     messaging: messaging.length,
     collateral: collateral.length,
     counter_narrative: memos.length,
-    high: [...messaging, ...collateral, ...memos].filter(
-      (r) => r.risk_tier === "high",
-    ).length,
-    medium: [...messaging, ...collateral, ...memos].filter(
-      (r) => r.risk_tier === "medium",
-    ).length,
-    low: [...messaging, ...collateral, ...memos].filter(
-      (r) => r.risk_tier === "low",
-    ).length,
+    icp_cohort: cohortsList.length,
+    high: tierBucket("high"),
+    medium: tierBucket("medium"),
+    low: tierBucket("low"),
   };
 
   return (
@@ -184,6 +211,20 @@ export default async function ReviewQueuePage({
               <div className="space-y-2">
                 {visibleMemos.map((memo) => (
                   <CounterNarrativeCard key={memo.id} memo={memo} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleCohorts.length > 0 && (
+            <section>
+              <SectionDivider
+                title="ICP super-user cohorts (R-CR · Gate 1)"
+                sub={`${visibleCohorts.length} pending`}
+              />
+              <div className="space-y-3">
+                {visibleCohorts.map((c) => (
+                  <SuperUserCohortCard key={c.id} cohort={c} />
                 ))}
               </div>
             </section>
