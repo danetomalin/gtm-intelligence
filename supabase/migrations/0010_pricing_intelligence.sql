@@ -15,7 +15,7 @@ create table if not exists pricing_intelligence (
   brand_id                 uuid not null references brands(id) on delete cascade,
   competitor_name          text not null,
   snapshot_date            date not null default current_date,
-  pricing_model            text check (pricing_model is null or pricing_model in ('tiered','usage','seat','flat','hybrid','custom','unknown')),
+  pricing_model            text check (pricing_model is null or pricing_model in ('tiered','usage','seat','flat','hybrid','custom','subscription','freemium','unknown')),
   tiers                    jsonb,
   packaging_observations   text,
   pricing_velocity         text check (pricing_velocity is null or pricing_velocity in ('stable','changing','recently_changed','unknown')),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { DEMO_TENANT_ID } from "@/lib/demo-context";
 
 const bodySchema = z.object({
   organizationName: z.string().min(1).max(200),
@@ -14,9 +15,11 @@ export async function POST(request: Request) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+
+  // Demo bypass: when no user is signed in, fall back to the canonical
+  // demo tenant. Real auth will replace this once SSO is wired in.
+  const userId: string | null = user?.id ?? null;
+  const userEmail: string | null = user?.email ?? null;
 
   let body: z.infer<typeof bodySchema>;
   try {
@@ -26,22 +29,27 @@ export async function POST(request: Request) {
   }
 
   // Admin client to bypass RLS for the bootstrap (org + profile + brand
-  // creation in one transaction, all keyed to this authenticated user).
+  // creation in one transaction).
   const admin = await createAdminClient();
 
-  // Idempotent: if the user already has an org, reuse it.
-  const { data: existingProfile } = await admin
-    .from("profiles")
-    .select("organization_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  let organizationId = existingProfile?.organization_id ?? null;
+  // Idempotent: if the user already has an org, reuse it. In demo mode
+  // (no userId) we skip the lookup and reuse the demo tenant directly.
+  let organizationId: string | null = null;
+  if (userId) {
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("organization_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    organizationId = existingProfile?.organization_id ?? null;
+  } else {
+    organizationId = DEMO_TENANT_ID;
+  }
 
   if (!organizationId) {
     const { data: org, error: orgError } = await admin
       .from("organizations")
-      .insert({ name: body.organizationName, created_by: user.id })
+      .insert({ name: body.organizationName, created_by: userId })
       .select("id")
       .single();
     if (orgError || !org) {
@@ -52,17 +60,19 @@ export async function POST(request: Request) {
     }
     organizationId = org.id;
 
-    const { error: profileError } = await admin.from("profiles").insert({
-      user_id: user.id,
-      organization_id: organizationId,
-      role: "owner",
-      email: user.email,
-    });
-    if (profileError) {
-      return NextResponse.json(
-        { error: profileError.message },
-        { status: 500 },
-      );
+    if (userId) {
+      const { error: profileError } = await admin.from("profiles").insert({
+        user_id: userId,
+        organization_id: organizationId,
+        role: "owner",
+        email: userEmail,
+      });
+      if (profileError) {
+        return NextResponse.json(
+          { error: profileError.message },
+          { status: 500 },
+        );
+      }
     }
   }
 
@@ -74,7 +84,7 @@ export async function POST(request: Request) {
       name: body.brandName,
       website_url: body.websiteUrl,
       additional_context: body.additionalContext,
-      created_by: user.id,
+      created_by: userId,
     })
     .select("id")
     .single();
@@ -119,7 +129,7 @@ export async function POST(request: Request) {
     organization_id: organizationId,
     brand_id: brand.id,
     status: "running",
-    triggered_by: user.id,
+    triggered_by: userId,
   });
 
   return NextResponse.json({ ok: true, brandId: brand.id });
