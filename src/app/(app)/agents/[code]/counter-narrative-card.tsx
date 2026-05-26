@@ -1,4 +1,5 @@
 import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+import { InlineMd } from "@/lib/inline-md";
 
 export type CounterNarrative = {
   id: string;
@@ -49,8 +50,8 @@ export function CounterNarrativeCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Rep talking points
           </div>
-          <p className={`text-sm text-text leading-relaxed whitespace-pre-line ${compact ? "line-clamp-3" : ""}`}>
-            {memo.rep_talking_points}
+          <p className={`text-sm text-text leading-relaxed ${compact ? "line-clamp-3" : ""}`}>
+            <InlineMd>{memo.rep_talking_points}</InlineMd>
           </p>
         </div>
       )}
@@ -60,8 +61,8 @@ export function CounterNarrativeCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Suggested LinkedIn post
           </div>
-          <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line italic">
-            {memo.suggested_linkedin_post}
+          <p className="text-sm text-text-muted leading-relaxed italic">
+            <InlineMd>{memo.suggested_linkedin_post}</InlineMd>
           </p>
         </div>
       )}
@@ -71,8 +72,8 @@ export function CounterNarrativeCard({
           <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mb-1">
             Email reply template
           </div>
-          <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">
-            {memo.email_reply_template}
+          <p className="text-sm text-text-muted leading-relaxed">
+            <InlineMd>{memo.email_reply_template}</InlineMd>
           </p>
         </div>
       )}

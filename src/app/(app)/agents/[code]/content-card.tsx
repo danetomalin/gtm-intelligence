@@ -1,4 +1,5 @@
 import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+import { InlineMd } from "@/lib/inline-md";
 
 export type ContentOutput = {
   id: string;
@@ -56,8 +57,8 @@ export function ContentCard({
         )}
       </div>
       {content.content && (
-        <p className={`text-sm text-text-muted leading-relaxed whitespace-pre-line ${compact ? "line-clamp-3" : ""}`}>
-          {content.content}
+        <p className={`text-sm text-text-muted leading-relaxed ${compact ? "line-clamp-3" : ""}`}>
+          <InlineMd>{content.content}</InlineMd>
         </p>
       )}
       {!compact && content.messaging_refs && (
@@ -65,7 +66,9 @@ export function ContentCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Anchored to
           </div>
-          <p className="text-sm text-text leading-relaxed">{content.messaging_refs}</p>
+          <p className="text-sm text-text leading-relaxed">
+            <InlineMd>{content.messaging_refs}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && (

@@ -1,4 +1,5 @@
 import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+import { InlineMd } from "@/lib/inline-md";
 
 export type SalesCollateral = {
   id: string;
@@ -59,8 +60,8 @@ export function CollateralCard({
         )}
       </div>
       {piece.content && (
-        <p className={`text-sm text-text-muted leading-relaxed whitespace-pre-line ${compact ? "line-clamp-4" : ""}`}>
-          {piece.content}
+        <p className={`text-sm text-text-muted leading-relaxed ${compact ? "line-clamp-4" : ""}`}>
+          <InlineMd>{piece.content}</InlineMd>
         </p>
       )}
       {!compact && piece.positioning_refs && (
@@ -68,7 +69,9 @@ export function CollateralCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Positioning anchors
           </div>
-          <p className="text-sm text-text leading-relaxed">{piece.positioning_refs}</p>
+          <p className="text-sm text-text leading-relaxed">
+            <InlineMd>{piece.positioning_refs}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && (

@@ -1,4 +1,5 @@
 import { ApprovalButtons, type ApprovalStatus } from "./approval-buttons";
+import { InlineMd } from "@/lib/inline-md";
 
 export type EnablementAsset = {
   id: string;
@@ -86,9 +87,9 @@ export function EnablementAssetCard({
       </div>
       {asset.body_markdown && (
         <p
-          className={`text-sm text-text-muted leading-relaxed whitespace-pre-line mb-2 ${compact ? "line-clamp-4" : ""}`}
+          className={`text-sm text-text-muted leading-relaxed mb-2 ${compact ? "line-clamp-4" : ""}`}
         >
-          {asset.body_markdown}
+          <InlineMd>{asset.body_markdown}</InlineMd>
         </p>
       )}
       {!compact && asset.source_refs && (
@@ -96,7 +97,9 @@ export function EnablementAssetCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Synthesized from
           </div>
-          <p className="text-xs text-text-muted leading-relaxed">{asset.source_refs}</p>
+          <p className="text-xs text-text-muted leading-relaxed">
+            <InlineMd>{asset.source_refs}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && (

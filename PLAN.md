@@ -1,6 +1,6 @@
 # Throughline — Strategic Build Plan
 
-Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers seven product capabilities on top:
+Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shipped (A1–A8) as foundation, renames them under a layer-prefixed convention, and layers eight product capabilities on top:
 
 1. **Persona Lens** — make the same data render four different ways for Product / CS / Marketing / Sales
 2. **Brand Code Ingestion** — let each customer feed their own brand inputs in instead of relying on hardcoded brand context
@@ -9,6 +9,7 @@ Working plan for the next ~6–8 weeks of build. Treats the 8 agents we just shi
 5. **Enablement Collateral Automation** — produce, refresh, and route the internal assets a Sales and CS org runs on (battlecards, one-pagers, talk tracks, QBR templates, playbooks, runbooks)
 6. **Human-in-the-Loop Review & Approval** — the cross-cutting governance layer that gates every Delivery and Distribution agent behind structured review, captures human edits as training signal, and lets safe items auto-publish
 7. **Launch Readiness** — coordinate every agent into a tier-driven readiness pack the team operates against for each release (Flagship / Feature / Bug Fix / Revenue Growth / Revenue Retention)
+8. **External Integrations** — bridge launches to the engineering source of truth (Linear / Jira / Asana / GitHub Projects); inbound auto-creates launches from tickets, outbound syncs GTM readiness back to the ticket
 
 Each capability is independent enough to ship in isolation, but the order below is the one that gives the product the strongest standalone story at each stage.
 
@@ -644,6 +645,98 @@ The most operational piece in the platform once it ships. A launch is the domina
 
 ---
 
+## Capability 8 — External Integrations
+
+**Problem we're solving.** Launches today are created manually inside Throughline via the New Launch modal. In the real GTM operating model, launches are decided upstream in engineering tools (Linear, Jira, Asana, GitHub Projects) and signaled to PMM via a ticket label, epic state change, or release tag. Today there's a hand-off seam between "engineering knows a launch is real" and "PMM creates the launch in Throughline." That seam loses launches, delays GTM prep, and forces PMM to track engineering tickets in a separate tab.
+
+**The model.** A new layer prefix **`I-` (Integrations)** with one workflow per supported tool, modeled after the X-* distribution adapter pattern. Each I-* workflow handles both directions of sync for one external tool:
+
+- **Inbound (external → Throughline).** A webhook from the external tool (or an on-demand polled query, per the no-scheduled-runs rule) creates a `launches` row in `draft` state with the external link, target date, name, and product summary populated from the ticket. PMM gets a notification, picks a tier, hits Generate.
+
+- **Outbound (Throughline → external).** When each required artifact gets approved, the I-* workflow updates a custom field on the external ticket ("GTM Readiness: 6/8 produced"). When the launch ships, comments with the win-wire link. Engineering can see GTM is unblocked without asking.
+
+### 8a. Supported tools and priority
+
+| Tool | Priority | Why this priority |
+|---|---|---|
+| **Linear** | First | GraphQL API, clean OAuth flow, common at our ICP (50–500 person SaaS). Smallest surface area to prove the I-* pattern. |
+| **Jira** | Second | Dominant in B2B SaaS engineering. Cloud and Server variants complicate the OAuth dance — Cloud-only is fine for v1; bigger payoff but more integration surface. |
+| **Asana** | Third | Used by marketing-led launch checklists. Smaller eng overlap than Jira/Linear but high relevance for PMM-led launches. |
+| **GitHub Projects** | Fourth | Smaller eng teams. Release-tag → launch trigger is natural via webhooks. |
+| **Productboard** | Read-only later | Roadmap tool, not a launch tracker, but worth a read-only pull for tier signal once core integrations land. |
+
+### 8b. Architectural pattern
+
+Each I-* workflow follows the X-* mock-first pattern (PLAN §4d):
+
+- **Mock mode by default.** Synthetic tickets generated for demo + dev. Allows the full surface area (inbound auto-create, outbound sync, status display) to be demoable without provisioning real OAuth. Mock tickets land in the same `launch_external_links` table with `source='mock'` so the UI doesn't have to branch.
+- **Real mode on credential availability.** `integration_channels.mode='live'` flips reads/writes against the real provider API. Same workflow, same tables.
+- **Per-tenant config via admin settings.** OAuth connect button, per-provider trigger rules (e.g., "trigger on Linear epic state `Done`", "trigger on Jira label `gtm-ready`"), test-event sandbox.
+
+### 8c. Schema
+
+New tables:
+
+```
+integration_channels
+  id, organization_id, brand_id
+  provider (linear | jira | asana | github_projects)
+  mode (live | mock)
+  oauth_token (encrypted, nullable in mock mode)
+  trigger_rules (jsonb — provider-specific config: labels, states, project IDs)
+  last_synced_at, created_at, updated_at
+
+launch_external_links
+  id, launch_id, organization_id, brand_id
+  provider (linear | jira | asana | github_projects)
+  external_id (the ticket key / Linear issue ID / etc.)
+  external_url
+  external_title (snapshot at link time)
+  external_state (current state pulled from provider; refreshed on Re-sync)
+  source (live | mock)
+  last_synced_at, sync_status (ok | error | stale)
+  created_at, updated_at
+```
+
+Additions to existing tables:
+
+- `launches.source` enum extended to: `manual | linear | jira | asana | github_projects`
+- `launches.external_link_id` (optional FK to `launch_external_links`) — the canonical source ticket if the launch was auto-created from one
+
+### 8d. UI surfaces
+
+Three new surfaces, all extending the Cap 7 Launch Readiness UI:
+
+1. **Launch detail page** — new "External links" card under the artifact list showing every linked ticket: provider logo + name, ticket key, current state pulled from the source, last sync time, manual **Re-sync** button. Inline **+ Link a ticket** input for PMM to attach a ticket that wasn't auto-discovered.
+
+2. **Launches index** — two changes:
+   - **Filter pill row:** "Source: All / Manual / Linear / Jira / Asana / GitHub"
+   - **Unclaimed tab** showing launches that the integration created but no PMM has picked a tier for yet. PMM clicks one, picks a tier, the draft becomes an active launch.
+
+3. **Setup → Integrations page** — new section in the sidebar's Setup group, dedicated page per provider. Per provider: OAuth connect, trigger rules editor (with field-level help), **Test event** button that fires a synthetic webhook in mock mode or a real test in live mode, last-N-events log for debugging.
+
+### 8e. Build plan (Phase 10, split into sub-phases)
+
+- **Phase 10A — Linear** (~6 hours): Migration `integration_channels` + `launch_external_links` + `launches.source` enum extension. `I-LN` n8n workflow (mock-first). Linear OAuth flow scaffolded but mock-only by default. Setup → Integrations page (Linear card live, other tools stubbed). Launch detail External Links card. Launches index Source filter + Unclaimed tab.
+- **Phase 10B — Jira** (~5 hours): `I-JI` n8n workflow with Cloud OAuth variant first. Jira Server variant deferred to customer pull. Setup page Jira card live.
+- **Phase 10C — Asana + GitHub Projects** (~4 hours): `I-AS` and `I-GH` workflows, mock-first. OAuth scaffolding deferred until customer pull. Setup page entries live.
+
+Total: ~15 hours for full integration coverage. Linear-only ships meaningful value in ~6 hours and proves the pattern.
+
+### 8f. Strategic value
+
+This is the operational seam that turns Throughline from "the tool PMM opens when they remember" into "the place where engineering tells PMM a launch is happening." Removes the cognitive overhead of double-entry between engineering's PM tool and Throughline. Closes the loop the other direction too: engineering sees the GTM readiness state without asking PMM for a status update. The deeper play is that Throughline becomes the canonical bridge between the roadmap conversation and the revenue conversation — the place where "what are we building" meets "how is it landing."
+
+### 8g. Open questions
+
+1. **First integration target** — Linear first per §8a, or flip to Jira given larger total addressable market? Counter: Jira has more API surface so it slows the pattern proof.
+2. **Custom field write-back** — Jira and Linear both need a customer-side custom field configured for the readiness sync. Auto-create the field on first connect, or require manual setup with a how-to doc?
+3. **Bidirectional sync conflict** — If a PMM edits the launch name in Throughline and the ticket title also changes in Jira, which wins? Default proposal: last-write-wins with a "Conflict — review" badge on the launch detail card.
+4. **Read-only vs read-write OAuth scopes** — Default to read-write so outbound sync works out of the box, or default read-only with an opt-in toggle for outbound? Conservative default = read-only; aggressive default = read-write since that's the whole point.
+5. **Productboard depth** — Read-only pull of roadmap items into a new `external_roadmap_signals` table for tier inference, or skip entirely?
+
+---
+
 ## Recommended phasing
 
 Ordered for **stability first, ease of implementation second** (Decision 2026-05-22). Estimates are realistic focused-work hours at our actual pace, not traditional developer-week estimates. Total: ~28–36 hours of focused work, plus external-account overhead for Phase 6 wildcards.
@@ -663,6 +756,9 @@ Ordered for **stability first, ease of implementation second** (Decision 2026-05
 | **9B** | Cap 7 Orchestration: L-OR n8n workflow, `[code]/run` route accepts `launch_id` and writes `launch_artifacts` link, sweep existing 11 Delivery workflows to forward `launch_id` | ~3 hours |
 | **9C** | Cap 7 Distribution + Post-launch: "Ship readiness pack" button → fires X-* per tier matrix. Retrospective button → S-CP scoped query + optional D-WW | ~2 hours |
 | **9D** | Cap 7 Workspace integration: Marketing workspace Active Launches widget, Sales workspace This-Quarter widget, Observability adds Launches-in-flight count | ~1 hour |
+| **10A** | Cap 8 Linear: `integration_channels` + `launch_external_links` schema + `launches.source` enum extension, `I-LN` n8n workflow (mock-first), Setup → Integrations page, launch detail External Links card, Launches index Source filter + Unclaimed tab | ~6 hours |
+| **10B** | Cap 8 Jira: `I-JI` workflow (Cloud OAuth variant first; Server deferred), Setup page Jira card | ~5 hours |
+| **10C** | Cap 8 Asana + GitHub Projects: `I-AS` + `I-GH` workflows mock-first, Setup page entries | ~4 hours |
 
 ### Wildcards that could extend the timeline
 
@@ -694,7 +790,9 @@ New tables this plan adds:
 
 **Capability 7 (Launch Readiness):** launches, launch_artifacts. (2 tables.)
 
-End state: ~40 Supabase tables. All multi-tenant via organization_id + RLS.
+**Capability 8 (External Integrations):** integration_channels, launch_external_links. (2 tables.) Plus `launches.source` enum extended and `launches.external_link_id` FK column added.
+
+End state: ~42 Supabase tables. All multi-tenant via organization_id + RLS.
 
 ---
 

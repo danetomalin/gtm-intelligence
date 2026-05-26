@@ -1,3 +1,5 @@
+import { InlineMd } from "@/lib/inline-md";
+
 export type LaunchPlan = {
   id: string;
   launch_name: string | null;
@@ -54,8 +56,8 @@ export function LaunchPlanCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Messaging pillars
           </div>
-          <p className={`text-sm text-text leading-relaxed whitespace-pre-line ${compact ? "line-clamp-3" : ""}`}>
-            {plan.messaging_pillars}
+          <p className={`text-sm text-text leading-relaxed ${compact ? "line-clamp-3" : ""}`}>
+            <InlineMd>{plan.messaging_pillars}</InlineMd>
           </p>
         </div>
       )}
@@ -64,7 +66,9 @@ export function LaunchPlanCard({
           <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mb-1">
             Target personas
           </div>
-          <p className="text-sm text-text-muted leading-relaxed">{plan.target_personas}</p>
+          <p className="text-sm text-text-muted leading-relaxed">
+            <InlineMd>{plan.target_personas}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && plan.channel_plan && (
@@ -72,8 +76,8 @@ export function LaunchPlanCard({
           <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mb-1">
             Channel plan
           </div>
-          <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">
-            {plan.channel_plan}
+          <p className="text-sm text-text-muted leading-relaxed">
+            <InlineMd>{plan.channel_plan}</InlineMd>
           </p>
         </div>
       )}
@@ -82,7 +86,9 @@ export function LaunchPlanCard({
           <div className="text-[10px] uppercase tracking-wider text-win font-semibold mb-1">
             Success metrics
           </div>
-          <p className="text-sm text-text leading-relaxed">{plan.success_metrics}</p>
+          <p className="text-sm text-text leading-relaxed">
+            <InlineMd>{plan.success_metrics}</InlineMd>
+          </p>
         </div>
       )}
     </div>

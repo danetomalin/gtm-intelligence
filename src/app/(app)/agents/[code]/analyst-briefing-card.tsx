@@ -1,3 +1,5 @@
+import { InlineMd } from "@/lib/inline-md";
+
 export type AnalystBriefing = {
   id: string;
   analyst_firm: string | null;
@@ -54,9 +56,9 @@ export function AnalystBriefingCard({
       </div>
       {briefing.key_messages && (
         <p
-          className={`text-sm text-text leading-relaxed mb-3 whitespace-pre-line ${compact ? "line-clamp-3" : ""}`}
+          className={`text-sm text-text leading-relaxed mb-3 ${compact ? "line-clamp-3" : ""}`}
         >
-          {briefing.key_messages}
+          <InlineMd>{briefing.key_messages}</InlineMd>
         </p>
       )}
       {!compact && briefing.proof_points && (
@@ -64,7 +66,9 @@ export function AnalystBriefingCard({
           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
             Proof points
           </div>
-          <p className="text-sm text-text leading-relaxed">{briefing.proof_points}</p>
+          <p className="text-sm text-text leading-relaxed">
+            <InlineMd>{briefing.proof_points}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && briefing.competitor_framing && (
@@ -72,7 +76,9 @@ export function AnalystBriefingCard({
           <div className="text-[10px] uppercase tracking-wider text-warn font-semibold mb-1">
             Competitor framing
           </div>
-          <p className="text-sm text-text leading-relaxed">{briefing.competitor_framing}</p>
+          <p className="text-sm text-text leading-relaxed">
+            <InlineMd>{briefing.competitor_framing}</InlineMd>
+          </p>
         </div>
       )}
       {!compact && briefing.questions_likely && (
@@ -80,7 +86,9 @@ export function AnalystBriefingCard({
           <div className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mb-1">
             Likely questions
           </div>
-          <p className="text-sm text-text-muted leading-relaxed">{briefing.questions_likely}</p>
+          <p className="text-sm text-text-muted leading-relaxed">
+            <InlineMd>{briefing.questions_likely}</InlineMd>
+          </p>
         </div>
       )}
     </div>

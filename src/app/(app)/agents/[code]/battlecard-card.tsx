@@ -1,3 +1,5 @@
+import { InlineMd } from "@/lib/inline-md";
+
 export type Battlecard = {
   id: string;
   competitor_name: string | null;
@@ -44,7 +46,7 @@ export function BattlecardCard({
           vs. {card.competitor_name}
         </div>
         <h3 className="text-lg font-semibold text-text leading-snug">
-          {card.elevator_pitch}
+          <InlineMd>{card.elevator_pitch}</InlineMd>
         </h3>
       </div>
 
@@ -70,8 +72,8 @@ export function BattlecardCard({
               >
                 {section.label}
               </div>
-              <p className="text-sm text-text leading-relaxed whitespace-pre-line">
-                {value}
+              <p className="text-sm text-text leading-relaxed">
+                <InlineMd>{value}</InlineMd>
               </p>
             </div>
           );
