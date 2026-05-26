@@ -13,6 +13,7 @@ import {
   type LaunchTier,
 } from "@/lib/launch-tiers";
 import { GenerateReadinessPackButton } from "./generate-button";
+import { ShipReadinessPackButton, RetrospectiveButton } from "./ship-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,11 @@ export default async function LaunchDetailPage({
   const pct =
     required.length > 0 ? Math.round((producedRequired / required.length) * 100) : 0;
 
+  // Ship-readiness gate: every required NON-X-* (delivery) slot must be produced.
+  const remainingDelivery = required.filter(
+    (a) => !a.produced && !a.agent_code.startsWith("X-"),
+  ).length;
+
   return (
     <div className="px-8 py-10 max-w-6xl space-y-8">
       <Link
@@ -132,10 +138,21 @@ export default async function LaunchDetailPage({
             launch.product_summary ?? TIER_TAGLINE[launch.tier]
           }
         />
-        <GenerateReadinessPackButton
-          launchId={launch.id}
-          remaining={remainingRequired}
-        />
+        <div className="flex flex-col gap-2">
+          <GenerateReadinessPackButton
+            launchId={launch.id}
+            remaining={remainingRequired}
+          />
+          <ShipReadinessPackButton
+            launchId={launch.id}
+            launchStatus={launch.status}
+            remainingDelivery={remainingDelivery}
+          />
+          <RetrospectiveButton
+            launchId={launch.id}
+            launchStatus={launch.status}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -182,20 +199,30 @@ export default async function LaunchDetailPage({
       )}
 
       <section>
-        <SectionDivider title="Next steps" />
-        <div className="rounded-lg border border-border bg-card px-5 py-4 space-y-3">
-          <p className="text-sm text-text-muted leading-relaxed">
-            Phase 9A foundation ships the launch object + readiness checklist.
-            Phase 9B wires the <strong className="text-text">Generate readiness pack</strong>{" "}
-            button to L-OR orchestrator (fires each required workflow with{" "}
-            <code className="text-accent text-xs">launch_id</code> in extras).
-            Phase 9C wires <strong className="text-text">Ship readiness pack</strong> to
-            the X-* distribution adapters. Phase 9D wires the retrospective.
+        <SectionDivider title="How this launch ships" />
+        <div className="rounded-lg border border-border bg-card px-5 py-4 space-y-3 text-sm text-text-muted leading-relaxed">
+          <p>
+            <strong className="text-text">Generate readiness pack</strong> fires every
+            required workflow (above the dotted line) with this launch&rsquo;s
+            <code className="text-accent text-xs mx-1">launch_id</code>, name, tier,
+            and product summary passed as context. Each workflow runs through
+            the HITL Review Queue before its artifact is treated as
+            shippable.
           </p>
-          <p className="text-xs text-text-dim leading-relaxed">
-            For now: click into individual workflow pages and run them manually.
-            When an artifact lands, it'll surface in this readiness checklist once
-            launch_id wiring is in.
+          <p>
+            <strong className="text-text">Ship readiness pack</strong> unlocks once
+            every required delivery slot is produced. It hands the latest
+            approved D-MG / D-SN artifacts to the X-EM / X-LI / X-OR / X-AP
+            distribution adapters per the tier matrix. Mock-first today; flip
+            <code className="text-accent text-xs mx-1">distribution_channels.mode</code>
+            to <code className="text-accent text-xs">&apos;live&apos;</code> when real
+            credentials arrive.
+          </p>
+          <p>
+            <strong className="text-text">Run retrospective</strong> unlocks after
+            shipping. Fires S-CP scoped to the launch (winning theme,
+            attributed pipeline) and D-WW (post-launch win wire). Closes the
+            loop into the next refresh of S-PO / D-MG.
           </p>
         </div>
       </section>
