@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   renderDeployment,
   type DeploymentFormatRow,
+  type BrandKit,
 } from "@/lib/deployment-renderers";
 
 const STORAGE_BUCKET = "deployment-renders";
@@ -45,13 +46,34 @@ export async function POST(
     );
   }
 
+  // Pull the brand kit so the renderer can produce on-brand PDFs.
+  // Failure to load is non-fatal: the renderer falls back to neutral
+  // defaults when the kit is empty.
+  const { data: brandRow } = await admin
+    .from("brands")
+    .select(
+      "name, primary_color, secondary_color, logo_url, font_family, footer_text",
+    )
+    .eq("id", row.brand_id)
+    .maybeSingle();
+  const brandKit: BrandKit = brandRow
+    ? {
+        brandName: brandRow.name,
+        primaryColor: brandRow.primary_color,
+        secondaryColor: brandRow.secondary_color,
+        logoUrl: brandRow.logo_url,
+        fontFamily: brandRow.font_family,
+        footerText: brandRow.footer_text,
+      }
+    : {};
+
   // Allow render even before approval — the UI buttons should still gate
   // by status, but the API stays permissive so a reviewer can preview a
   // pending row's rendered output before approving.
 
   let rendered;
   try {
-    rendered = await renderDeployment(row as DeploymentFormatRow);
+    rendered = await renderDeployment(row as DeploymentFormatRow, brandKit);
   } catch (err) {
     return NextResponse.json(
       {

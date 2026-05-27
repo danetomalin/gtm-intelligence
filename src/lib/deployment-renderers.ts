@@ -9,14 +9,26 @@ import {
   Paragraph,
   HeadingLevel,
   TextRun,
-  AlignmentType,
 } from "docx";
 import PptxGenJS from "pptxgenjs";
+import PDFDocument from "pdfkit";
 
 export type RenderResult = {
   buffer: Buffer;
   mimeType: string;
   extension: string;
+};
+
+// Brand kit pulled from the brands row at render time. Every field is
+// optional; the renderer falls back to neutral defaults so the call works
+// even when a brand hasn't filled in their kit yet.
+export type BrandKit = {
+  brandName?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  logoUrl?: string | null;
+  fontFamily?: string | null;
+  footerText?: string | null;
 };
 
 export type DeploymentFormatRow = {
@@ -26,6 +38,10 @@ export type DeploymentFormatRow = {
   body_json: unknown;
   body_markdown: string | null;
 };
+
+// Sensible defaults when a brand hasn't filled in its kit yet.
+const DEFAULT_PRIMARY = "#1A1A1A";
+const DEFAULT_SECONDARY = "#F5F5F5";
 
 function asObject(raw: unknown): Record<string, unknown> {
   if (!raw) return {};
@@ -48,17 +64,23 @@ const DOCX_MIME =
 const PPTX_MIME =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 const MD_MIME = "text/markdown";
+const PDF_MIME = "application/pdf";
 
 /**
  * Dispatch a deployment_format row to the correct renderer based on
- * format_type. Throws if no renderer matches the type.
+ * format_type. The brand kit argument is optional — when provided, the
+ * branded PDF renderers use it for colors / logo / footer; when absent,
+ * neutral defaults are used.
  */
 export async function renderDeployment(
   fmt: DeploymentFormatRow,
+  brand: BrandKit = {},
 ): Promise<RenderResult> {
   switch (fmt.format_type) {
     case "one_pager":
-      return renderOnePagerDocx(fmt);
+      return renderOnePagerPdf(fmt, brand);
+    case "infographic":
+      return renderInfographicPdf(fmt, brand);
     case "slide_deck":
       return renderSlideDeckPptx(fmt);
     case "linkedin_carousel":
@@ -71,10 +93,6 @@ export async function renderDeployment(
       return renderEmailSequenceMarkdown(fmt);
     case "linkedin_post":
       return renderLinkedInPostMarkdown(fmt);
-    case "infographic":
-      // Infographic is image-gen territory — punt to a markdown spec the
-      // user can hand to a designer for now.
-      return renderInfographicSpecMarkdown(fmt);
     default:
       throw new Error(
         `No renderer for format_type=${fmt.format_type ?? "(null)"}`,
@@ -83,11 +101,40 @@ export async function renderDeployment(
 }
 
 // =============================================================================
-// DOCX renderers
+// PDF renderers (branded, pdfkit-based)
 // =============================================================================
 
-async function renderOnePagerDocx(
+// Fetches an image URL into a Buffer. Returns null on any failure so the
+// renderer can fall back to a text wordmark when the logo is unreachable.
+async function fetchImage(url: string | null | undefined): Promise<Buffer | null> {
+  if (!url) return null;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const ab = await resp.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
+// Capture pdfkit output into a Buffer. pdfkit streams chunks; we collect
+// them and join when end() fires.
+function pdfBuffer(doc: InstanceType<typeof PDFDocument>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    doc.on("data", (c: Buffer) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+  });
+}
+
+// Branded one-pager. Top band in primary_color carries the title + logo.
+// Section headings repeat the primary color. CTA gets a secondary tint
+// wash. Footer carries the brand attribution.
+async function renderOnePagerPdf(
   fmt: DeploymentFormatRow,
+  brand: BrandKit,
 ): Promise<RenderResult> {
   const body = asObject(fmt.body_json);
   const sections = Array.isArray(body.sections)
@@ -95,60 +142,214 @@ async function renderOnePagerDocx(
     : [];
   const cta = typeof body.cta === "string" ? body.cta : null;
 
-  const children: Paragraph[] = [];
+  const primary = brand.primaryColor || DEFAULT_PRIMARY;
+  const secondary = brand.secondaryColor || DEFAULT_SECONDARY;
+  const brandName = brand.brandName || "";
+  const footer =
+    brand.footerText || (brandName ? `${brandName} · all rights reserved` : "");
+  const logo = await fetchImage(brand.logoUrl);
 
-  if (fmt.title) {
-    children.push(
-      new Paragraph({
-        text: fmt.title,
-        heading: HeadingLevel.HEADING_1,
-        spacing: { after: 240 },
-      }),
-    );
+  const doc = new PDFDocument({
+    size: "LETTER",
+    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    bufferPages: true,
+    info: { Title: fmt.title ?? "One-pager", Author: brandName || undefined },
+  });
+  const out = pdfBuffer(doc);
+
+  // Header band
+  const pageWidth = doc.page.width;
+  const headerHeight = 90;
+  doc.rect(0, 0, pageWidth, headerHeight).fill(primary);
+
+  // Logo (top-right) if available, else brand name wordmark
+  if (logo) {
+    try {
+      doc.image(logo, pageWidth - 90, 28, { fit: [40, 40] });
+    } catch {
+      // Bad image bytes — fall through to wordmark below.
+    }
+  }
+  if (!logo && brandName) {
+    doc
+      .fillColor("#FFFFFF")
+      .fontSize(14)
+      .text(brandName, pageWidth - 200, 32, { width: 150, align: "right" });
   }
 
+  // Title in the band
+  doc
+    .fillColor("#FFFFFF")
+    .fontSize(22)
+    .text(fmt.title ?? "Untitled", 50, 32, { width: pageWidth - 250 });
+
+  // Body
+  let cursorY = headerHeight + 28;
+  doc.y = cursorY;
+  doc.x = 50;
   for (const s of sections) {
     const heading = typeof s.heading === "string" ? s.heading : null;
     const sectionBody = typeof s.body === "string" ? s.body : null;
     if (heading) {
-      children.push(
-        new Paragraph({
-          text: heading,
-          heading: HeadingLevel.HEADING_2,
-          spacing: { before: 240, after: 120 },
-        }),
-      );
+      doc
+        .moveDown(0.4)
+        .fillColor(primary)
+        .fontSize(13)
+        .text(heading.toUpperCase(), { characterSpacing: 0.5 });
     }
     if (sectionBody) {
-      children.push(
-        new Paragraph({
-          children: [new TextRun(sectionBody)],
-          spacing: { after: 160 },
-        }),
-      );
+      doc
+        .moveDown(0.2)
+        .fillColor("#1A1A1A")
+        .fontSize(11)
+        .text(sectionBody, { lineGap: 2 });
     }
   }
 
+  // CTA box
   if (cta) {
-    children.push(
-      new Paragraph({
-        text: "Call to action",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 240, after: 120 },
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: cta, bold: true })],
-        spacing: { after: 160 },
-      }),
-    );
+    doc.moveDown(1);
+    const ctaY = doc.y;
+    const ctaH = 56;
+    doc
+      .rect(50, ctaY, pageWidth - 100, ctaH)
+      .fill(secondary);
+    doc
+      .fillColor(primary)
+      .fontSize(10)
+      .text("CALL TO ACTION", 65, ctaY + 12, { characterSpacing: 0.5 });
+    doc
+      .fillColor("#1A1A1A")
+      .fontSize(13)
+      .text(cta, 65, ctaY + 28, { width: pageWidth - 130 });
   }
 
-  const doc = new Document({
-    sections: [{ children }],
-  });
-  const buffer = await Packer.toBuffer(doc);
-  return { buffer, mimeType: DOCX_MIME, extension: "docx" };
+  // Footer
+  if (footer) {
+    const footerY = doc.page.height - 40;
+    doc
+      .fillColor("#999999")
+      .fontSize(9)
+      .text(footer, 50, footerY, {
+        width: pageWidth - 100,
+        align: "center",
+      });
+  }
+
+  doc.end();
+  const buffer = await out;
+  return { buffer, mimeType: PDF_MIME, extension: "pdf" };
 }
+
+// Branded infographic. Grid of section cards, each highlighting a single
+// datapoint + headline in the brand colors. Visual emphasis on the
+// datapoint number so it reads at a glance.
+async function renderInfographicPdf(
+  fmt: DeploymentFormatRow,
+  brand: BrandKit,
+): Promise<RenderResult> {
+  const body = asObject(fmt.body_json);
+  const sections = Array.isArray(body.sections)
+    ? (body.sections as Array<Record<string, unknown>>)
+    : [];
+
+  const primary = brand.primaryColor || DEFAULT_PRIMARY;
+  const secondary = brand.secondaryColor || DEFAULT_SECONDARY;
+  const brandName = brand.brandName || "";
+  const footer =
+    brand.footerText || (brandName ? `${brandName} · all rights reserved` : "");
+  const logo = await fetchImage(brand.logoUrl);
+
+  const doc = new PDFDocument({
+    size: "LETTER",
+    margins: { top: 50, bottom: 50, left: 50, right: 50 },
+    bufferPages: true,
+    info: { Title: fmt.title ?? "Infographic", Author: brandName || undefined },
+  });
+  const out = pdfBuffer(doc);
+
+  const pageWidth = doc.page.width;
+
+  // Header band
+  doc.rect(0, 0, pageWidth, 90).fill(primary);
+  if (logo) {
+    try {
+      doc.image(logo, pageWidth - 90, 28, { fit: [40, 40] });
+    } catch {
+      // ignored
+    }
+  } else if (brandName) {
+    doc
+      .fillColor("#FFFFFF")
+      .fontSize(14)
+      .text(brandName, pageWidth - 200, 32, { width: 150, align: "right" });
+  }
+  doc
+    .fillColor("#FFFFFF")
+    .fontSize(22)
+    .text(fmt.title ?? "Untitled", 50, 32, { width: pageWidth - 250 });
+
+  // 2-column grid of section cards
+  const gridTop = 130;
+  const colWidth = (pageWidth - 100 - 20) / 2; // 20px gutter
+  const rowHeight = 160;
+  sections.forEach((s, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = 50 + col * (colWidth + 20);
+    const y = gridTop + row * (rowHeight + 16);
+    if (y + rowHeight > doc.page.height - 60) return; // skip overflow
+
+    doc.rect(x, y, colWidth, rowHeight).fill(secondary);
+
+    const kind = typeof s.kind === "string" ? s.kind : null;
+    const datapoint = typeof s.datapoint === "string" ? s.datapoint : null;
+    const headline = typeof s.headline === "string" ? s.headline : null;
+
+    if (kind) {
+      doc
+        .fillColor(primary)
+        .fontSize(9)
+        .text(kind.toUpperCase(), x + 16, y + 14, {
+          characterSpacing: 0.6,
+        });
+    }
+    if (datapoint) {
+      doc
+        .fillColor(primary)
+        .fontSize(34)
+        .text(datapoint, x + 16, y + 36, { width: colWidth - 32 });
+    }
+    if (headline) {
+      doc
+        .fillColor("#1A1A1A")
+        .fontSize(11)
+        .text(headline, x + 16, y + 86, {
+          width: colWidth - 32,
+          lineGap: 1,
+        });
+    }
+  });
+
+  if (footer) {
+    const footerY = doc.page.height - 40;
+    doc
+      .fillColor("#999999")
+      .fontSize(9)
+      .text(footer, 50, footerY, {
+        width: pageWidth - 100,
+        align: "center",
+      });
+  }
+
+  doc.end();
+  const buffer = await out;
+  return { buffer, mimeType: PDF_MIME, extension: "pdf" };
+}
+
+// =============================================================================
+// DOCX renderers
+// =============================================================================
 
 async function renderVideoScriptDocx(
   fmt: DeploymentFormatRow,
@@ -447,33 +648,5 @@ async function renderLinkedInPostMarkdown(
   };
 }
 
-async function renderInfographicSpecMarkdown(
-  fmt: DeploymentFormatRow,
-): Promise<RenderResult> {
-  const body = asObject(fmt.body_json);
-  const sections = Array.isArray(body.sections)
-    ? (body.sections as Array<Record<string, unknown>>)
-    : [];
-
-  const lines: string[] = [];
-  lines.push(`# ${fmt.title ?? "Infographic spec"}`, "");
-  lines.push(
-    "Hand this brief to a designer (or feed it to an image-generation step).",
-    "",
-  );
-
-  sections.forEach((s, i) => {
-    lines.push(`## Section ${i + 1}`);
-    if (s.kind) lines.push(`*Kind:* ${String(s.kind)}`);
-    if (s.headline) lines.push(`**${String(s.headline)}**`);
-    if (s.datapoint) lines.push(`*Datapoint:* ${String(s.datapoint)}`);
-    if (s.visual_prompt) lines.push(`*Visual prompt:* ${String(s.visual_prompt)}`);
-    lines.push("");
-  });
-
-  return {
-    buffer: bufferFromString(lines.join("\n")),
-    mimeType: MD_MIME,
-    extension: "md",
-  };
-}
+// Note: infographic now renders as a branded PDF (renderInfographicPdf
+// above). The old markdown-spec renderer has been removed.

@@ -27,14 +27,14 @@ export type DeploymentFormat = {
 // for the button label only; the actual extension comes from the
 // renderer return value on the server.
 const FORMAT_EXTENSION: Record<string, string> = {
-  one_pager: "docx",
+  one_pager: "pdf",
   slide_deck: "pptx",
   linkedin_carousel: "pptx",
   video_script: "docx",
   faq: "docx",
   email_sequence: "md",
   linkedin_post: "md",
-  infographic: "md",
+  infographic: "pdf",
 };
 
 const FORMAT_LABEL: Record<string, string> = {
