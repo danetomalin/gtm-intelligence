@@ -18,6 +18,9 @@ const APPROVAL_TABLES = new Set<string>([
   "super_user_cohorts",
   "voc_extractions",
   "icp_definitions",
+  // Capability 12: deployment forking. Both tables HITL-gated.
+  "deployment_assessments",
+  "deployment_formats",
 ]);
 
 type Action = "approve" | "reject" | "request_revision" | "publish";

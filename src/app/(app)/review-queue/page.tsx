@@ -26,6 +26,14 @@ import {
   ICPDefinitionCard,
   type ICPDefinition,
 } from "../agents/[code]/icp-definition-card";
+import {
+  DeploymentAssessmentCard,
+  type DeploymentAssessment,
+} from "../agents/[code]/deployment-assessment-card";
+import {
+  DeploymentFormatCard,
+  type DeploymentFormat,
+} from "../agents/[code]/deployment-format-card";
 import { ReviewQueueFilters } from "./filters";
 
 export const dynamic = "force-dynamic";
@@ -103,15 +111,45 @@ export default async function ReviewQueuePage({
     .order("created_at", { ascending: false })
     .limit(50);
 
-  const [messagingRes, collateralRes, memosRes, cohortRes, vocRes, icpRes] =
-    await Promise.all([
-      messagingQuery,
-      collateralQuery,
-      counterNarrativeQuery,
-      cohortQuery,
-      vocQuery,
-      icpQuery,
-    ]);
+  const deploymentAssessmentQuery = admin
+    .from("deployment_assessments")
+    .select(
+      "id, source_artifact_table, source_artifact_id, recommended_formats, skipped_formats, headline, rationale, approval_status, risk_tier, created_at",
+    )
+    .eq("brand_id", DEMO_BRAND_ID)
+    .in("approval_status", PENDING_STATUSES as unknown as string[])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const deploymentFormatQuery = admin
+    .from("deployment_formats")
+    .select(
+      "id, assessment_id, source_artifact_table, source_artifact_id, format_type, title, body_json, body_markdown, audience, channel, approval_status, risk_tier, created_at",
+    )
+    .eq("brand_id", DEMO_BRAND_ID)
+    .in("approval_status", PENDING_STATUSES as unknown as string[])
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const [
+    messagingRes,
+    collateralRes,
+    memosRes,
+    cohortRes,
+    vocRes,
+    icpRes,
+    deploymentAssessmentRes,
+    deploymentFormatRes,
+  ] = await Promise.all([
+    messagingQuery,
+    collateralQuery,
+    counterNarrativeQuery,
+    cohortQuery,
+    vocQuery,
+    icpQuery,
+    deploymentAssessmentQuery,
+    deploymentFormatQuery,
+  ]);
 
   const messaging = (messagingRes.data ?? []) as (ContentOutput & {
     risk_tier?: string | null;
@@ -123,6 +161,10 @@ export default async function ReviewQueuePage({
   const cohortsList = (cohortRes.data ?? []) as SuperUserCohort[];
   const vocList = (vocRes.data ?? []) as VoCExtraction[];
   const icpList = (icpRes.data ?? []) as ICPDefinition[];
+  const deploymentAssessments = (deploymentAssessmentRes.data ??
+    []) as DeploymentAssessment[];
+  const deploymentFormats = (deploymentFormatRes.data ??
+    []) as DeploymentFormat[];
 
   const tierMatches = (rowTier: string | null | undefined) =>
     tierFilter === "all" ? true : rowTier === tierFilter;
@@ -151,6 +193,14 @@ export default async function ReviewQueuePage({
     artifactFilter === "all" || artifactFilter === "icp"
       ? icpList.filter((i) => tierMatches(i.risk_tier))
       : [];
+  const visibleDeploymentAssessments =
+    artifactFilter === "all" || artifactFilter === "deployment_assessment"
+      ? deploymentAssessments.filter((d) => tierMatches(d.risk_tier))
+      : [];
+  const visibleDeploymentFormats =
+    artifactFilter === "all" || artifactFilter === "deployment_format"
+      ? deploymentFormats.filter((d) => tierMatches(d.risk_tier))
+      : [];
 
   const totalVisible =
     visibleMessaging.length +
@@ -158,14 +208,18 @@ export default async function ReviewQueuePage({
     visibleMemos.length +
     visibleCohorts.length +
     visibleVoc.length +
-    visibleIcp.length;
+    visibleIcp.length +
+    visibleDeploymentAssessments.length +
+    visibleDeploymentFormats.length;
   const totalPending =
     messaging.length +
     collateral.length +
     memos.length +
     cohortsList.length +
     vocList.length +
-    icpList.length;
+    icpList.length +
+    deploymentAssessments.length +
+    deploymentFormats.length;
 
   const tierBucket = (rt: string) =>
     [
@@ -175,6 +229,8 @@ export default async function ReviewQueuePage({
       ...cohortsList,
       ...vocList,
       ...icpList,
+      ...deploymentAssessments,
+      ...deploymentFormats,
     ].filter((r) => r.risk_tier === rt).length;
 
   const counts = {
@@ -185,6 +241,8 @@ export default async function ReviewQueuePage({
     icp_cohort: cohortsList.length,
     voc: vocList.length,
     icp: icpList.length,
+    deployment_assessment: deploymentAssessments.length,
+    deployment_format: deploymentFormats.length,
     high: tierBucket("high"),
     medium: tierBucket("medium"),
     low: tierBucket("low"),
@@ -305,6 +363,34 @@ export default async function ReviewQueuePage({
               <div className="space-y-3">
                 {visibleIcp.map((i) => (
                   <ICPDefinitionCard key={i.id} icp={i} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleDeploymentAssessments.length > 0 && (
+            <section>
+              <SectionDivider
+                title="Deployment assessments (D-DA)"
+                sub={`${visibleDeploymentAssessments.length} pending · approve and click Produce per format`}
+              />
+              <div className="space-y-3">
+                {visibleDeploymentAssessments.map((a) => (
+                  <DeploymentAssessmentCard key={a.id} assessment={a} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleDeploymentFormats.length > 0 && (
+            <section>
+              <SectionDivider
+                title="Deployment formats (D-DP)"
+                sub={`${visibleDeploymentFormats.length} pending · approval ships to the Library`}
+              />
+              <div className="space-y-3">
+                {visibleDeploymentFormats.map((f) => (
+                  <DeploymentFormatCard key={f.id} fmt={f} />
                 ))}
               </div>
             </section>

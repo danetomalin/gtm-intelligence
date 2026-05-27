@@ -18,7 +18,12 @@ import {
   CounterNarrativeCard,
   type CounterNarrative,
 } from "../agents/[code]/counter-narrative-card";
+import {
+  DeploymentFormatCard,
+  type DeploymentFormat,
+} from "../agents/[code]/deployment-format-card";
 import { CollateralLibraryFilters } from "./filters";
+import { AssessDeploymentsButton } from "./assess-deployments-button";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +45,7 @@ export default async function CollateralLibraryPage({
 
   const admin = await createAdminClient();
 
-  const [enablementRes, messagingRes, collateralRes, memosRes] =
+  const [enablementRes, messagingRes, collateralRes, memosRes, deploymentRes] =
     await Promise.all([
       admin
         .from("enablement_assets")
@@ -78,15 +83,29 @@ export default async function CollateralLibraryPage({
         .in("approval_status", APPROVED_STATUSES as unknown as string[])
         .order("created_at", { ascending: false })
         .limit(200),
+      admin
+        .from("deployment_formats")
+        .select(
+          "id, assessment_id, source_artifact_table, source_artifact_id, format_type, title, body_json, body_markdown, audience, channel, approval_status, risk_tier, created_at",
+        )
+        .eq("brand_id", DEMO_BRAND_ID)
+        .in("approval_status", APPROVED_STATUSES as unknown as string[])
+        .order("created_at", { ascending: false })
+        .limit(200),
     ]);
 
   const enablement = (enablementRes.data ?? []) as EnablementAsset[];
   const messaging = (messagingRes.data ?? []) as ContentOutput[];
   const salesCollateral = (collateralRes.data ?? []) as SalesCollateral[];
   const memos = (memosRes.data ?? []) as CounterNarrative[];
+  const deploymentForks = (deploymentRes.data ?? []) as DeploymentFormat[];
 
   const totalAll =
-    enablement.length + messaging.length + salesCollateral.length + memos.length;
+    enablement.length +
+    messaging.length +
+    salesCollateral.length +
+    memos.length +
+    deploymentForks.length;
 
   const counts = {
     all: totalAll,
@@ -95,6 +114,7 @@ export default async function CollateralLibraryPage({
     messaging: messaging.length,
     sales_collateral: salesCollateral.length,
     counter_narrative: memos.length,
+    deployment_fork: deploymentForks.length,
     // Enablement sub-types
     objection_handler: enablement.filter((a) => a.asset_type === "objection_handler")
       .length,
@@ -157,12 +177,16 @@ export default async function CollateralLibraryPage({
   const visibleMessaging = showMessaging ? messaging : [];
   const visibleSalesCollateral = showSalesCollateral ? salesCollateral : [];
   const visibleCounterNarrative = showCounterNarrative ? memos : [];
+  const showDeploymentForks =
+    sourceFilter === "all" || sourceFilter === "deployment_fork";
+  const visibleDeploymentForks = showDeploymentForks ? deploymentForks : [];
 
   const totalVisible =
     visibleEnablement.length +
     visibleMessaging.length +
     visibleSalesCollateral.length +
-    visibleCounterNarrative.length;
+    visibleCounterNarrative.length +
+    visibleDeploymentForks.length;
 
   return (
     <div className="px-8 py-10 max-w-6xl space-y-8">
@@ -211,7 +235,13 @@ export default async function CollateralLibraryPage({
               />
               <div className="space-y-2">
                 {visibleMessaging.map((m) => (
-                  <ContentCard key={m.id} content={m} />
+                  <LibraryEntry
+                    key={m.id}
+                    sourceArtifactTable="content_outputs"
+                    sourceArtifactId={m.id}
+                  >
+                    <ContentCard content={m} />
+                  </LibraryEntry>
                 ))}
               </div>
             </section>
@@ -225,7 +255,13 @@ export default async function CollateralLibraryPage({
               />
               <div className="space-y-2">
                 {visibleSalesCollateral.map((c) => (
-                  <CollateralCard key={c.id} piece={c} />
+                  <LibraryEntry
+                    key={c.id}
+                    sourceArtifactTable="sales_collateral"
+                    sourceArtifactId={c.id}
+                  >
+                    <CollateralCard piece={c} />
+                  </LibraryEntry>
                 ))}
               </div>
             </section>
@@ -239,7 +275,13 @@ export default async function CollateralLibraryPage({
               />
               <div className="space-y-2">
                 {visibleCounterNarrative.map((m) => (
-                  <CounterNarrativeCard key={m.id} memo={m} />
+                  <LibraryEntry
+                    key={m.id}
+                    sourceArtifactTable="counter_narrative_memos"
+                    sourceArtifactId={m.id}
+                  >
+                    <CounterNarrativeCard memo={m} />
+                  </LibraryEntry>
                 ))}
               </div>
             </section>
@@ -253,13 +295,59 @@ export default async function CollateralLibraryPage({
               />
               <div className="space-y-2">
                 {visibleEnablement.map((a) => (
-                  <EnablementAssetCard key={a.id} asset={a} />
+                  <LibraryEntry
+                    key={a.id}
+                    sourceArtifactTable="enablement_assets"
+                    sourceArtifactId={a.id}
+                  >
+                    <EnablementAssetCard asset={a} />
+                  </LibraryEntry>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {visibleDeploymentForks.length > 0 && (
+            <section>
+              <SectionDivider
+                title="Deployment forks (D-DP)"
+                sub={`${visibleDeploymentForks.length} approved · derived from approved source artifacts`}
+              />
+              <div className="space-y-2">
+                {visibleDeploymentForks.map((f) => (
+                  <DeploymentFormatCard key={f.id} fmt={f} />
                 ))}
               </div>
             </section>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Wraps a source-artifact card with an "Assess deployments" action. Lives
+// on every row in the Library so the user can fork an approved artifact
+// into multiple deployment formats with a single click. Pure server
+// component shell — the button itself is client-side.
+function LibraryEntry({
+  sourceArtifactTable,
+  sourceArtifactId,
+  children,
+}: {
+  sourceArtifactTable: string;
+  sourceArtifactId: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {children}
+      <div className="flex justify-end pr-1">
+        <AssessDeploymentsButton
+          sourceArtifactTable={sourceArtifactTable}
+          sourceArtifactId={sourceArtifactId}
+        />
+      </div>
     </div>
   );
 }

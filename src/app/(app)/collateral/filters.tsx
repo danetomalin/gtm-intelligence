@@ -10,6 +10,7 @@ type Counts = {
   sales_collateral: number;
   counter_narrative: number;
   enablement: number;
+  deployment_fork: number;
   // Enablement sub-types (selected via source filter values)
   objection_handler: number;
   qbr_template: number;
@@ -88,6 +89,11 @@ export function CollateralLibraryFilters({
           label={`Enablement (${counts.enablement})`}
           href={urlFor("enablement", audienceFilter, freshnessFilter)}
           active={sourceFilter === "enablement"}
+        />
+        <FilterPill
+          label={`Deployment forks (${counts.deployment_fork})`}
+          href={urlFor("deployment_fork", audienceFilter, freshnessFilter)}
+          active={sourceFilter === "deployment_fork"}
         />
       </div>
 

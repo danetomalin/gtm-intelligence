@@ -59,6 +59,15 @@ export const AGENT_WEBHOOK_PATHS: Record<string, string> = {
   // high-impact signals, launches in flight, margin floor breaches, stale
   // runs — synthesizes 3-5 ranked focus items via Gemini Flash.
   "S-DB": "/webhook/daily-brief-supabase",
+  // Capability 12: Deployment forking. Two-agent pipeline turning an
+  // approved Collateral Library artifact into shippable formats (one-pager,
+  // slide deck, email sequence, LinkedIn post, etc).
+  //   D-DA assesses which formats fit and writes a recommendation row.
+  //   D-DP fires per format the user approves and writes the actual content.
+  // Both gate through HITL. Approved deployment_formats rows surface in the
+  // Library as forks of the source artifact.
+  "D-DA": "/webhook/deployment-assessor-supabase",
+  "D-DP": "/webhook/deployment-producer-supabase",
 };
 
 // Legacy A1–A8 codes still appear in old `run_history.agent_code` rows and in

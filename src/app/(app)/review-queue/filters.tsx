@@ -11,6 +11,8 @@ type Counts = {
   icp_cohort: number;
   voc: number;
   icp: number;
+  deployment_assessment: number;
+  deployment_format: number;
   high: number;
   medium: number;
   low: number;
@@ -73,6 +75,16 @@ export function ReviewQueueFilters({
           label={`ICP playbook (${counts.icp})`}
           href={urlFor("icp", tierFilter)}
           active={artifactFilter === "icp"}
+        />
+        <FilterPill
+          label={`Deploy assess (${counts.deployment_assessment})`}
+          href={urlFor("deployment_assessment", tierFilter)}
+          active={artifactFilter === "deployment_assessment"}
+        />
+        <FilterPill
+          label={`Deploy format (${counts.deployment_format})`}
+          href={urlFor("deployment_format", tierFilter)}
+          active={artifactFilter === "deployment_format"}
         />
       </div>
 
