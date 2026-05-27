@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ApprovalButtons } from "./approval-buttons";
 
@@ -16,7 +18,23 @@ export type DeploymentFormat = {
   channel: string | null;
   approval_status: string | null;
   risk_tier?: string | null;
+  rendered_file_url?: string | null;
+  rendered_file_kind?: string | null;
   created_at?: string | null;
+};
+
+// Maps format_type to the file extension we'll produce on render. Used
+// for the button label only; the actual extension comes from the
+// renderer return value on the server.
+const FORMAT_EXTENSION: Record<string, string> = {
+  one_pager: "docx",
+  slide_deck: "pptx",
+  linkedin_carousel: "pptx",
+  video_script: "docx",
+  faq: "docx",
+  email_sequence: "md",
+  linkedin_post: "md",
+  infographic: "md",
 };
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -104,7 +122,95 @@ export function DeploymentFormatCard({
             <ApprovalButtons table="deployment_formats" id={fmt.id} />
           </div>
         )}
+
+        <RenderActions fmt={fmt} />
       </div>
+    </div>
+  );
+}
+
+// Render to .docx/.pptx/.md and download. Visible on every card. Once
+// rendered, the button switches to a Download link pointing at the
+// uploaded file in Supabase Storage. Re-render is one click — generates
+// a fresh timestamped object and replaces the URL on the row.
+function RenderActions({ fmt }: { fmt: DeploymentFormat }) {
+  const [status, setStatus] = useState<"idle" | "firing" | "fired" | "error">(
+    "idle",
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  const targetExt =
+    FORMAT_EXTENSION[fmt.format_type ?? ""] ?? fmt.rendered_file_kind ?? "file";
+  const hasRendered =
+    fmt.rendered_file_url != null && fmt.rendered_file_url !== "";
+
+  async function render() {
+    setStatus("firing");
+    setErrorMsg(null);
+    try {
+      const resp = await fetch(`/api/deployments/${fmt.id}/render`, {
+        method: "POST",
+      });
+      if (!resp.ok) {
+        setStatus("error");
+        try {
+          const j = await resp.json();
+          setErrorMsg(j?.error ?? `HTTP ${resp.status}`);
+        } catch {
+          setErrorMsg(`HTTP ${resp.status}`);
+        }
+        return;
+      }
+      setStatus("fired");
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setStatus("error");
+      setErrorMsg(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="border-t border-border pt-3 flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={render}
+          disabled={status === "firing"}
+          className={cn(
+            "inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium transition",
+            status === "fired"
+              ? "border-win bg-win-bg text-win"
+              : status === "error"
+                ? "border-danger bg-danger-bg text-danger"
+                : "border-border bg-card text-text-muted hover:text-text hover:border-text-dim",
+            status === "firing" && "opacity-60",
+          )}
+          title={hasRendered ? `Regenerate .${targetExt}` : `Render to .${targetExt}`}
+        >
+          {status === "firing"
+            ? "Rendering…"
+            : status === "fired"
+              ? "Rendered ✓"
+              : hasRendered
+                ? `Re-render .${targetExt}`
+                : `Render to .${targetExt}`}
+        </button>
+        {hasRendered && fmt.rendered_file_url && (
+          <a
+            href={fmt.rendered_file_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-md border border-accent bg-accent-bg text-accent px-3 py-1.5 text-xs font-medium hover:opacity-90"
+          >
+            Download .{fmt.rendered_file_kind ?? targetExt}
+          </a>
+        )}
+      </div>
+      {errorMsg && (
+        <span className="text-[11px] text-danger font-mono">{errorMsg}</span>
+      )}
     </div>
   );
 }
