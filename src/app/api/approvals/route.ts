@@ -23,13 +23,22 @@ const APPROVAL_TABLES = new Set<string>([
   "deployment_formats",
 ]);
 
-type Action = "approve" | "reject" | "request_revision" | "publish";
+type Action =
+  | "approve"
+  | "reject"
+  | "request_revision"
+  | "publish"
+  | "unapprove";
 
 const ACTION_TO_STATUS: Record<Action, string> = {
   approve: "approved",
   reject: "rejected",
   request_revision: "needs_revision",
   publish: "published",
+  // Unapprove kicks the artifact back into the Review Queue so a reviewer
+  // can re-examine. Clears the approved_at + published_at stamps so the
+  // approval-state machine reads cleanly on the next pass.
+  unapprove: "pending_review",
 };
 
 export async function POST(request: Request) {
@@ -72,13 +81,18 @@ export async function POST(request: Request) {
   const nextStatus = ACTION_TO_STATUS[action];
 
   // Build the update patch. Approve/publish stamp timestamps; reject and
-  // request_revision capture the reviewer comment.
+  // request_revision capture the reviewer comment. Unapprove clears both
+  // approval stamps so the row reads as never-approved on the next pass.
   const patch: Record<string, unknown> = { approval_status: nextStatus };
   const nowIso = new Date().toISOString();
   if (action === "approve") {
     patch.approved_at = nowIso;
   } else if (action === "publish") {
     patch.published_at = nowIso;
+  } else if (action === "unapprove") {
+    patch.approved_at = null;
+    patch.published_at = null;
+    if (comment) patch.reviewer_comment = comment;
   }
   if ((action === "reject" || action === "request_revision") && comment) {
     patch.reviewer_comment = comment;

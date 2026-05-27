@@ -24,6 +24,7 @@ import {
 } from "../agents/[code]/deployment-format-card";
 import { CollateralLibraryFilters } from "./filters";
 import { AssessDeploymentsButton } from "./assess-deployments-button";
+import { UnapproveButton } from "./unapprove-button";
 
 export const dynamic = "force-dynamic";
 
@@ -315,7 +316,12 @@ export default async function CollateralLibraryPage({
               />
               <div className="space-y-2">
                 {visibleDeploymentForks.map((f) => (
-                  <DeploymentFormatCard key={f.id} fmt={f} />
+                  <div key={f.id} className="space-y-1.5">
+                    <DeploymentFormatCard fmt={f} />
+                    <div className="flex justify-end pr-1">
+                      <UnapproveButton table="deployment_formats" id={f.id} />
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -342,7 +348,8 @@ function LibraryEntry({
   return (
     <div className="space-y-1.5">
       {children}
-      <div className="flex justify-end pr-1">
+      <div className="flex justify-end items-center gap-2 pr-1">
+        <UnapproveButton table={sourceArtifactTable} id={sourceArtifactId} />
         <AssessDeploymentsButton
           sourceArtifactTable={sourceArtifactTable}
           sourceArtifactId={sourceArtifactId}
