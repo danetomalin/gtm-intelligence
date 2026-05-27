@@ -23,6 +23,7 @@ import {
   type PositioningElement,
 } from "./positioning-card";
 import { composePositioningStatement } from "@/lib/parse-positioning";
+import { PositioningStatementEditor } from "./positioning-statement-editor";
 import { BattlecardCard, type Battlecard } from "./battlecard-card";
 import { ThemeCard, type FeedbackTheme } from "./theme-card";
 import { ContentCard, type ContentOutput } from "./content-card";
@@ -273,6 +274,7 @@ export default async function AgentPage({
   let latestPositioning: PositioningElement[] = [];
   let pastPositioning: PositioningElement[] = [];
   let positioningBrandName: string = DEMO_BRAND_NAME;
+  let positioningStatementOverride: string | null = null;
   let latestBattlecards: Battlecard[] = [];
   let pastBattlecards: Battlecard[] = [];
   let latestThemes: FeedbackTheme[] = [];
@@ -589,14 +591,17 @@ export default async function AgentPage({
       latestPositioning = sortPositioningElements(
         dedupeLatestPerType(allElements),
       );
-      // Brand name for the composed positioning statement. Cheap single read.
+      // Brand name + positioning statement override. Cheap single read.
       const { data: brandRow } = await admin
         .from("brands")
-        .select("name")
+        .select("name, positioning_statement")
         .eq("id", DEMO_BRAND_ID)
         .maybeSingle();
-      positioningBrandName =
-        (brandRow as { name: string | null } | null)?.name ?? DEMO_BRAND_NAME;
+      const br = brandRow as
+        | { name: string | null; positioning_statement: string | null }
+        | null;
+      positioningBrandName = br?.name ?? DEMO_BRAND_NAME;
+      positioningStatementOverride = br?.positioning_statement ?? null;
     } else if (code === "S-BC") {
       const allCards = (dataRes.data ?? []) as Battlecard[];
       pastBattlecards = allCards;
@@ -1020,26 +1025,28 @@ export default async function AgentPage({
       {isLive && code === "S-PO" && (
         <>
           {(() => {
-            const statement = composePositioningStatement(
+            const autoComposed = composePositioningStatement(
               latestPositioning,
               positioningBrandName,
             );
-            if (!statement) return null;
+            // Render the section if there's anything to show — an override
+            // or a composable statement.
+            if (!autoComposed && !positioningStatementOverride) return null;
             return (
               <section>
                 <SectionDivider
                   title="Positioning statement"
-                  sub="Composed from the five elements"
+                  sub={
+                    positioningStatementOverride
+                      ? "Hand-edited"
+                      : "Composed from the five elements"
+                  }
                 />
-                <div className="rounded-lg border border-border bg-surface border-l-2 border-l-accent px-6 py-6">
-                  <p className="text-lg text-text leading-relaxed">
-                    {statement}
-                  </p>
-                  <p className="text-[11px] text-text-dim mt-3">
-                    Assembled deterministically from the approved elements
-                    below — it stays in sync whenever S-PO refreshes.
-                  </p>
-                </div>
+                <PositioningStatementEditor
+                  brandId={DEMO_BRAND_ID}
+                  autoComposed={autoComposed}
+                  override={positioningStatementOverride}
+                />
               </section>
             );
           })()}
