@@ -37,6 +37,11 @@ const SETUP_ITEMS = [
     href: "/onboarding",
     hint: "",
   },
+  {
+    name: "Brand kit",
+    href: "/brand-kit",
+    hint: "Colors, logo, footer — applied to branded PDFs",
+  },
 ];
 
 const LENS_STORAGE_KEY = "throughline:lens";
@@ -80,13 +85,24 @@ export function Sidebar() {
   // dashboards by per-role workflow count when the lens is "all".
   const outputs = useMemo(() => outputsForLens(lens, agentTooling), [lens]);
   const workflows = useMemo(() => {
-    // Setup-layer workflows (A0 Brand Initializer) are covered by the
-    // dedicated "SETUP" group at the bottom of the sidebar — Brand Code
-    // intake handles the same motion. Hide them from the Workflows section
-    // to keep navigation non-duplicative. The dashboard's Active Pipeline
-    // still surfaces A0 for completeness.
+    // Hide A-layer (Setup) and X-layer (Distribution) from the Workflows
+    // section. Both have their own top-level groups in the sidebar — Setup
+    // at the bottom for onboarding, Distribution under Operations as the
+    // shipping surface — so leaving them in the Workflows accordion would
+    // be duplicative.
     const all = filterWorkflowsForLens(agentTooling, lens);
-    return all.filter((w) => layerForCode(w.code) !== "A");
+    return all.filter((w) => {
+      const layer = layerForCode(w.code);
+      return layer !== "A" && layer !== "X";
+    });
+  }, [lens]);
+
+  // Distribution workflows promoted to their own sidebar section under
+  // Operations. Respects the lens just like the Workflows section, so a
+  // role-specific lens still shows only the relevant distributors.
+  const distributionWorkflows = useMemo(() => {
+    const all = filterWorkflowsForLens(agentTooling, lens);
+    return all.filter((w) => layerForCode(w.code) === "X");
   }, [lens]);
 
   return (
@@ -254,6 +270,47 @@ export function Sidebar() {
             ))}
           </ul>
         </div>
+
+        {/* Distribution — promoted out of Workflows to a top-level section.
+            These X-* adapters ship approved Library artifacts to external
+            channels, so they belong with the operational surfaces rather
+            than nested as a Workflows subheader. */}
+        {distributionWorkflows.length > 0 && (
+          <div>
+            <div className="px-2 mb-2 flex items-baseline justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
+                Distribution
+              </span>
+              <span className="text-[10px] text-text-dim">
+                {distributionWorkflows.length}
+              </span>
+            </div>
+            <ul className="space-y-0.5">
+              {distributionWorkflows.map((agent) => {
+                const href = `/agents/${agent.code.toLowerCase()}`;
+                const active = isActive(href);
+                return (
+                  <li key={agent.code}>
+                    <Link
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "block rounded-md px-3 py-1.5 text-sm transition",
+                        active
+                          ? "bg-accent-bg text-accent"
+                          : "text-text-muted hover:text-text hover:bg-card-hover/50",
+                      )}
+                    >
+                      <span className="font-medium truncate block">
+                        {agent.name}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
 
         {/* Setup — onboarding entry points */}
         <div>
