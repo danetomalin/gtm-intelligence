@@ -7,7 +7,7 @@ import {
 } from "../../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
-import { DEMO_BRAND_ID } from "@/lib/demo-context";
+import { DEMO_BRAND_ID, DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { LIVE_AGENTS, normalizeAgentCode } from "@/lib/agent-config";
 import { RunButton } from "./run-button";
 import { SignalCard, type Signal } from "./signal-card";
@@ -22,6 +22,7 @@ import {
   dedupeLatestPerType,
   type PositioningElement,
 } from "./positioning-card";
+import { composePositioningStatement } from "@/lib/parse-positioning";
 import { BattlecardCard, type Battlecard } from "./battlecard-card";
 import { ThemeCard, type FeedbackTheme } from "./theme-card";
 import { ContentCard, type ContentOutput } from "./content-card";
@@ -271,6 +272,7 @@ export default async function AgentPage({
   let pastRoadmap: RoadmapItem[] = [];
   let latestPositioning: PositioningElement[] = [];
   let pastPositioning: PositioningElement[] = [];
+  let positioningBrandName: string = DEMO_BRAND_NAME;
   let latestBattlecards: Battlecard[] = [];
   let pastBattlecards: Battlecard[] = [];
   let latestThemes: FeedbackTheme[] = [];
@@ -587,6 +589,14 @@ export default async function AgentPage({
       latestPositioning = sortPositioningElements(
         dedupeLatestPerType(allElements),
       );
+      // Brand name for the composed positioning statement. Cheap single read.
+      const { data: brandRow } = await admin
+        .from("brands")
+        .select("name")
+        .eq("id", DEMO_BRAND_ID)
+        .maybeSingle();
+      positioningBrandName =
+        (brandRow as { name: string | null } | null)?.name ?? DEMO_BRAND_NAME;
     } else if (code === "S-BC") {
       const allCards = (dataRes.data ?? []) as Battlecard[];
       pastBattlecards = allCards;
@@ -1009,6 +1019,31 @@ export default async function AgentPage({
 
       {isLive && code === "S-PO" && (
         <>
+          {(() => {
+            const statement = composePositioningStatement(
+              latestPositioning,
+              positioningBrandName,
+            );
+            if (!statement) return null;
+            return (
+              <section>
+                <SectionDivider
+                  title="Positioning statement"
+                  sub="Composed from the five elements"
+                />
+                <div className="rounded-lg border border-border bg-surface border-l-2 border-l-accent px-6 py-6">
+                  <p className="text-lg text-text leading-relaxed">
+                    {statement}
+                  </p>
+                  <p className="text-[11px] text-text-dim mt-3">
+                    Assembled deterministically from the approved elements
+                    below — it stays in sync whenever S-PO refreshes.
+                  </p>
+                </div>
+              </section>
+            );
+          })()}
+
           <section>
             <SectionDivider
               title="Current positioning"

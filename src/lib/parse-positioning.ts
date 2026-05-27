@@ -27,6 +27,84 @@ export type ParsedPositioning =
   | { kind: "attributes"; attributes: PositioningAttribute[] }
   | null;
 
+// Minimal shape the composer needs from a positioning_elements row.
+type ComposerElement = {
+  element_type: string | null;
+  content: string | null;
+};
+
+// Tidy an element's content for splicing into the composed statement:
+// trim whitespace, drop a single trailing period, collapse internal
+// newlines. Optionally lowercase the first letter for mid-sentence joins.
+function tidy(s: string | null | undefined, lowerFirst = false): string {
+  if (!s) return "";
+  let t = s.trim().replace(/\s+/g, " ").replace(/\.\s*$/, "");
+  if (lowerFirst && t.length > 0) {
+    // Only lowercase if it's not an acronym / proper noun start we want to
+    // preserve. Heuristic: lowercase the first char unless the first word is
+    // all-caps (likely an acronym).
+    const firstWord = t.split(" ")[0];
+    if (firstWord !== firstWord.toUpperCase()) {
+      t = t.charAt(0).toLowerCase() + t.slice(1);
+    }
+  }
+  return t;
+}
+
+/**
+ * Compose an April Dunford-style positioning statement from the five
+ * elements. Deterministic — built directly from the approved element
+ * content so it stays in sync and is traceable to research. Returns null
+ * if the core elements (market_category + differentiated_value) are
+ * missing, since the statement would be too thin to be useful.
+ *
+ * Template:
+ *   "For [best_fit_accounts], [brand] is [market_category] that
+ *    [differentiated_value]. Unlike [competitive_alternatives], [brand]
+ *    [distinct_capabilities]."
+ */
+export function composePositioningStatement(
+  elements: ComposerElement[],
+  brandName: string,
+): string | null {
+  const byType = new Map<string, string>();
+  for (const el of elements) {
+    if (el.element_type && el.content) {
+      // First occurrence wins (callers pass deduped-latest already).
+      if (!byType.has(el.element_type)) byType.set(el.element_type, el.content);
+    }
+  }
+
+  const bestFit = tidy(byType.get("best_fit_accounts"), true);
+  const marketCategory = tidy(byType.get("market_category"), true);
+  const diffValue = tidy(byType.get("differentiated_value"), true);
+  const alternatives = tidy(byType.get("competitive_alternatives"), true);
+  const distinctCaps = tidy(byType.get("distinct_capabilities"), true);
+
+  // Need at least a category + value to say anything meaningful.
+  if (!marketCategory && !diffValue) return null;
+
+  const brand = brandName?.trim() || "This brand";
+  const parts: string[] = [];
+
+  // Sentence 1: For X, Brand is a Y that delivers Z.
+  let s1 = "";
+  if (bestFit) s1 += `For ${bestFit}, `;
+  s1 += `${brand} is ${marketCategory || "a category-defining solution"}`;
+  if (diffValue) s1 += ` that ${diffValue}`;
+  s1 += ".";
+  parts.push(s1);
+
+  // Sentence 2: Unlike A, Brand B.
+  if (alternatives && distinctCaps) {
+    parts.push(`Unlike ${alternatives}, ${brand} ${distinctCaps}.`);
+  } else if (distinctCaps) {
+    parts.push(`${brand.charAt(0).toUpperCase() + brand.slice(1)} ${distinctCaps}.`);
+  }
+
+  return parts.join(" ");
+}
+
 const NUMBERED_PREFIX = /(?:^|\s)(\d+)\.\s/g;
 const TRAILING_PUNCT = /[.,;]\s*$/;
 
