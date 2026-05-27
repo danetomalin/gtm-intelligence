@@ -5,12 +5,19 @@ import { cn } from "@/lib/utils";
 
 type Counts = {
   all: number;
+  // Top-level source counts
+  messaging: number;
+  sales_collateral: number;
+  counter_narrative: number;
+  enablement: number;
+  // Enablement sub-types (selected via source filter values)
   objection_handler: number;
   qbr_template: number;
   customer_health_playbook: number;
   win_wire: number;
   expansion_play: number;
   renewal_talk_track: number;
+  // Enablement audience + freshness
   sales: number;
   customer_success: number;
   current: number;
@@ -18,111 +25,157 @@ type Counts = {
 };
 
 export function CollateralLibraryFilters({
-  typeFilter,
+  sourceFilter,
   audienceFilter,
   freshnessFilter,
   counts,
 }: {
-  typeFilter: string;
+  sourceFilter: string;
   audienceFilter: string;
   freshnessFilter: string;
   counts: Counts;
 }) {
-  function urlFor(type: string, audience: string, freshness: string) {
+  function urlFor(source: string, audience: string, freshness: string) {
     const params = new URLSearchParams();
-    if (type !== "all") params.set("type", type);
+    if (source !== "all") params.set("source", source);
     if (audience !== "all") params.set("audience", audience);
     if (freshness !== "all") params.set("freshness", freshness);
     const qs = params.toString();
     return qs ? `/collateral?${qs}` : "/collateral";
   }
 
+  // Enablement audience + freshness only apply when an enablement asset type
+  // is selected. Hide those rows otherwise to keep the UI cleaner.
+  const showEnablementSubFilters =
+    sourceFilter === "all" ||
+    sourceFilter === "enablement" ||
+    [
+      "objection_handler",
+      "qbr_template",
+      "customer_health_playbook",
+      "win_wire",
+      "expansion_play",
+      "renewal_talk_track",
+    ].includes(sourceFilter);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
-          Asset
+          Source
         </span>
         <FilterPill
           label={`All (${counts.all})`}
           href={urlFor("all", audienceFilter, freshnessFilter)}
-          active={typeFilter === "all"}
+          active={sourceFilter === "all"}
         />
         <FilterPill
-          label={`Objection (${counts.objection_handler})`}
-          href={urlFor("objection_handler", audienceFilter, freshnessFilter)}
-          active={typeFilter === "objection_handler"}
+          label={`Messaging (${counts.messaging})`}
+          href={urlFor("messaging", audienceFilter, freshnessFilter)}
+          active={sourceFilter === "messaging"}
         />
         <FilterPill
-          label={`QBR (${counts.qbr_template})`}
-          href={urlFor("qbr_template", audienceFilter, freshnessFilter)}
-          active={typeFilter === "qbr_template"}
+          label={`Sales narrative (${counts.sales_collateral})`}
+          href={urlFor("sales_collateral", audienceFilter, freshnessFilter)}
+          active={sourceFilter === "sales_collateral"}
         />
         <FilterPill
-          label={`Health playbook (${counts.customer_health_playbook})`}
-          href={urlFor("customer_health_playbook", audienceFilter, freshnessFilter)}
-          active={typeFilter === "customer_health_playbook"}
+          label={`Counter-narrative (${counts.counter_narrative})`}
+          href={urlFor("counter_narrative", audienceFilter, freshnessFilter)}
+          active={sourceFilter === "counter_narrative"}
         />
         <FilterPill
-          label={`Win wire (${counts.win_wire})`}
-          href={urlFor("win_wire", audienceFilter, freshnessFilter)}
-          active={typeFilter === "win_wire"}
-        />
-        <FilterPill
-          label={`Expansion (${counts.expansion_play})`}
-          href={urlFor("expansion_play", audienceFilter, freshnessFilter)}
-          active={typeFilter === "expansion_play"}
-        />
-        <FilterPill
-          label={`Renewal (${counts.renewal_talk_track})`}
-          href={urlFor("renewal_talk_track", audienceFilter, freshnessFilter)}
-          active={typeFilter === "renewal_talk_track"}
+          label={`Enablement (${counts.enablement})`}
+          href={urlFor("enablement", audienceFilter, freshnessFilter)}
+          active={sourceFilter === "enablement"}
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
-          Audience
-        </span>
-        <FilterPill
-          label="All"
-          href={urlFor(typeFilter, "all", freshnessFilter)}
-          active={audienceFilter === "all"}
-        />
-        <FilterPill
-          label={`Sales (${counts.sales})`}
-          href={urlFor(typeFilter, "sales", freshnessFilter)}
-          active={audienceFilter === "sales"}
-        />
-        <FilterPill
-          label={`CS (${counts.customer_success})`}
-          href={urlFor(typeFilter, "customer_success", freshnessFilter)}
-          active={audienceFilter === "customer_success"}
-        />
-      </div>
+      {showEnablementSubFilters && counts.enablement > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
+            Enablement type
+          </span>
+          <FilterPill
+            label={`Objection (${counts.objection_handler})`}
+            href={urlFor("objection_handler", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "objection_handler"}
+          />
+          <FilterPill
+            label={`QBR (${counts.qbr_template})`}
+            href={urlFor("qbr_template", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "qbr_template"}
+          />
+          <FilterPill
+            label={`Health playbook (${counts.customer_health_playbook})`}
+            href={urlFor("customer_health_playbook", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "customer_health_playbook"}
+          />
+          <FilterPill
+            label={`Win wire (${counts.win_wire})`}
+            href={urlFor("win_wire", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "win_wire"}
+          />
+          <FilterPill
+            label={`Expansion (${counts.expansion_play})`}
+            href={urlFor("expansion_play", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "expansion_play"}
+          />
+          <FilterPill
+            label={`Renewal (${counts.renewal_talk_track})`}
+            href={urlFor("renewal_talk_track", audienceFilter, freshnessFilter)}
+            active={sourceFilter === "renewal_talk_track"}
+          />
+        </div>
+      )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
-          Freshness
-        </span>
-        <FilterPill
-          label="All"
-          href={urlFor(typeFilter, audienceFilter, "all")}
-          active={freshnessFilter === "all"}
-        />
-        <FilterPill
-          label={`Current (${counts.current})`}
-          href={urlFor(typeFilter, audienceFilter, "current")}
-          active={freshnessFilter === "current"}
-          tone="win"
-        />
-        <FilterPill
-          label={`Stale (${counts.stale})`}
-          href={urlFor(typeFilter, audienceFilter, "stale")}
-          active={freshnessFilter === "stale"}
-          tone="warn"
-        />
-      </div>
+      {showEnablementSubFilters && counts.enablement > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
+            Audience
+          </span>
+          <FilterPill
+            label="All"
+            href={urlFor(sourceFilter, "all", freshnessFilter)}
+            active={audienceFilter === "all"}
+          />
+          <FilterPill
+            label={`Sales (${counts.sales})`}
+            href={urlFor(sourceFilter, "sales", freshnessFilter)}
+            active={audienceFilter === "sales"}
+          />
+          <FilterPill
+            label={`CS (${counts.customer_success})`}
+            href={urlFor(sourceFilter, "customer_success", freshnessFilter)}
+            active={audienceFilter === "customer_success"}
+          />
+        </div>
+      )}
+
+      {showEnablementSubFilters && counts.enablement > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-text-dim font-semibold mr-1">
+            Freshness
+          </span>
+          <FilterPill
+            label="All"
+            href={urlFor(sourceFilter, audienceFilter, "all")}
+            active={freshnessFilter === "all"}
+          />
+          <FilterPill
+            label={`Current (${counts.current})`}
+            href={urlFor(sourceFilter, audienceFilter, "current")}
+            active={freshnessFilter === "current"}
+            tone="win"
+          />
+          <FilterPill
+            label={`Stale (${counts.stale})`}
+            href={urlFor(sourceFilter, audienceFilter, "stale")}
+            active={freshnessFilter === "stale"}
+            tone="warn"
+          />
+        </div>
+      )}
     </div>
   );
 }
