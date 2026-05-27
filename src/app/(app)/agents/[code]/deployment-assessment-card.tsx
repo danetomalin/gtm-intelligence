@@ -151,7 +151,20 @@ export function DeploymentAssessmentCard({
 
         {isPending && (
           <div className="border-t border-border pt-3">
-            <ApprovalButtons table="deployment_assessments" id={assessment.id} />
+            <ApprovalButtons
+              tableName="deployment_assessments"
+              artifactId={assessment.id}
+              status={
+                (assessment.approval_status as
+                  | "pending_review"
+                  | "needs_revision"
+                  | "approved"
+                  | "rejected"
+                  | "published"
+                  | "draft"
+                  | null) ?? "pending_review"
+              }
+            />
           </div>
         )}
       </div>

@@ -42,7 +42,9 @@ export type ApprovalTable =
   | "enablement_assets"
   | "super_user_cohorts"
   | "voc_extractions"
-  | "icp_definitions";
+  | "icp_definitions"
+  | "deployment_assessments"
+  | "deployment_formats";
 
 export function ApprovalButtons({
   artifactId,

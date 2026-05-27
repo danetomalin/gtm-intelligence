@@ -119,7 +119,20 @@ export function DeploymentFormatCard({
 
         {(isPending || showApprovalButtons) && (
           <div className="border-t border-border pt-3">
-            <ApprovalButtons table="deployment_formats" id={fmt.id} />
+            <ApprovalButtons
+              tableName="deployment_formats"
+              artifactId={fmt.id}
+              status={
+                (fmt.approval_status as
+                  | "pending_review"
+                  | "needs_revision"
+                  | "approved"
+                  | "rejected"
+                  | "published"
+                  | "draft"
+                  | null) ?? "pending_review"
+              }
+            />
           </div>
         )}
 
@@ -241,17 +254,17 @@ function FormatBody({
       <div className="space-y-2.5">
         {(b.sections as Array<Record<string, unknown>>).map((s, i) => (
           <div key={i}>
-            {s.heading && (
+            {Boolean(s.heading) && (
               <div className="text-xs uppercase tracking-wider text-accent font-semibold mb-1">
                 {String(s.heading)}
               </div>
             )}
-            {s.body && (
+            {Boolean(s.body) && (
               <p className="text-sm text-text leading-relaxed">{String(s.body)}</p>
             )}
           </div>
         ))}
-        {b.cta && (
+        {Boolean(b.cta) && (
           <div className="border-l-2 border-accent pl-3 mt-2">
             <div className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-1">
               CTA
@@ -286,7 +299,7 @@ function FormatBody({
                 ))}
               </ul>
             )}
-            {s.speaker_notes && (
+            {Boolean(s.speaker_notes) && (
               <p className="text-[11px] text-text-dim italic mt-1 ml-6 leading-relaxed">
                 Notes: {String(s.speaker_notes)}
               </p>
@@ -315,12 +328,12 @@ function FormatBody({
                 </span>
               )}
             </div>
-            {e.preview && (
+            {Boolean(e.preview) && (
               <p className="text-[11px] text-text-muted italic mb-1">
                 {String(e.preview)}
               </p>
             )}
-            {e.body && (
+            {Boolean(e.body) && (
               <p className="text-xs text-text-muted leading-relaxed whitespace-pre-wrap">
                 {String(e.body)}
               </p>
@@ -334,17 +347,17 @@ function FormatBody({
   if (formatType === "linkedin_post") {
     return (
       <div className="space-y-2">
-        {b.hook && (
+        {Boolean(b.hook) && (
           <p className="text-sm font-semibold text-text leading-snug">
             {String(b.hook)}
           </p>
         )}
-        {b.body && (
+        {Boolean(b.body) && (
           <p className="text-sm text-text-muted leading-relaxed whitespace-pre-wrap">
             {String(b.body)}
           </p>
         )}
-        {b.cta && (
+        {Boolean(b.cta) && (
           <p className="text-sm text-text leading-relaxed border-l-2 border-accent pl-3">
             {String(b.cta)}
           </p>
@@ -381,14 +394,14 @@ function FormatBody({
                 {String(s.title ?? `Slide ${i + 1}`)}
               </span>
             </div>
-            {s.body && (
+            {Boolean(s.body) && (
               <p className="text-xs text-text-muted leading-relaxed ml-6">
                 {String(s.body)}
               </p>
             )}
           </div>
         ))}
-        {b.caption && (
+        {Boolean(b.caption) && (
           <p className="text-xs text-text-muted leading-relaxed italic border-t border-border pt-2">
             Caption: {String(b.caption)}
           </p>
@@ -409,13 +422,13 @@ function FormatBody({
               Scene {i + 1}
               {s.duration_sec != null && ` · ${String(s.duration_sec)}s`}
             </div>
-            {s.visual && (
+            {Boolean(s.visual) && (
               <div className="text-[11px] text-text-muted leading-relaxed mb-1">
                 <span className="font-semibold text-text">Visual: </span>
                 {String(s.visual)}
               </div>
             )}
-            {s.voiceover && (
+            {Boolean(s.voiceover) && (
               <div className="text-xs text-text leading-relaxed">
                 <span className="font-semibold">VO: </span>
                 {String(s.voiceover)}
@@ -455,17 +468,17 @@ function FormatBody({
             key={i}
             className="rounded-md border border-border bg-surface/40 px-3 py-2.5"
           >
-            {s.kind && (
+            {Boolean(s.kind) && (
               <div className="text-[10px] uppercase tracking-wider text-text-dim font-mono mb-1">
                 {String(s.kind)}
               </div>
             )}
-            {s.datapoint && (
+            {Boolean(s.datapoint) && (
               <div className="text-xl font-semibold text-accent">
                 {String(s.datapoint)}
               </div>
             )}
-            {s.headline && (
+            {Boolean(s.headline) && (
               <div className="text-sm font-semibold text-text leading-snug mt-1">
                 {String(s.headline)}
               </div>
