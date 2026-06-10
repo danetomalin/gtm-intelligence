@@ -268,11 +268,6 @@ export function Sidebar() {
                     )}
                   >
                     <div className="font-medium">{item.name}</div>
-                    {item.hint && (
-                      <div className="text-[11px] text-text-dim mt-0.5">
-                        {item.hint}
-                      </div>
-                    )}
                   </Link>
                 </li>
               ))}
@@ -299,11 +294,6 @@ export function Sidebar() {
                   )}
                 >
                   <div className="font-medium">{item.name}</div>
-                  {item.hint && (
-                    <div className="text-[11px] text-text-dim mt-0.5">
-                      {item.hint}
-                    </div>
-                  )}
                 </Link>
               </li>
             ))}
@@ -311,7 +301,21 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="px-5 py-4 border-t border-border text-[11px] text-text-dim">
+      <div className="px-3 py-3 border-t border-border">
+        <Link
+          href="/settings"
+          aria-current={isActive("/settings") ? "page" : undefined}
+          className={cn(
+            "block rounded-md px-3 py-2 text-sm transition",
+            isActive("/settings")
+              ? "bg-accent-bg text-accent"
+              : "text-text-muted hover:text-text hover:bg-card-hover/50",
+          )}
+        >
+          <div className="font-medium">Settings</div>
+        </Link>
+      </div>
+      <div className="px-5 py-3 border-t border-border text-[11px] text-text-dim">
         Demo mode — single-tenant view (pre-multi-brand switcher).
       </div>
     </aside>

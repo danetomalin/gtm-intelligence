@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID, DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { LIVE_AGENTS, normalizeAgentCode } from "@/lib/agent-config";
 import { RunButton } from "./run-button";
+import { ConfigureWorkflow } from "./configure-workflow";
 import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
 import { DossierCard, type Dossier } from "./dossier-card";
@@ -756,30 +757,36 @@ export default async function AgentPage({
 
   return (
     <div className="px-8 py-10 max-w-6xl space-y-10">
-      <div className="flex items-start justify-between gap-6">
-        <PageHeader
-          eyebrow={`Workflow ${agent.code}`}
-          title={agent.name}
-          subtitle={agent.purpose}
-        />
-        {isLive ? (
-          <RunButton
-            agentCode={code}
-            initialLastStatus={latestRun?.status ?? null}
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-6">
+          <PageHeader
+            eyebrow={`Workflow ${agent.code}`}
+            title={agent.name}
+            subtitle={agent.purpose}
           />
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="flex-shrink-0 inline-flex items-center gap-2 rounded-md bg-accent-strong px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
-            title="On-demand triggering ships once this agent is migrated to Supabase"
-          >
-            Run now
-            <span className="text-[10px] uppercase tracking-wider opacity-75">
-              soon
-            </span>
-          </button>
-        )}
+          {isLive ? (
+            <RunButton
+              agentCode={code}
+              initialLastStatus={latestRun?.status ?? null}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex-shrink-0 inline-flex items-center gap-2 rounded-md bg-accent-strong px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+              title="On-demand triggering ships once this agent is migrated to Supabase"
+            >
+              Run now
+              <span className="text-[10px] uppercase tracking-wider opacity-75">
+                soon
+              </span>
+            </button>
+          )}
+        </div>
+        <ConfigureWorkflow
+          agentCode={agent.code}
+          defaultInstructions={agent.purpose}
+        />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
