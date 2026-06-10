@@ -47,7 +47,7 @@ export default async function PositioningPage() {
       <PageHeader
         eyebrow="Positioning framework"
         title={`${brandName} · five-element positioning`}
-        subtitle={`The April Dunford framework applied to ${brandName}. Each element is paired with the evidence that supports it, so the positioning isn't theoretical — it's traceable to research.`}
+        subtitle={`The five-element positioning framework applied to ${brandName}. Each element is paired with the evidence that supports it, so the positioning isn't theoretical — it's traceable to research.`}
       />
 
       <section>

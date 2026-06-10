@@ -78,7 +78,7 @@ const positioningSchema = z.object({
 
 const spo: WorkflowSpec<typeof positioningSchema> = {
   code: "S-PO",
-  task: "Produce a fresh version of all FIVE positioning elements for this brand from the intelligence below, per your operating instructions (April Dunford framework). Every distinct capability must name an alternative that lacks it; every differentiated value must map to a capability; best-fit accounts must be specific segments with observable signals. Document why each element changed (or 'initial version' on first run).",
+  task: "Produce a fresh version of all FIVE positioning elements for this brand from the intelligence below, per your operating instructions (five-element framework). Every distinct capability must name an alternative that lacks it; every differentiated value must map to a capability; best-fit accounts must be specific segments with observable signals. Document why each element changed (or 'initial version' on first run).",
   outputInstruction:
     '{"elements": [{"element_type": "competitive_alternatives|distinct_capabilities|differentiated_value|best_fit_accounts|market_category", "content": "the element", "evidence": "what supports it", "last_change_reason": "why it changed vs the prior version"}]} — exactly 5 elements, one per type.',
   outputSchema: positioningSchema,
