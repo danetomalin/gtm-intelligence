@@ -27,12 +27,12 @@ const OPERATIONS_ITEMS = [
 
 const SETUP_ITEMS = [
   {
-    name: "+ Brand Code intake",
+    name: "Brand Code intake",
     href: "/onboarding/brand-code",
     hint: "Conversational R-BR onboarding",
   },
   {
-    name: "+ New brand",
+    name: "New brand",
     href: "/onboarding",
     hint: "",
   },
