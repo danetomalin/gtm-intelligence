@@ -173,15 +173,19 @@ describe("outputsForLens", () => {
     expect(out.some((o) => o.href === "/positioning")).toBe(true);
   });
 
-  it("returns just the role dashboard when lens is sales/product/customer_success", () => {
+  it("returns just the role dashboard when lens is sales/product", () => {
     expect(outputsForLens("sales")).toEqual([
       expect.objectContaining({ href: "/workspace/sales" }),
     ]);
     expect(outputsForLens("product")).toEqual([
       expect.objectContaining({ href: "/workspace/product" }),
     ]);
+  });
+
+  it("returns the CS dashboard plus Customer Health for customer_success", () => {
     expect(outputsForLens("customer_success")).toEqual([
       expect.objectContaining({ href: "/workspace/customer_success" }),
+      expect.objectContaining({ href: "/customer-health" }),
     ]);
   });
 

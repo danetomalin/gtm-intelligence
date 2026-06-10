@@ -142,6 +142,11 @@ export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
       href: "/workspace/customer_success",
       hint: "Role-specific landing",
     },
+    {
+      name: "Customer Health",
+      href: "/customer-health",
+      hint: "VAR health model portfolio",
+    },
   ],
   admin: [],
 };
