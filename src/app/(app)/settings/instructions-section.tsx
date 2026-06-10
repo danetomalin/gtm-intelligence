@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { InstructionsEditor } from "./instructions-editor";
+import { CredentialAssign } from "./credential-assign";
 
 export type WorkflowListItem = {
   code: string;
@@ -105,10 +106,14 @@ export function InstructionsSection({ workflows }: { workflows: WorkflowListItem
               </button>
               {open && (
                 <div className="px-2 pt-3 pb-1">
-                  <div className="mb-2 text-xs text-text-dim">
-                    <Link href={`/agents/${w.code.toLowerCase()}`} className="text-accent">
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <Link
+                      href={`/agents/${w.code.toLowerCase()}`}
+                      className="text-accent text-xs"
+                    >
                       Open workflow page →
                     </Link>
+                    <CredentialAssign workflowCode={w.code} />
                   </div>
                   <InstructionsEditor
                     code={w.code}

@@ -1,10 +1,14 @@
 // ============================================================
-// APP-WIDE API CONFIG — bring-your-own-key, ONE place (Settings).
-// Promoted from features/cs-health in Phase C so every workflow and
-// the CS copilot share a single credential store. The key lives ONLY
-// in the user's browser (localStorage) and is sent per-request to
-// the /api/llm proxy, which forwards it to the chosen provider.
-// Nothing is persisted server-side.
+// APP-WIDE CREDENTIAL STORE — bring-your-own-key, managed in
+// Settings. Multiple NAMED credential profiles, one marked default,
+// plus per-workflow assignments (workflow code -> profile id).
+// Everything lives ONLY in the user's browser (localStorage) and
+// rides each request to the /api/llm proxy as headers. Nothing is
+// persisted server-side.
+//
+// Back-compat: loadApiConfig() returns the default profile in the
+// original single-config shape, so existing consumers (cs-health
+// llmClient, Ask Jon) keep working unchanged.
 // ============================================================
 
 export type Provider = "google" | "anthropic" | "openai" | "opensource";
@@ -14,6 +18,19 @@ export interface ApiConfig {
   apiKey: string;
   model: string;
   baseUrl: string; // empty = provider default
+}
+
+export interface CredentialProfile extends ApiConfig {
+  id: string;
+  name: string; // user-facing label, e.g. "Anthropic prod", "Gemini cheap"
+}
+
+export interface CredentialStore {
+  profiles: CredentialProfile[];
+  defaultId: string | null;
+  // workflow code (e.g. "R-CI") -> profile id. Missing/unknown ids
+  // fall back to the default profile.
+  assignments: Record<string, string>;
 }
 
 export const PROVIDER_PRESETS: Record<Provider, { label: string; defaultModel: string; defaultBaseUrl: string; keyHint: string }> = {
@@ -43,51 +60,139 @@ export const PROVIDER_PRESETS: Record<Provider, { label: string; defaultModel: s
   },
 };
 
-const STORAGE_KEY = "throughline.apiConfig";
-// Pre-Phase-C key from the standalone cs-health module — migrated on read.
-const LEGACY_STORAGE_KEY = "cs-health.apiConfig";
+const STORE_KEY = "throughline.credentials";
+// Pre-multi-profile keys — migrated on first read.
+const LEGACY_SINGLE_KEY = "throughline.apiConfig";
+const LEGACY_CS_KEY = "cs-health.apiConfig";
 
 export function defaultConfig(provider: Provider = "anthropic"): ApiConfig {
   const p = PROVIDER_PRESETS[provider];
   return { provider, apiKey: "", model: p.defaultModel, baseUrl: "" };
 }
 
-function parseConfig(raw: string): ApiConfig {
+export function newProfileId(): string {
+  return `cred_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function emptyStore(): CredentialStore {
+  return { profiles: [], defaultId: null, assignments: {} };
+}
+
+function parseLegacySingle(raw: string): ApiConfig {
   const parsed = JSON.parse(raw) as Omit<Partial<ApiConfig>, "provider"> & { provider?: string };
-  // migrate legacy "custom" provider to "opensource"
   let rawProvider = parsed.provider;
   if (rawProvider === "custom") rawProvider = "opensource";
   const provider = (rawProvider && rawProvider in PROVIDER_PRESETS ? rawProvider : "anthropic") as Provider;
   return { ...defaultConfig(provider), ...parsed, provider };
 }
 
-export function loadApiConfig(): ApiConfig {
-  if (typeof window === "undefined") return defaultConfig();
+export function loadCredentialStore(): CredentialStore {
+  if (typeof window === "undefined") return emptyStore();
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return parseConfig(raw);
-    // One-time migration from the cs-health era key.
-    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacy) {
-      const cfg = parseConfig(legacy);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-      return cfg;
+    const raw = window.localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<CredentialStore>;
+      return {
+        profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+        defaultId: parsed.defaultId ?? null,
+        assignments: parsed.assignments ?? {},
+      };
     }
-    return defaultConfig();
+    // One-time migration: single-config era -> one "Default" profile.
+    const legacy =
+      window.localStorage.getItem(LEGACY_SINGLE_KEY) ??
+      window.localStorage.getItem(LEGACY_CS_KEY);
+    if (legacy) {
+      const cfg = parseLegacySingle(legacy);
+      const profile: CredentialProfile = {
+        ...cfg,
+        id: newProfileId(),
+        name: `${PROVIDER_PRESETS[cfg.provider].label} (migrated)`,
+      };
+      const store: CredentialStore = {
+        profiles: [profile],
+        defaultId: profile.id,
+        assignments: {},
+      };
+      saveCredentialStore(store);
+      return store;
+    }
+    return emptyStore();
   } catch {
-    return defaultConfig();
+    return emptyStore();
   }
 }
 
-export function saveApiConfig(config: ApiConfig): void {
+export function saveCredentialStore(store: CredentialStore): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  window.localStorage.setItem(STORE_KEY, JSON.stringify(store));
+}
+
+export function getDefaultProfile(store?: CredentialStore): CredentialProfile | null {
+  const s = store ?? loadCredentialStore();
+  if (s.profiles.length === 0) return null;
+  return s.profiles.find((p) => p.id === s.defaultId) ?? s.profiles[0];
+}
+
+// Resolve which credentials a given workflow runs on: its assigned
+// profile if one exists, otherwise the default profile.
+export function resolveCredential(
+  workflowCode: string,
+  store?: CredentialStore,
+): CredentialProfile | null {
+  const s = store ?? loadCredentialStore();
+  const assignedId = s.assignments[workflowCode.toUpperCase()];
+  if (assignedId) {
+    const assigned = s.profiles.find((p) => p.id === assignedId);
+    if (assigned) return assigned;
+  }
+  return getDefaultProfile(s);
+}
+
+export function setAssignment(workflowCode: string, profileId: string | null): CredentialStore {
+  const s = loadCredentialStore();
+  const code = workflowCode.toUpperCase();
+  if (profileId === null) {
+    delete s.assignments[code];
+  } else {
+    s.assignments[code] = profileId;
+  }
+  saveCredentialStore(s);
+  return s;
+}
+
+// ── Back-compat single-config API (default profile view) ──────────
+
+export function loadApiConfig(): ApiConfig {
+  const def = getDefaultProfile();
+  if (!def) return defaultConfig();
+  const { provider, apiKey, model, baseUrl } = def;
+  return { provider, apiKey, model, baseUrl };
+}
+
+export function saveApiConfig(config: ApiConfig): void {
+  // Legacy setter: updates (or creates) the default profile.
+  const s = loadCredentialStore();
+  const def = getDefaultProfile(s);
+  if (def) {
+    Object.assign(def, config);
+  } else {
+    const profile: CredentialProfile = {
+      ...config,
+      id: newProfileId(),
+      name: PROVIDER_PRESETS[config.provider].label,
+    };
+    s.profiles.push(profile);
+    s.defaultId = profile.id;
+  }
+  saveCredentialStore(s);
 }
 
 export function clearApiConfig(): void {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(STORAGE_KEY);
-  window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  window.localStorage.removeItem(STORE_KEY);
+  window.localStorage.removeItem(LEGACY_SINGLE_KEY);
+  window.localStorage.removeItem(LEGACY_CS_KEY);
 }
 
 export function isConfigured(config: ApiConfig): boolean {

@@ -1,12 +1,18 @@
 "use client";
 // Slim per-workflow Configure (Phase C). Edits this workflow's
 // operating instructions — the same workflow_configs row Settings
-// edits. Credentials are deliberately NOT here: they're centralized
-// in /settings (decision 2026-06-09 — one key store, not 28).
+// edits — and assigns which saved credential profile the workflow
+// runs on. Credential profiles themselves are managed centrally in
+// /settings (one key store, not 28).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { isConfigured, loadApiConfig } from "@/lib/llm/apiConfig";
+import {
+  isConfigured,
+  loadCredentialStore,
+  resolveCredential,
+} from "@/lib/llm/apiConfig";
+import { CredentialAssign } from "../../settings/credential-assign";
 import { InstructionsEditor } from "../../settings/instructions-editor";
 
 export function ConfigureWorkflow({
@@ -17,11 +23,22 @@ export function ConfigureWorkflow({
   defaultInstructions: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [credsOk, setCredsOk] = useState<boolean | null>(null);
+  const [credLabel, setCredLabel] = useState<string | null>(null);
+  const [credOk, setCredOk] = useState(false);
+  const [storeVersion, setStoreVersion] = useState(0);
 
   useEffect(() => {
-    setCredsOk(isConfigured(loadApiConfig()));
-  }, [open]);
+    const store = loadCredentialStore();
+    const resolved = resolveCredential(agentCode, store);
+    if (!resolved) {
+      setCredLabel(null);
+      setCredOk(false);
+      return;
+    }
+    const assigned = !!store.assignments[agentCode.toUpperCase()];
+    setCredLabel(`${resolved.name}${assigned ? "" : " (default)"}`);
+    setCredOk(isConfigured(resolved));
+  }, [agentCode, open, storeVersion]);
 
   return (
     <>
@@ -38,20 +55,28 @@ export function ConfigureWorkflow({
 
       {open && (
         <div className="mt-4 rounded-lg border border-border bg-card p-5">
-          <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
             <div className="text-xs uppercase tracking-wider text-text-muted">
               Operating instructions — {agentCode}
             </div>
-            <div className="text-xs text-text-dim">
-              {credsOk === null ? null : credsOk ? (
-                <span className="text-win">Credentials configured</span>
-              ) : (
-                <span className="text-warn">No API credentials yet</span>
-              )}
-              {" · "}
-              <Link href="/settings" className="text-accent">
-                Manage in Settings
-              </Link>
+            <div className="flex items-center gap-3">
+              <CredentialAssign
+                workflowCode={agentCode}
+                onChanged={() => setStoreVersion((v) => v + 1)}
+              />
+              <span className="text-xs text-text-dim">
+                {credLabel === null ? (
+                  <span className="text-warn">No credentials saved</span>
+                ) : credOk ? (
+                  <span className="text-win">Runs on {credLabel}</span>
+                ) : (
+                  <span className="text-warn">{credLabel} has no key</span>
+                )}
+                {" · "}
+                <Link href="/settings" className="text-accent">
+                  Manage in Settings
+                </Link>
+              </span>
             </div>
           </div>
           <InstructionsEditor
