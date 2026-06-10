@@ -13,6 +13,7 @@ import {
   loadCredentialStore,
   saveCredentialStore,
   newProfileId,
+  setSearchApiKey,
   type CredentialProfile,
   type CredentialStore,
   type Provider,
@@ -32,6 +33,30 @@ export function CredentialsSection() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [tests, setTests] = useState<Record<string, TestState>>({});
+  const [searchKey, setSearchKey] = useState("");
+  const [showSearchKey, setShowSearchKey] = useState(false);
+  const [searchTest, setSearchTest] = useState<TestState | null>(null);
+
+  // Verify the Tavily key with a one-result search through /api/search.
+  async function testSearchKey() {
+    setSearchTest({ status: "testing", detail: "" });
+    const started = Date.now();
+    try {
+      const res = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-search-key": searchKey },
+        body: JSON.stringify({ query: "workforce management software", maxResults: 1 }),
+      });
+      const body = await res.json().catch(() => ({}));
+      setSearchTest(
+        res.ok
+          ? { status: "ok", detail: `Tavily responded in ${((Date.now() - started) / 1000).toFixed(1)}s` }
+          : { status: "fail", detail: body.error ?? `HTTP ${res.status}` },
+      );
+    } catch (e) {
+      setSearchTest({ status: "fail", detail: e instanceof Error ? e.message : "network error" });
+    }
+  }
 
   // Fire a minimal request through /api/llm with THIS profile's
   // credentials — proves provider, model, and key together.
@@ -52,7 +77,9 @@ export function CredentialsSection() {
   }
 
   useEffect(() => {
-    setStore(loadCredentialStore());
+    const s = loadCredentialStore();
+    setStore(s);
+    setSearchKey(s.searchApiKey ?? "");
   }, []);
 
   function commit(next: CredentialStore) {
@@ -299,6 +326,64 @@ export function CredentialsSection() {
           </div>
         </div>
       )}
+
+      {/* Search API — Tavily key for native research workflows */}
+      <div className="mt-5 rounded-md border border-border bg-surface p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs uppercase tracking-wider text-text-muted">
+            Search API (Tavily)
+          </div>
+          <span
+            className={
+              searchKey.trim()
+                ? "rounded-full bg-win-bg text-win px-2.5 py-0.5 text-[11px] font-semibold"
+                : "rounded-full bg-warn-bg text-warn px-2.5 py-0.5 text-[11px] font-semibold"
+            }
+          >
+            {searchKey.trim() ? "Configured" : "Not configured"}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type={showSearchKey ? "text" : "password"}
+            value={searchKey}
+            placeholder="tvly-..."
+            onChange={(e) => { setSearchKey(e.target.value); setSearchTest(null); }}
+            className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          <button
+            type="button"
+            onClick={() => setShowSearchKey((s) => !s)}
+            className="rounded-md border border-border px-3 py-2 text-xs text-text-muted hover:text-text"
+          >
+            {showSearchKey ? "Hide" : "Show"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setSearchApiKey(searchKey); setSearchTest(null); }}
+            className="rounded-md bg-accent-strong px-3 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            disabled={!searchKey.trim() || searchTest?.status === "testing"}
+            onClick={testSearchKey}
+            className="rounded-md border border-accent/40 bg-accent-bg px-3 py-2 text-xs font-medium text-accent hover:opacity-80 disabled:opacity-50"
+          >
+            {searchTest?.status === "testing" ? "Testing…" : "Test"}
+          </button>
+        </div>
+        {searchTest && searchTest.status !== "testing" && (
+          <div className={`text-xs mt-2 ${searchTest.status === "ok" ? "text-win" : "text-danger"}`}>
+            {searchTest.status === "ok" ? `✓ Connection verified — ${searchTest.detail}` : `✗ ${searchTest.detail}`}
+          </div>
+        )}
+        <p className="mt-2 text-xs text-text-dim">
+          Used by native research workflows (R-MS and the rest of the research
+          tier as they migrate off n8n) for live web research.
+        </p>
+      </div>
 
       <p className="mt-4 text-xs text-text-dim leading-relaxed">
         Keys are stored only in this browser and sent per-request to the

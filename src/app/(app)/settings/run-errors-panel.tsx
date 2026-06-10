@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { classifyRunError, type RunErrorCategory } from "@/lib/run-errors";
-import { resolveCredential } from "@/lib/llm/apiConfig";
+import { getSearchApiKey, resolveCredential } from "@/lib/llm/apiConfig";
 
 type ErrorRun = {
   id: string;
@@ -66,16 +66,20 @@ export function RunErrorsPanel() {
     setRetry((r) => ({ ...r, [run.id]: "retrying…" }));
     try {
       const cred = resolveCredential(code);
+      const searchKey = getSearchApiKey();
       const res = await fetch(`/api/agents/${code.toLowerCase()}/run`, {
         method: "POST",
-        headers: cred
-          ? {
-              "x-llm-provider": cred.provider,
-              "x-llm-key": cred.apiKey,
-              "x-llm-model": cred.model,
-              "x-llm-base-url": cred.baseUrl,
-            }
-          : {},
+        headers: {
+          ...(cred
+            ? {
+                "x-llm-provider": cred.provider,
+                "x-llm-key": cred.apiKey,
+                "x-llm-model": cred.model,
+                "x-llm-base-url": cred.baseUrl,
+              }
+            : {}),
+          ...(searchKey ? { "x-search-key": searchKey } : {}),
+        },
       });
       const body = await res.json().catch(() => ({}));
       setRetry((r) => ({

@@ -26,18 +26,21 @@ const CODES = (process.env.CODES ?? DEFAULT_CODES.join(","))
 const PAUSE_S = Number(process.env.PAUSE_S ?? 60);
 const RUN_TIMEOUT_S = 300;
 
-const NATIVE_CODES = new Set(["D-QB", "D-RT", "D-HP", "D-XP"]);
+// Codes that execute natively and accept BYOK/search headers.
+const NATIVE_CODES = new Set(["D-QB", "D-RT", "D-HP", "D-XP", "R-MS", "D-MG"]);
 
 const sleep = (s: number) => new Promise((r) => setTimeout(r, s * 1000));
 
 function credHeaders(): Record<string, string> {
-  if (!process.env.LLM_KEY) return {};
-  return {
-    "x-llm-provider": process.env.LLM_PROVIDER ?? "anthropic",
-    "x-llm-key": process.env.LLM_KEY,
-    "x-llm-model": process.env.LLM_MODEL ?? "",
-    "x-llm-base-url": process.env.LLM_BASE_URL ?? "",
-  };
+  const h: Record<string, string> = {};
+  if (process.env.LLM_KEY) {
+    h["x-llm-provider"] = process.env.LLM_PROVIDER ?? "anthropic";
+    h["x-llm-key"] = process.env.LLM_KEY;
+    h["x-llm-model"] = process.env.LLM_MODEL ?? "";
+    h["x-llm-base-url"] = process.env.LLM_BASE_URL ?? "";
+  }
+  if (process.env.TAVILY_KEY) h["x-search-key"] = process.env.TAVILY_KEY;
+  return h;
 }
 
 async function fireWithBackoff(code: string): Promise<{ runId?: string; error?: string }> {

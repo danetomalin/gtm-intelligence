@@ -53,7 +53,7 @@ describe("POST /api/agents/[code]/run", () => {
 
   it("creates a run_history row and fires the n8n webhook on happy path", async () => {
     const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "R-MS" }),
+      params: Promise.resolve({ code: "R-CI" }),
     });
 
     expect(response.status).toBe(200);
@@ -65,7 +65,7 @@ describe("POST /api/agents/[code]/run", () => {
     const [fetchUrl, fetchInit] = (
       global.fetch as unknown as ReturnType<typeof vi.fn>
     ).mock.calls[0];
-    expect(fetchUrl).toContain("/webhook/market-signals-supabase");
+    expect(fetchUrl).toContain("/webhook/competitive-intel-supabase");
     const payload = JSON.parse(fetchInit.body);
     expect(payload).toMatchObject({
       runId: "run-abc-123",
@@ -75,7 +75,7 @@ describe("POST /api/agents/[code]/run", () => {
 
   it("accepts lowercase new-form codes (case-insensitive)", async () => {
     const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "r-ms" }),
+      params: Promise.resolve({ code: "r-ci" }),
     });
 
     expect(response.status).toBe(200);
@@ -84,16 +84,16 @@ describe("POST /api/agents/[code]/run", () => {
 
   it("accepts legacy A1-A8 codes via the backward-compat path", async () => {
     const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "A2" }),
+      params: Promise.resolve({ code: "A1" }),
     });
 
     expect(response.status).toBe(200);
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    // Should route to the same webhook as R-MS would.
+    // Should route to the same webhook as R-CI would.
     const [fetchUrl] = (
       global.fetch as unknown as ReturnType<typeof vi.fn>
     ).mock.calls[0];
-    expect(fetchUrl).toContain("/webhook/market-signals-supabase");
+    expect(fetchUrl).toContain("/webhook/competitive-intel-supabase");
   });
 
   it("marks the run as error when n8n returns non-2xx", async () => {

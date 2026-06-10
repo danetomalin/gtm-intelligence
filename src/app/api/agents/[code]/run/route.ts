@@ -9,6 +9,8 @@ import {
 import { normalizeAgentCode, webhookPathFor } from "@/lib/agent-config";
 import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
 import { isNativeCsCode, runNativeCsWorkflow } from "@/lib/workflows/cs-runner";
+import { runWorkflowSpec } from "@/lib/workflows/engine";
+import { WORKFLOW_REGISTRY, isRegistryCode } from "@/lib/workflows/registry";
 
 // Native runs execute the LLM call inside this function — keep it alive.
 export const maxDuration = 60;
@@ -23,6 +25,62 @@ export async function POST(
   const { code: rawCode } = await params;
   // Canonicalize. Accepts new codes ("R-CI", "r-ci") and legacy A1–A8.
   const code = normalizeAgentCode(rawCode);
+
+  // ── Native path (n8n migration): registry workflows run as Vercel
+  // code through the generic engine. Credentials + optional Tavily key
+  // arrive in headers from the browser credential store.
+  if (code && isRegistryCode(code)) {
+    const provider = request.headers.get("x-llm-provider") ?? "anthropic";
+    let apiKey = request.headers.get("x-llm-key") ?? "";
+    if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+      apiKey = process.env.ANTHROPIC_API_KEY;
+    }
+    const cred = {
+      provider,
+      apiKey,
+      model: request.headers.get("x-llm-model") ?? "",
+      baseUrl: request.headers.get("x-llm-base-url") ?? "",
+    };
+    const searchKey = request.headers.get("x-search-key") ?? process.env.TAVILY_API_KEY ?? "";
+
+    const admin = await createAdminClient();
+    const { data: run, error: runErr } = await admin
+      .from("run_history")
+      .insert({
+        organization_id: DEMO_TENANT_ID,
+        brand_id: DEMO_BRAND_ID,
+        agent_code: code,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    if (runErr || !run) {
+      return NextResponse.json(
+        { error: runErr?.message ?? "Failed to create run row" },
+        { status: 500 },
+      );
+    }
+
+    let result: Awaited<ReturnType<typeof runWorkflowSpec>>;
+    try {
+      result = await runWorkflowSpec(admin, WORKFLOW_REGISTRY[code], cred, searchKey || undefined);
+    } catch (err) {
+      result = { ok: false, error: err instanceof Error ? err.message : "Engine failure", status: 500 };
+    }
+    await admin
+      .from("run_history")
+      .update({
+        status: result.ok ? "success" : "error",
+        finished_at: new Date().toISOString(),
+        ...(result.ok ? {} : { error_message: result.error }),
+      })
+      .eq("id", run.id);
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 502 });
+    }
+    return NextResponse.json({ runId: run.id, native: true, summary: result.summary });
+  }
 
   // ── Native path (Phase C): CS workflows run as Vercel code, not n8n.
   // Instructions come from workflow_configs, credentials from the

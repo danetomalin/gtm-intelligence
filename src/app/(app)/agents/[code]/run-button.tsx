@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { resolveCredential } from "@/lib/llm/apiConfig";
+import { getSearchApiKey, resolveCredential } from "@/lib/llm/apiConfig";
 
 type Status = "idle" | "starting" | "running" | "success" | "error";
 
@@ -33,16 +33,20 @@ export function RunButton({
       // Native workflows execute on the credential profile assigned in
       // Settings (or the default). n8n-backed workflows ignore these.
       const cred = resolveCredential(agentCode);
+      const searchKey = getSearchApiKey();
       const res = await fetch(`/api/agents/${agentCode.toLowerCase()}/run`, {
         method: "POST",
-        headers: cred
-          ? {
-              "x-llm-provider": cred.provider,
-              "x-llm-key": cred.apiKey,
-              "x-llm-model": cred.model,
-              "x-llm-base-url": cred.baseUrl,
-            }
-          : {},
+        headers: {
+          ...(cred
+            ? {
+                "x-llm-provider": cred.provider,
+                "x-llm-key": cred.apiKey,
+                "x-llm-model": cred.model,
+                "x-llm-base-url": cred.baseUrl,
+              }
+            : {}),
+          ...(searchKey ? { "x-search-key": searchKey } : {}),
+        },
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

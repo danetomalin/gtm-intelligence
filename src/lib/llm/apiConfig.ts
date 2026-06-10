@@ -31,6 +31,9 @@ export interface CredentialStore {
   // workflow code (e.g. "R-CI") -> profile id. Missing/unknown ids
   // fall back to the default profile.
   assignments: Record<string, string>;
+  // Tavily web-search key for native research workflows (browser-local,
+  // sent per-request as x-search-key — never persisted server-side).
+  searchApiKey?: string;
 }
 
 export const PROVIDER_PRESETS: Record<Provider, { label: string; defaultModel: string; defaultBaseUrl: string; keyHint: string; models: string[] }> = {
@@ -100,6 +103,7 @@ export function loadCredentialStore(): CredentialStore {
         profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
         defaultId: parsed.defaultId ?? null,
         assignments: parsed.assignments ?? {},
+        searchApiKey: parsed.searchApiKey ?? "",
       };
     }
     // One-time migration: single-config era -> one "Default" profile.
@@ -151,6 +155,17 @@ export function resolveCredential(
     if (assigned) return assigned;
   }
   return getDefaultProfile(s);
+}
+
+export function setSearchApiKey(key: string): CredentialStore {
+  const s = loadCredentialStore();
+  s.searchApiKey = key.trim();
+  saveCredentialStore(s);
+  return s;
+}
+
+export function getSearchApiKey(): string {
+  return loadCredentialStore().searchApiKey ?? "";
 }
 
 export function setAssignment(workflowCode: string, profileId: string | null): CredentialStore {
