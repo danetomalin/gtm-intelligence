@@ -17,6 +17,9 @@ import {
   type CredentialStore,
   type Provider,
 } from "@/lib/llm/apiConfig";
+import { callLLM } from "@/features/cs-health/lib/llmClient";
+
+type TestState = { status: "testing" | "ok" | "fail"; detail: string };
 
 type Draft = Omit<CredentialProfile, "id"> & { id: string | null };
 
@@ -28,6 +31,25 @@ export function CredentialsSection() {
   const [store, setStore] = useState<CredentialStore>({ profiles: [], defaultId: null, assignments: {} });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [showKey, setShowKey] = useState(false);
+  const [tests, setTests] = useState<Record<string, TestState>>({});
+
+  // Fire a minimal request through /api/llm with THIS profile's
+  // credentials — proves provider, model, and key together.
+  async function testProfile(p: CredentialProfile) {
+    setTests((t) => ({ ...t, [p.id]: { status: "testing", detail: "" } }));
+    const started = Date.now();
+    const res = await callLLM(
+      [{ role: "user", content: "Reply with exactly: OK" }],
+      { maxTokens: 1024, config: { provider: p.provider, apiKey: p.apiKey, model: p.model, baseUrl: p.baseUrl } },
+    );
+    const ms = Date.now() - started;
+    setTests((t) => ({
+      ...t,
+      [p.id]: res.ok && res.text.trim()
+        ? { status: "ok", detail: `${p.model || "default model"} responded in ${(ms / 1000).toFixed(1)}s` }
+        : { status: "fail", detail: res.error ?? "Empty response — check the model name." },
+    }));
+  }
 
   useEffect(() => {
     setStore(loadCredentialStore());
@@ -121,8 +143,21 @@ export function CredentialsSection() {
                   {p.apiKey ? `key …${p.apiKey.slice(-4)}` : "no key"}
                   {count > 0 && ` · assigned to ${count} workflow${count === 1 ? "" : "s"}`}
                 </div>
+                {tests[p.id] && tests[p.id].status !== "testing" && (
+                  <div className={`text-xs mt-1 ${tests[p.id].status === "ok" ? "text-win" : "text-danger"}`}>
+                    {tests[p.id].status === "ok" ? `✓ Connection verified — ${tests[p.id].detail}` : `✗ ${tests[p.id].detail}`}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 text-xs">
+                <button
+                  type="button"
+                  disabled={tests[p.id]?.status === "testing"}
+                  onClick={() => testProfile(p)}
+                  className="rounded-md border border-accent/40 bg-accent-bg px-2.5 py-1.5 font-medium text-accent hover:opacity-80 disabled:opacity-50"
+                >
+                  {tests[p.id]?.status === "testing" ? "Testing…" : "Test"}
+                </button>
                 {!isDefault && (
                   <button type="button" onClick={() => setDefault(p.id)} className="rounded-md border border-border px-2.5 py-1.5 text-text-muted hover:text-text">
                     Make default
