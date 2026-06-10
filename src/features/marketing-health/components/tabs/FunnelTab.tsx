@@ -43,8 +43,8 @@ export default function FunnelTab({ funnel }: { funnel: FunnelStage[] }) {
                   <td style={{ padding: "8px", fontWeight: 600, whiteSpace: "nowrap" }}>
                     {s.unit === "dollars" ? fmtMoney(s.latest) : fmtNum(s.latest)}
                   </td>
-                  <td style={{ padding: "8px" }}>{s.convLatest !== null ? fmtPct(s.convLatest) : "—"}</td>
-                  <td style={{ padding: "8px" }}>{s.convTotal !== null ? fmtPct(s.convTotal) : "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.unit === "count" && s.convLatest !== null ? fmtPct(s.convLatest) : "—"}</td>
+                  <td style={{ padding: "8px" }}>{s.unit === "count" && s.convTotal !== null ? fmtPct(s.convTotal) : "—"}</td>
                   <td style={{ padding: "8px" }}><MiniSparkline scores={s.weekly} dir={dirOf(s.weekly)} /></td>
                   <td style={{ padding: "8px" }}><SignalPill s={s.signal} /></td>
                 </tr>

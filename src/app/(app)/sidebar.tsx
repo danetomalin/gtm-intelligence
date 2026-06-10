@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { agentTooling } from "@/lib/demo-data";
 import {
+  contextForLens,
   filterWorkflowsForLens,
   groupWorkflowsByLayer,
   layerForCode,
-  LENS_LABEL,
-  LENS_OPTIONS,
   outputsForLens,
   type Lens,
 } from "@/lib/persona";
@@ -44,37 +43,12 @@ const SETUP_ITEMS = [
   },
 ];
 
-const LENS_STORAGE_KEY = "throughline:lens";
-
 export function Sidebar() {
   const pathname = usePathname();
-  // SSR-safe default — render "all" until client hydrates, then read the
-  // persisted lens. Avoids a hydration flash by keeping the same default in
-  // both passes; the hydration `useEffect` swaps in the persisted value.
-  const [lens, setLens] = useState<Lens>("all");
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(LENS_STORAGE_KEY);
-      if (stored && (LENS_OPTIONS as string[]).includes(stored)) {
-        setLens(stored as Lens);
-      }
-    } catch {
-      // localStorage unavailable (private mode, server, etc.) — silently fall
-      // back to the default lens.
-    }
-    setHydrated(true);
-  }, []);
-
-  function updateLens(next: Lens) {
-    setLens(next);
-    try {
-      localStorage.setItem(LENS_STORAGE_KEY, next);
-    } catch {
-      // ignore
-    }
-  }
+  // Lens picker removed 2026-06-09 (with the Overview entry) — the sidebar
+  // always renders the full "all" view now. The lens plumbing stays in
+  // persona.ts for when multi-role workspaces come back.
+  const lens: Lens = "all";
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -84,6 +58,7 @@ export function Sidebar() {
   // Pass the unfiltered agentTooling so outputsForLens can rank role
   // dashboards by per-role workflow count when the lens is "all".
   const outputs = useMemo(() => outputsForLens(lens, agentTooling), [lens]);
+  const contextItems = useMemo(() => contextForLens(lens), [lens]);
   const workflows = useMemo(() => {
     // Hide A-layer (Setup) and X-layer (Distribution) from the Workflows
     // section. Both have their own top-level groups in the sidebar — Setup
@@ -119,49 +94,11 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {/* Overview — top-level landing, no group header */}
-        <div>
-          <Link
-            href="/dashboard"
-            aria-current={isActive("/dashboard") ? "page" : undefined}
-            className={cn(
-              "block rounded-md px-3 py-2 text-sm transition",
-              isActive("/dashboard")
-                ? "bg-accent-bg text-accent"
-                : "text-text-muted hover:text-text hover:bg-card-hover/50",
-            )}
-          >
-            <div className="font-medium">Overview</div>
-            <div className="text-[11px] text-text-dim mt-0.5">
-              Exec summary
-            </div>
-          </Link>
-        </div>
-
-        {/* Workspace lens — dropdown + filtered outputs + filtered workflows */}
+        {/* Workspaces — role dashboards (lens picker + Overview removed 2026-06-09) */}
         <div>
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
             Workspace
           </div>
-          <div className="px-2 mb-3">
-            <label className="sr-only" htmlFor="lens-picker">
-              Workspace lens
-            </label>
-            <select
-              id="lens-picker"
-              value={lens}
-              onChange={(e) => updateLens(e.target.value as Lens)}
-              disabled={!hydrated}
-              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-60"
-            >
-              {LENS_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {LENS_LABEL[opt]}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {outputs.length > 0 && (
             <ul className="space-y-0.5 mb-3">
               {outputs.map((item) => (
@@ -262,9 +199,6 @@ export function Sidebar() {
                   )}
                 >
                   <div className="font-medium">{item.name}</div>
-                  <div className="text-[11px] text-text-dim mt-0.5">
-                    {item.hint}
-                  </div>
                 </Link>
               </li>
             ))}
@@ -308,6 +242,40 @@ export function Sidebar() {
                   </li>
                 );
               })}
+            </ul>
+          </div>
+        )}
+
+        {/* Context — brand/category reference pages (moved out of the
+            Workspace outputs per Dane 2026-06-09: these are read-mostly
+            reference surfaces, not role dashboards). */}
+        {contextItems.length > 0 && (
+          <div>
+            <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
+              Context
+            </div>
+            <ul className="space-y-0.5">
+              {contextItems.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={isActive(item.href) ? "page" : undefined}
+                    className={cn(
+                      "block rounded-md px-3 py-2 text-sm transition",
+                      isActive(item.href)
+                        ? "bg-accent-bg text-accent"
+                        : "text-text-muted hover:text-text hover:bg-card-hover/50",
+                    )}
+                  >
+                    <div className="font-medium">{item.name}</div>
+                    {item.hint && (
+                      <div className="text-[11px] text-text-dim mt-0.5">
+                        {item.hint}
+                      </div>
+                    )}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         )}

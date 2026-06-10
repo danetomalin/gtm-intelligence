@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  contextForLens,
   titleToRole,
   WORKSPACE_ROLES,
   ROLE_LABEL,
@@ -165,10 +166,9 @@ describe("filterWorkflowsForLens", () => {
 });
 
 describe("outputsForLens", () => {
-  it("returns the marketing list when lens is marketing", () => {
+  it("returns just the Marketing area when lens is marketing", () => {
     const out = outputsForLens("marketing");
-    expect(out.some((o) => o.href === "/marketing-health")).toBe(true);
-    expect(out.some((o) => o.href === "/positioning")).toBe(true);
+    expect(out).toEqual([expect.objectContaining({ href: "/marketing-health" })]);
   });
 
   it("returns no outputs for out-of-scope sales/product lenses", () => {
@@ -185,9 +185,9 @@ describe("outputsForLens", () => {
   it("merges every role's outputs without duplicates when lens is 'all'", () => {
     const all = outputsForLens("all");
     const hrefs = all.map((o) => o.href);
-    // Each marketing surface present
+    // Each in-scope dashboard present; context pages live in their own section
     expect(hrefs).toContain("/marketing-health");
-    expect(hrefs).toContain("/positioning");
+    expect(hrefs).not.toContain("/positioning");
     // CS area present; out-of-scope dashboards absent
     expect(hrefs).toContain("/customer-health");
     expect(hrefs).not.toContain("/workspace/sales");
@@ -208,20 +208,34 @@ describe("outputsForLens", () => {
     expect(all[1].href).toBe("/marketing-health");
   });
 
-  it("places dashboards before non-dashboard outputs in 'all' view", () => {
+  it("contains only role dashboards in 'all' view (context pages have their own section)", () => {
     const all = outputsForLens("all");
-    const dashboardHrefs = ["/marketing-health", "/customer-health"];
-    const lastDashboardIdx = Math.max(
-      ...dashboardHrefs.map((h) => all.findIndex((o) => o.href === h)),
+    expect(all.map((o) => o.href).sort()).toEqual(
+      ["/customer-health", "/marketing-health"].sort(),
     );
-    const firstExtraIdx = all.findIndex((o) => o.href === "/positioning");
-    expect(firstExtraIdx).toBeGreaterThan(lastDashboardIdx);
   });
 
   it("falls back to WORKSPACE_ROLES order when no workflow list is supplied", () => {
     const all = outputsForLens("all");
     // First dashboard is Marketing (first in WORKSPACE_ROLES)
     expect(all[0].href).toBe("/marketing-health");
+  });
+});
+
+describe("contextForLens", () => {
+  it("shows the three context pages for all and marketing lenses", () => {
+    for (const lens of ["all", "marketing"] as const) {
+      expect(contextForLens(lens).map((o) => o.href)).toEqual([
+        "/market-context",
+        "/brand-voice",
+        "/positioning",
+      ]);
+    }
+  });
+
+  it("hides context pages for non-marketing lenses", () => {
+    expect(contextForLens("customer_success")).toEqual([]);
+    expect(contextForLens("sales")).toEqual([]);
   });
 });
 

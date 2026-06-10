@@ -113,13 +113,6 @@ export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
       href: "/marketing-health",
       hint: "Campaign health + workflows",
     },
-    {
-      name: "Market Context",
-      href: "/market-context",
-      hint: "Category dynamics",
-    },
-    { name: "Brand Voice", href: "/brand-voice", hint: "Thesis + pillars" },
-    { name: "Positioning", href: "/positioning", hint: "5-element framework" },
   ],
   sales: [],
   product: [],
@@ -132,6 +125,19 @@ export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
   ],
   admin: [],
 };
+
+// Context pages — brand/category reference surfaces (sidebar section of
+// their own below Distribution, per Dane 2026-06-09). Marketing-sourced
+// today, so they show for the "all" and "marketing" lenses.
+export const CONTEXT_ITEMS: WorkspaceOutput[] = [
+  { name: "Market Context", href: "/market-context", hint: "Category dynamics" },
+  { name: "Brand Voice", href: "/brand-voice", hint: "Thesis + pillars" },
+  { name: "Positioning", href: "/positioning", hint: "5-element framework" },
+];
+
+export function contextForLens(lens: Lens): WorkspaceOutput[] {
+  return lens === "all" || lens === "marketing" ? CONTEXT_ITEMS : [];
+}
 
 // Filters a workflow list to those tagged with `lensRole`. When the lens is
 // "all", every workflow is returned. Stable iteration order: source list order.
