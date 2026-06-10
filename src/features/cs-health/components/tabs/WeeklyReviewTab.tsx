@@ -4,7 +4,8 @@
 // metric-level trends by segment → priority actions → SMB cohort.
 
 import { useState } from "react";
-import { DATA, type TrendMetric } from "@/features/cs-health/lib/generateData";
+import type { TrendMetric } from "@/features/cs-health/lib/generateData";
+import { usePortfolio } from "@/features/cs-health/components/PortfolioProvider";
 import type { ScoredAccount } from "@/features/cs-health/lib/types";
 import { BAND_COLORS, BandPill, PriorityPill, SectionLabel, StatCard, formatARR } from "@/features/cs-health/components/ui";
 
@@ -75,9 +76,10 @@ function MetricSection({ sectionLabel, items, color }: { sectionLabel: string; i
 }
 
 export default function WeeklyReviewTab({ allScored, stats }: { allScored: ScoredAccount[]; stats: Stats }) {
+  const DATA_P = usePortfolio();
   const [activeSeg, setActiveSeg] = useState<"ENT" | "MM" | "SMB">("ENT");
   const segLabel = { ENT: "Enterprise", MM: "Mid-Market", SMB: "SMB" };
-  const segTrends = DATA.aggregateTrends[activeSeg];
+  const segTrends = DATA_P.aggregateTrends[activeSeg];
   const sorted = (Object.entries(segTrends) as [string, TrendMetric][]).sort(
     (a, b) => (SIGNAL_ORDER[a[1].signal] ?? 3) - (SIGNAL_ORDER[b[1].signal] ?? 3)
   );
@@ -87,7 +89,7 @@ export default function WeeklyReviewTab({ allScored, stats }: { allScored: Score
   const stables = sorted.filter(([, m]) => m.signal === "stable");
 
   // Cross-segment signal counts for the summary strip
-  const allSignals = Object.values(DATA.aggregateTrends).flatMap((seg) => Object.values(seg).map((m) => m.signal));
+  const allSignals = Object.values(DATA_P.aggregateTrends).flatMap((seg) => Object.values(seg).map((m) => m.signal));
   const signalCount = (sig: string) => allSignals.filter((s) => s === sig).length;
 
   return (
@@ -105,7 +107,7 @@ export default function WeeklyReviewTab({ allScored, stats }: { allScored: Score
         {[
           { label: "Enterprise", bands: stats.entBands, total: 10 },
           { label: "Mid-Market", bands: stats.mmBands, total: 30 },
-          { label: "SMB", bands: { Healthy: DATA.smbCohort.healthy, "At Risk": DATA.smbCohort.atRisk, Critical: DATA.smbCohort.critical }, total: DATA.smbCohort.total },
+          { label: "SMB", bands: { Healthy: DATA_P.smbCohort.healthy, "At Risk": DATA_P.smbCohort.atRisk, Critical: DATA_P.smbCohort.critical }, total: DATA_P.smbCohort.total },
         ].map((seg) => (
           <div key={seg.label} style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", padding: "18px 20px" }}>
             <SectionLabel style={{ marginBottom: 14, fontWeight: 600 }}>{seg.label} — Health Distribution</SectionLabel>
@@ -176,11 +178,11 @@ export default function WeeklyReviewTab({ allScored, stats }: { allScored: Score
       <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", padding: "18px 20px" }}>
         <SectionLabel style={{ fontWeight: 600 }}>SMB Cohort — Aggregate View</SectionLabel>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 14 }}>
-          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>Total Accounts</div><div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg-primary)" }}>{DATA.smbCohort.total}</div></div>
-          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>ARR at Risk</div><div style={{ fontSize: 20, fontWeight: 700, color: "hsl(var(--destructive))" }}>{formatARR(DATA.smbCohort.arrAtRisk)}</div></div>
-          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>Avg Health Score</div><div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg-primary)" }}>{DATA.smbCohort.avgScore}</div></div>
+          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>Total Accounts</div><div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg-primary)" }}>{DATA_P.smbCohort.total}</div></div>
+          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>ARR at Risk</div><div style={{ fontSize: 20, fontWeight: 700, color: "hsl(var(--destructive))" }}>{formatARR(DATA_P.smbCohort.arrAtRisk)}</div></div>
+          <div><div style={{ fontSize: 11, color: "var(--fg-secondary)" }}>Avg Health Score</div><div style={{ fontSize: 20, fontWeight: 700, color: "var(--fg-primary)" }}>{DATA_P.smbCohort.avgScore}</div></div>
         </div>
-        {DATA.smbCohort.topFlags.map((f, i) => (
+        {DATA_P.smbCohort.topFlags.map((f, i) => (
           <div key={i} style={{ fontSize: 11, color: "var(--fg-secondary)", padding: "5px 0", borderTop: "1px solid hsl(var(--muted))", display: "flex", gap: 8 }}>
             <span style={{ color: "hsl(var(--warning))", fontWeight: 700 }}>!</span> {f}
           </div>

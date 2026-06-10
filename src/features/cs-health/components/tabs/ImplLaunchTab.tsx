@@ -2,7 +2,8 @@
 // Impl & Launch — milestone-level view per onboarding account.
 
 import { useState } from "react";
-import { DATA, type ImplAccount } from "@/features/cs-health/lib/generateData";
+import type { ImplAccount } from "@/features/cs-health/lib/generateData";
+import { usePortfolio } from "@/features/cs-health/components/PortfolioProvider";
 import { SectionLabel, StatCard, formatARR } from "@/features/cs-health/components/ui";
 
 const MS_STATUS: Record<string, { color: string; bg: string; label: string }> = {
@@ -14,7 +15,8 @@ const MS_STATUS: Record<string, { color: string; bg: string; label: string }> = 
 
 export default function ImplLaunchTab() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const accounts = DATA.implLaunchAccounts;
+  const DATA_P = usePortfolio();
+  const accounts = DATA_P.implLaunchAccounts;
   const implAccounts = accounts.filter((a) => a.stage === "Implementation");
   const launchAccounts = accounts.filter((a) => a.stage === "Launch");
 

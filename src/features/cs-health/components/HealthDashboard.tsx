@@ -10,8 +10,9 @@
 // (floating panel) when BYOK plumbing goes Throughline-wide.
 
 import { useMemo, useState } from "react";
-import { DATA } from "@/features/cs-health/lib/generateData";
+import { DATA, type PortfolioData } from "@/features/cs-health/lib/generateData";
 import { buildScoredAccounts } from "@/features/cs-health/lib/scoringEngine";
+import { PortfolioProvider } from "@/features/cs-health/components/PortfolioProvider";
 import WeeklyReviewTab from "@/features/cs-health/components/tabs/WeeklyReviewTab";
 import ImplLaunchTab from "@/features/cs-health/components/tabs/ImplLaunchTab";
 import AccountsTab from "@/features/cs-health/components/tabs/AccountsTab";
@@ -32,19 +33,19 @@ const TABS = [
   "ask jon",
 ] as const;
 
-export default function HealthDashboard() {
+export default function HealthDashboard({ data = DATA }: { data?: PortfolioData }) {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("weekly review");
 
   const allScored = useMemo(
-    () => buildScoredAccounts([...DATA.enterprise, ...DATA.midmarket]),
-    []
+    () => buildScoredAccounts([...data.enterprise, ...data.midmarket]),
+    [data]
   );
 
   const stats = useMemo(() => {
     const ent = allScored.filter((a) => a.segment === "ENT");
     const mm = allScored.filter((a) => a.segment === "MM");
-    const arrAtRisk = allScored.reduce((s, a) => s + (a.scoring.band !== "Healthy" ? a.arr : 0), 0) + DATA.smbCohort.arrAtRisk;
-    const totalARR = allScored.reduce((s, a) => s + a.arr, 0) + DATA.smbCohort.totalARR;
+    const arrAtRisk = allScored.reduce((s, a) => s + (a.scoring.band !== "Healthy" ? a.arr : 0), 0) + data.smbCohort.arrAtRisk;
+    const totalARR = allScored.reduce((s, a) => s + a.arr, 0) + data.smbCohort.totalARR;
     const renewalAtRisk = allScored.filter((a) => a.stage === "Renewal Window" && a.scoring.band !== "Healthy");
     const countBands = (list: typeof allScored) => ({
       Healthy: list.filter((a) => a.scoring.band === "Healthy").length,
@@ -60,7 +61,7 @@ export default function HealthDashboard() {
       entBands: countBands(ent),
       mmBands: countBands(mm),
     };
-  }, [allScored]);
+  }, [allScored, data]);
 
   const tabStyle = (t: string): React.CSSProperties => ({
     padding: "8px 14px",
@@ -79,6 +80,7 @@ export default function HealthDashboard() {
   });
 
   return (
+    <PortfolioProvider data={data}>
     <div>
       {/* Horizontal tab bar */}
       <nav
@@ -109,8 +111,9 @@ export default function HealthDashboard() {
 
       <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid hsl(var(--border))", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--fg-tertiary)", flexWrap: "wrap", gap: 8 }}>
         <span>Halcyon portfolio · Customer Health · VAR model v2.0</span>
-        <span>generateData() → Supabase reads in Phase B · scoringEngine() is a pure function</span>
+        <span>Supabase-backed (CS_HEALTH_DATA_SOURCE=mock to fall back) · scoringEngine() is a pure function</span>
       </div>
     </div>
+    </PortfolioProvider>
   );
 }

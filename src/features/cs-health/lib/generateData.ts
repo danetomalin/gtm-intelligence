@@ -317,3 +317,5 @@ export function generateData() {
 }
 
 export const DATA = generateData();
+
+export type PortfolioData = ReturnType<typeof generateData>;

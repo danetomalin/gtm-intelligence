@@ -5,9 +5,9 @@
 // ============================================================
 
 import type { ScoredAccount } from "./types";
-import { DATA } from "./generateData";
+import { DATA, type PortfolioData } from "./generateData";
 
-export function buildSystemPrompt(allScored: ScoredAccount[]): string {
+export function buildSystemPrompt(allScored: ScoredAccount[], data: PortfolioData = DATA): string {
   const lines: string[] = [];
 
   lines.push(
@@ -28,7 +28,7 @@ export function buildSystemPrompt(allScored: ScoredAccount[]): string {
   }
 
   // SMB cohort
-  const smb = DATA.smbCohort;
+  const smb = data.smbCohort;
   lines.push(
     "",
     `SMB COHORT (aggregate): ${smb.total} accounts, ${smb.healthy} healthy / ${smb.atRisk} at risk / ${smb.critical} critical, avg score ${smb.avgScore}, $${Math.round(smb.totalARR / 1000)}K total ARR, $${Math.round(smb.arrAtRisk / 1000)}K at risk. Flags: ${smb.topFlags.join("; ")}`
@@ -36,13 +36,13 @@ export function buildSystemPrompt(allScored: ScoredAccount[]): string {
 
   // Churn history
   lines.push("", "CHURN EVENTS (TTM — ground truth for the model):");
-  for (const e of DATA.churnEvents) {
+  for (const e of data.churnEvents) {
     lines.push(`${e.name} (${e.segment}, $${Math.round(e.arr / 1000)}K, ${e.date}): ${e.primaryReason}${e.secondaryReason ? `+${e.secondaryReason}` : ""}. Health 90/60/30d prior: ${e.healthScore90d}/${e.healthScore60d}/${e.healthScore30d}. Learnings: ${e.learnings}`);
   }
 
   // Segment trend signals
   lines.push("", "AGGREGATE TREND SIGNALS (4-week):");
-  for (const [seg, metrics] of Object.entries(DATA.aggregateTrends)) {
+  for (const [seg, metrics] of Object.entries(data.aggregateTrends)) {
     const flagged = Object.values(metrics).filter((m) => m.signal !== "stable");
     for (const m of flagged) {
       lines.push(`${seg} ${m.label}: ${m.signal.toUpperCase()} — ${m.note}`);

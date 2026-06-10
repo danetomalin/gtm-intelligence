@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScoredAccount } from "@/features/cs-health/lib/types";
 import { buildSystemPrompt, SUGGESTED_PROMPTS } from "@/features/cs-health/lib/chatContext";
+import { usePortfolio } from "@/features/cs-health/components/PortfolioProvider";
 import { callLLM, type LlmMessage } from "@/features/cs-health/lib/llmClient";
 import { isConfigured, loadApiConfig } from "@/features/cs-health/lib/apiConfig";
 
@@ -14,6 +15,7 @@ interface ChatMessage extends LlmMessage {
 }
 
 export default function AskTab({ allScored }: { allScored: ScoredAccount[] }) {
+  const portfolio = usePortfolio();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,7 +23,7 @@ export default function AskTab({ allScored }: { allScored: ScoredAccount[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const systemPrompt = useMemo(() => buildSystemPrompt(allScored), [allScored]);
+  const systemPrompt = useMemo(() => buildSystemPrompt(allScored, portfolio), [allScored, portfolio]);
 
   useEffect(() => {
     setKeyConfigured(isConfigured(loadApiConfig()));

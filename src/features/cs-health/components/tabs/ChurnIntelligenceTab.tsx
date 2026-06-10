@@ -4,7 +4,8 @@
 // Churn reasons are the ground-truth label set for the optimization loop.
 
 import { useState } from "react";
-import { DATA, type ChurnEvent } from "@/features/cs-health/lib/generateData";
+import type { ChurnEvent } from "@/features/cs-health/lib/generateData";
+import { usePortfolio } from "@/features/cs-health/components/PortfolioProvider";
 import { SectionLabel, SortHeader, StatCard, formatARR, sortRows, useSort } from "@/features/cs-health/components/ui";
 
 type ChurnSortKey = "name" | "segment" | "arr" | "reason" | "h90" | "date" | "signals";
@@ -32,24 +33,25 @@ const REASON_COLORS: Record<string, string> = { "CR-01": "hsl(var(--destructive)
 const REASON_LABELS: Record<string, string> = { "CR-01": "Value Not Realized", "CR-02": "Product Gap", "CR-03": "Champion Loss", "CR-04": "Competitive", "CR-05": "Budget/Economic", "CR-06": "Impl Failure", "CR-07": "Strategic Change" };
 
 export default function ChurnIntelligenceTab() {
+  const DATA_P = usePortfolio();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { sortKey, sortDir, toggle } = useSort<ChurnSortKey>("date", "desc");
-  const totalArrLost = DATA.churnReasonSummary.reduce((s, r) => s + r.arrLost, 0);
-  const modelCaughtCount = DATA.churnEvents.filter((e) => e.healthScore90d < 65).length;
-  const sortedEvents = sortRows(DATA.churnEvents, CHURN_SORT_VALUE[sortKey], sortDir);
+  const totalArrLost = DATA_P.churnReasonSummary.reduce((s, r) => s + r.arrLost, 0);
+  const modelCaughtCount = DATA_P.churnEvents.filter((e) => e.healthScore90d < 65).length;
+  const sortedEvents = sortRows(DATA_P.churnEvents, CHURN_SORT_VALUE[sortKey], sortDir);
 
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard label="Churn Events (TTM)" value={DATA.churnEvents.length} sub="All segments" color="hsl(var(--destructive))" />
+        <StatCard label="Churn Events (TTM)" value={DATA_P.churnEvents.length} sub="All segments" color="hsl(var(--destructive))" />
         <StatCard label="ARR Lost (TTM)" value={formatARR(totalArrLost)} sub="Closed churn + contraction" color="hsl(359 75% 42%)" />
-        <StatCard label="Model Caught (90d)" value={`${modelCaughtCount}/${DATA.churnEvents.length}`} sub="Health score below 65 at 90d prior" color="hsl(var(--warning))" />
+        <StatCard label="Model Caught (90d)" value={`${modelCaughtCount}/${DATA_P.churnEvents.length}`} sub="Health score below 65 at 90d prior" color="hsl(var(--warning))" />
         <StatCard label="Top Driver" value="CR-01" sub="Value Not Realized — 2 events, $400K" color="#7c3aed" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
         <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", padding: "18px 20px" }}>
           <SectionLabel style={{ marginBottom: 14 }}>Churn by Reason Code (TTM)</SectionLabel>
-          {DATA.churnReasonSummary.map((r) => (
+          {DATA_P.churnReasonSummary.map((r) => (
             <div key={r.code} style={{ marginBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--fg-primary)" }}>
@@ -63,7 +65,7 @@ export default function ChurnIntelligenceTab() {
         </div>
         <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", padding: "18px 20px" }}>
           <SectionLabel style={{ marginBottom: 14 }}>Model Signal Quality — Health Score at 90d Prior</SectionLabel>
-          {DATA.churnEvents.map((e) => {
+          {DATA_P.churnEvents.map((e) => {
             const caught = e.healthScore90d < 65;
             return (
               <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid hsl(var(--muted))" }}>
