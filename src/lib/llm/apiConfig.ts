@@ -33,30 +33,34 @@ export interface CredentialStore {
   assignments: Record<string, string>;
 }
 
-export const PROVIDER_PRESETS: Record<Provider, { label: string; defaultModel: string; defaultBaseUrl: string; keyHint: string }> = {
+export const PROVIDER_PRESETS: Record<Provider, { label: string; defaultModel: string; defaultBaseUrl: string; keyHint: string; models: string[] }> = {
   google: {
     label: "Google",
     defaultModel: "gemini-2.5-pro",
     defaultBaseUrl: "https://generativelanguage.googleapis.com",
     keyHint: "AIza...",
+    models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
   },
   anthropic: {
     label: "Anthropic",
     defaultModel: "claude-sonnet-4-6",
     defaultBaseUrl: "https://api.anthropic.com",
     keyHint: "sk-ant-...",
+    models: ["claude-sonnet-4-6", "claude-opus-4-8", "claude-haiku-4-5"],
   },
   openai: {
     label: "OpenAI",
     defaultModel: "gpt-4o",
     defaultBaseUrl: "https://api.openai.com",
     keyHint: "sk-...",
+    models: ["gpt-4o", "gpt-4o-mini", "o3", "o4-mini"],
   },
   opensource: {
     label: "Open Source",
     defaultModel: "",
     defaultBaseUrl: "",
     keyHint: "your API key",
+    models: [],
   },
 };
 

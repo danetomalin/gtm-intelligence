@@ -210,13 +210,44 @@ export function CredentialsSection() {
             </label>
             <label className="block">
               <span className="text-xs text-text-muted">Model</span>
-              <input
-                type="text"
-                value={draft.model}
-                placeholder={preset.defaultModel || "model id"}
-                onChange={(e) => setDraft((d) => d && { ...d, model: e.target.value })}
-                className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent"
-              />
+              {preset.models.length > 0 ? (
+                <>
+                  <select
+                    value={preset.models.includes(draft.model) ? draft.model : "__custom__"}
+                    onChange={(e) =>
+                      setDraft((d) => d && {
+                        ...d,
+                        model: e.target.value === "__custom__" ? "" : e.target.value,
+                      })
+                    }
+                    className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    {preset.models.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                    <option value="__custom__">Custom model id…</option>
+                  </select>
+                  {!preset.models.includes(draft.model) && (
+                    <input
+                      type="text"
+                      value={draft.model}
+                      placeholder="model id (e.g. a deep-research or preview model)"
+                      onChange={(e) => setDraft((d) => d && { ...d, model: e.target.value })}
+                      className="mt-2 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  )}
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={draft.model}
+                  placeholder="model id"
+                  onChange={(e) => setDraft((d) => d && { ...d, model: e.target.value })}
+                  className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              )}
             </label>
             {draft.provider === "opensource" && (
               <label className="block">
