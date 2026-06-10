@@ -29,10 +29,57 @@ describe("extractJson", () => {
 });
 
 describe("workflow registry", () => {
-  it("registers tranches 1 + 2", () => {
+  it("registers tranches 1 + 2 + 3", () => {
     expect(Object.keys(WORKFLOW_REGISTRY).sort()).toEqual([
-      "D-MG", "R-CI", "R-MS", "R-PP", "R-WL", "S-RM",
+      "D-MG", "R-CE", "R-CF", "R-CI", "R-CR", "R-EV", "R-MS", "R-PF",
+      "R-PP", "R-VC", "R-WL", "S-AR", "S-BC", "S-CP", "S-DB", "S-IC",
+      "S-LP", "S-PO", "S-RM",
     ]);
+  });
+
+  it("S-PO requires exactly five elements, one per type", () => {
+    const el = (t: string) => ({
+      element_type: t,
+      content: "Deputy is the workforce management platform for compliance-heavy hourly teams.",
+      evidence: "Dossiers show SMB rivals lack compliance depth.",
+      last_change_reason: "initial version",
+    });
+    const five = ["competitive_alternatives", "distinct_capabilities", "differentiated_value", "best_fit_accounts", "market_category"].map(el);
+    expect(() => WORKFLOW_REGISTRY["S-PO"].outputSchema.parse({ elements: five })).not.toThrow();
+    expect(() => WORKFLOW_REGISTRY["S-PO"].outputSchema.parse({ elements: five.slice(0, 4) })).toThrow();
+  });
+
+  it("S-DB brief shape matches the daily_briefs focus_items contract", () => {
+    const good = {
+      headline: "Two approvals are blocking the launch chain.",
+      focus_items: [
+        { rank: 1, title: "Approve the R-CR cohort", why: "Gates the ICP chain.", action: "Open Review Queue", related_artifact: null },
+        { rank: 2, title: "High-impact signal on Homebase", why: "Bearish 8/10.", action: "Read the signal", related_artifact: null },
+        { rank: 3, title: "Stale battlecards", why: "Dossier newer than card.", action: "Run S-BC", related_artifact: null },
+      ],
+    };
+    expect(() => WORKFLOW_REGISTRY["S-DB"].outputSchema.parse(good)).not.toThrow();
+    expect(() => WORKFLOW_REGISTRY["S-DB"].outputSchema.parse({ ...good, focus_items: good.focus_items.slice(0, 2) })).toThrow();
+  });
+
+  it("ICP chain specs declare HITL-gated writes and S-IC requires anti-ICP", () => {
+    expect(WORKFLOW_REGISTRY["R-CR"]).toBeDefined();
+    expect(WORKFLOW_REGISTRY["R-CE"].buildSearchQueries).toBeDefined();
+    const icp = WORKFLOW_REGISTRY["S-IC"].outputSchema;
+    const base = {
+      segment_name: "Multi-location compliance-heavy operators",
+      one_line_definition: "Operators of 20+ hourly-workforce locations in regulated scheduling jurisdictions.",
+      firmographics: { industries: ["retail"] },
+      technographics: { uses: [] },
+      trigger_signals: [{ event: "fair-workweek law adopted" }],
+      primary_pains: [{ rank: 1, pain: "compliance risk" }, { rank: 2, pain: "schedule chaos" }],
+      buying_committee: [{ role: "VP Ops" }],
+      typical_sales_cycle: "45-90 days",
+      anti_icp: [{ description: "single-location shops", why_excluded: "no compliance pressure", observable_signal: "1 location" }],
+      evidence_basis: "Cohort v1 (pending), enrichment v1, VoC v1.",
+    };
+    expect(() => icp.parse(base)).not.toThrow();
+    expect(() => icp.parse({ ...base, anti_icp: [] })).toThrow();
   });
 
   it("research-tier specs all declare search queries and valid sample outputs", () => {
