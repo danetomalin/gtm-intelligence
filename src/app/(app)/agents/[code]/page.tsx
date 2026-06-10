@@ -10,7 +10,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID, DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { LIVE_AGENTS, normalizeAgentCode } from "@/lib/agent-config";
 import { RunButton } from "./run-button";
-import { ConfigureWorkflow } from "./configure-workflow";
+import { WorkflowConfigStatus } from "./workflow-config-status";
 import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
 import { DossierCard, type Dossier } from "./dossier-card";
@@ -783,10 +783,7 @@ export default async function AgentPage({
             </button>
           )}
         </div>
-        <ConfigureWorkflow
-          agentCode={agent.code}
-          defaultInstructions={agent.purpose}
-        />
+        <WorkflowConfigStatus agentCode={agent.code} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
