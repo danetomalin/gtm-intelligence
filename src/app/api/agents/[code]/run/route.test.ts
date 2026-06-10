@@ -21,6 +21,18 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
+// Pin these tests to the n8n webhook path regardless of how many
+// workflows have migrated to the native registry — the native engine
+// and cs-runner have their own coverage.
+vi.mock("@/lib/workflows/registry", () => ({
+  WORKFLOW_REGISTRY: {},
+  isRegistryCode: () => false,
+}));
+vi.mock("@/lib/workflows/cs-runner", () => ({
+  isNativeCsCode: () => false,
+  runNativeCsWorkflow: vi.fn(),
+}));
+
 import { POST } from "./route";
 import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 

@@ -29,8 +29,50 @@ describe("extractJson", () => {
 });
 
 describe("workflow registry", () => {
-  it("registers the tranche-1 pilots", () => {
-    expect(Object.keys(WORKFLOW_REGISTRY).sort()).toEqual(["D-MG", "R-MS"]);
+  it("registers tranches 1 + 2", () => {
+    expect(Object.keys(WORKFLOW_REGISTRY).sort()).toEqual([
+      "D-MG", "R-CI", "R-MS", "R-PP", "R-WL", "S-RM",
+    ]);
+  });
+
+  it("research-tier specs all declare search queries and valid sample outputs", () => {
+    const dossier = {
+      dossiers: [{
+        competitor_name: "When I Work",
+        strategic_move: "Launched AI auto-scheduling for SMB teams.",
+        messaging_drift: "first dossier — baseline",
+        pricing_intelligence: "Per-user pricing holding at $2.50/user.",
+        product_signals: "AI scheduling beta announced.",
+        talent_signals: "Hiring ML engineers.",
+        competitive_landmines: "1. How do they handle fair-workweek compliance? 2. What is the audit trail? 3. Multi-location support?",
+        risk_assessment: "HIGH",
+        risk_justification: "Direct SMB pressure.",
+        sources: "https://example.com/a, https://example.com/b",
+      }],
+    };
+    expect(() => WORKFLOW_REGISTRY["R-CI"].outputSchema.parse(dossier)).not.toThrow();
+    expect(WORKFLOW_REGISTRY["R-CI"].buildSearchQueries).toBeDefined();
+    expect(WORKFLOW_REGISTRY["R-PP"].buildSearchQueries).toBeDefined();
+    expect(WORKFLOW_REGISTRY["R-WL"].buildSearchQueries).toBeDefined();
+    expect(WORKFLOW_REGISTRY["S-RM"].buildSearchQueries).toBeDefined();
+  });
+
+  it("S-RM enforces UVFV score bounds and verdict enums", () => {
+    const item = {
+      title: "Demand-based labor forecasting v2",
+      category: "scheduling AI",
+      summary: "Forecast accuracy gap vs Legion.",
+      evidence: "G2 reviews cite forecast misses; Legion ships v3.",
+      usable_score: 7, usable_rationale: "Familiar UX pattern.",
+      valuable_score: 8, valuable_rationale: "Cited in churn reasons.",
+      feasible_score: 6, feasible_rationale: "Builds on existing pipeline.",
+      viable_score: 7, viable_rationale: "Enterprise pull.",
+      recommendation: "build", priority: "high",
+      tags: "forecasting,ml", sources: "https://example.com",
+    };
+    expect(() => WORKFLOW_REGISTRY["S-RM"].outputSchema.parse({ items: [item, item] })).not.toThrow();
+    expect(() => WORKFLOW_REGISTRY["S-RM"].outputSchema.parse({ items: [{ ...item, usable_score: 11 }, item] })).toThrow();
+    expect(() => WORKFLOW_REGISTRY["S-RM"].outputSchema.parse({ items: [{ ...item, recommendation: "ship" }, item] })).toThrow();
   });
 
   it("R-MS validates a well-formed signal set and rejects junk", () => {

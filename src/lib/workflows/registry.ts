@@ -10,6 +10,7 @@
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
+import { RESEARCH_SPECS } from "./registry-research";
 
 async function brandLine(admin: SupabaseClient, ids: WorkflowIds): Promise<string> {
   const { data } = await admin
@@ -164,6 +165,7 @@ const dmg: WorkflowSpec<typeof contentSchema> = {
 export const WORKFLOW_REGISTRY: Record<string, WorkflowSpec<z.ZodTypeAny>> = {
   "R-MS": rms as WorkflowSpec<z.ZodTypeAny>,
   "D-MG": dmg as WorkflowSpec<z.ZodTypeAny>,
+  ...RESEARCH_SPECS, // tranche 2: R-CI, R-PP, R-WL, S-RM
 };
 
 export function isRegistryCode(code: string): boolean {

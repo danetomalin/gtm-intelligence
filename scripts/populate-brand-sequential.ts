@@ -27,7 +27,7 @@ const PAUSE_S = Number(process.env.PAUSE_S ?? 60);
 const RUN_TIMEOUT_S = 300;
 
 // Codes that execute natively and accept BYOK/search headers.
-const NATIVE_CODES = new Set(["D-QB", "D-RT", "D-HP", "D-XP", "R-MS", "D-MG"]);
+const NATIVE_CODES = new Set(["D-QB", "D-RT", "D-HP", "D-XP", "R-MS", "D-MG", "R-CI", "R-PP", "R-WL", "S-RM"]);
 
 const sleep = (s: number) => new Promise((r) => setTimeout(r, s * 1000));
 
