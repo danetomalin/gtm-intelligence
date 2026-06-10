@@ -11,6 +11,7 @@ import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
 import { isNativeCsCode, runNativeCsWorkflow } from "@/lib/workflows/cs-runner";
 import { runWorkflowSpec } from "@/lib/workflows/engine";
 import { WORKFLOW_REGISTRY, isRegistryCode } from "@/lib/workflows/registry";
+import { isDistributionCode, runDistribution } from "@/lib/workflows/distribution-runner";
 
 // Native runs execute the LLM call inside this function — keep it alive.
 export const maxDuration = 60;
@@ -25,6 +26,61 @@ export async function POST(
   const { code: rawCode } = await params;
   // Canonicalize. Accepts new codes ("R-CI", "r-ci") and legacy A1–A8.
   const code = normalizeAgentCode(rawCode);
+
+  // ── A0 is form-driven, not an agent run: brands are created through
+  // Setup → New brand (/onboarding). Nothing to execute.
+  if (code === "A0") {
+    return NextResponse.json(
+      { error: "A0 is form-driven — create brands via Setup → New brand. No agent run needed." },
+      { status: 400 },
+    );
+  }
+
+  // ── Native path: distribution adapters (deterministic mock sends,
+  // no LLM). Optional extras: { artifactTable, artifactId }.
+  if (code && isDistributionCode(code)) {
+    let extras: { artifactTable?: string; artifactId?: string } = {};
+    if (request.headers.get("content-type")?.includes("application/json")) {
+      try {
+        const body = await request.json();
+        if (body && typeof body === "object") extras = body as typeof extras;
+      } catch {
+        // empty body is fine
+      }
+    }
+    const admin = await createAdminClient();
+    const { data: run, error: runErr } = await admin
+      .from("run_history")
+      .insert({
+        organization_id: DEMO_TENANT_ID,
+        brand_id: DEMO_BRAND_ID,
+        agent_code: code,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    if (runErr || !run) {
+      return NextResponse.json({ error: runErr?.message ?? "Failed to create run row" }, { status: 500 });
+    }
+    let result: Awaited<ReturnType<typeof runDistribution>>;
+    try {
+      result = await runDistribution(admin, code, extras);
+    } catch (err) {
+      result = { ok: false, error: err instanceof Error ? err.message : "Adapter failure", status: 500 };
+    }
+    await admin
+      .from("run_history")
+      .update({
+        status: result.ok ? "success" : "error",
+        finished_at: new Date().toISOString(),
+        ...(result.ok ? {} : { error_message: result.error }),
+      })
+      .eq("id", run.id);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 502 });
+    }
+    return NextResponse.json({ runId: run.id, native: true, summary: result.summary });
+  }
 
   // ── Native path (n8n migration): registry workflows run as Vercel
   // code through the generic engine. Credentials + optional Tavily key

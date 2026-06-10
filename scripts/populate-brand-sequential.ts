@@ -8,11 +8,9 @@
 // Run:  node_modules/.bin/jiti scripts/populate-brand-sequential.ts
 // Args: CODES="R-CI,R-MS" PAUSE_S=60 jiti scripts/populate-brand-sequential.ts
 //
-// Provider note: n8n-backed workflows execute on n8n's internal
-// credentials (Gemini) — the pause is what protects them. Native
-// workflows (D-QB/D-RT/D-HP/D-XP) take BYOK headers; supply
-// LLM_PROVIDER / LLM_KEY / LLM_MODEL env vars to run those here,
-// or trigger them from the browser where Settings assignments live.
+// All workflows are native now. Supply LLM_PROVIDER / LLM_KEY /
+// LLM_MODEL (+ TAVILY_KEY for research codes) env vars, or trigger
+// from the browser where the Settings credential assignments live.
 // ============================================================
 
 const BASE_URL = process.env.APP_URL ?? "https://gtm-intelligence-blush.vercel.app";
@@ -26,11 +24,12 @@ const CODES = (process.env.CODES ?? DEFAULT_CODES.join(","))
 const PAUSE_S = Number(process.env.PAUSE_S ?? 60);
 const RUN_TIMEOUT_S = 300;
 
-// Codes that execute natively and accept BYOK/search headers.
+// Every workflow now executes natively — send BYOK/search headers to all.
 const NATIVE_CODES = new Set([
   "D-QB", "D-RT", "D-HP", "D-XP", "R-MS", "D-MG", "R-CI", "R-PP", "R-WL", "S-RM",
   "S-PO", "S-BC", "R-CF", "R-PF", "R-EV", "S-AR", "S-LP", "S-CP", "S-DB",
   "R-CR", "R-CE", "R-VC", "S-IC",
+  "D-SN", "D-CN", "D-OB", "D-WW", "R-BR", "X-EM", "X-LI", "X-OR", "X-AP",
 ]);
 
 const sleep = (s: number) => new Promise((r) => setTimeout(r, s * 1000));

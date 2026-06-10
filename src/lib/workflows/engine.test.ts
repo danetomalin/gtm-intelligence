@@ -29,12 +29,50 @@ describe("extractJson", () => {
 });
 
 describe("workflow registry", () => {
-  it("registers tranches 1 + 2 + 3", () => {
+  it("registers all LLM workflows (tranches 1-4 + R-BR)", () => {
     expect(Object.keys(WORKFLOW_REGISTRY).sort()).toEqual([
-      "D-MG", "R-CE", "R-CF", "R-CI", "R-CR", "R-EV", "R-MS", "R-PF",
-      "R-PP", "R-VC", "R-WL", "S-AR", "S-BC", "S-CP", "S-DB", "S-IC",
-      "S-LP", "S-PO", "S-RM",
+      "D-CN", "D-MG", "D-OB", "D-SN", "D-WW", "R-BR", "R-CE", "R-CF",
+      "R-CI", "R-CR", "R-EV", "R-MS", "R-PF", "R-PP", "R-VC", "R-WL",
+      "S-AR", "S-BC", "S-CP", "S-DB", "S-IC", "S-LP", "S-PO", "S-RM",
     ]);
+  });
+
+  it("R-BR validates a multi-table brand-code payload", () => {
+    const good = {
+      voice_rules: [
+        { rule_type: "tone", rule: "Plainspoken and operational; no hype.", rationale: "Ops buyers distrust marketing language." },
+        { rule_type: "banned_phrase", rule: "game-changing", rationale: "Hype." },
+        { rule_type: "preferred_term", rule: "team members (not 'resources')", rationale: "Respectful of hourly workers." },
+      ],
+      proof_points: [
+        { proof_type: "third_party_validation", claim: "Rated 4.6/5 on G2 for scheduling", attribution: "unverified — from research" },
+        { proof_type: "metric", claim: "Customers report multi-hour weekly admin savings", attribution: "unverified — from research" },
+      ],
+      capabilities: [
+        { capability_name: "Demand-based scheduling", category: "scheduling", feature_description: "Forecast-driven shift creation", buyer_benefit: "Lower labor cost", competitive_gap: "SMB rivals lack forecasting", status: "ga" },
+        { capability_name: "Fair-workweek compliance", category: "compliance", feature_description: "Jurisdiction rule engine", buyer_benefit: "Avoid penalties", competitive_gap: "Differentiator vs Homebase", status: "ga" },
+        { capability_name: "Time & attendance", category: "time", feature_description: "Clock-in with verification", buyer_benefit: "Accurate payroll", competitive_gap: "Table stakes", status: "ga" },
+      ],
+      personas: [
+        { persona_name: "Multi-location ops lead", title: "VP Operations", segment: "mid-market", pain_points: "Schedule chaos across sites", goals: "Predictable labor cost" },
+        { persona_name: "Franchise owner", title: "Owner/Operator", segment: "SMB", pain_points: "Compliance exposure", goals: "Stay out of trouble, save time" },
+      ],
+    };
+    expect(() => WORKFLOW_REGISTRY["R-BR"].outputSchema.parse(good)).not.toThrow();
+    expect(() => WORKFLOW_REGISTRY["R-BR"].outputSchema.parse({ ...good, voice_rules: good.voice_rules.slice(0, 2) })).toThrow();
+  });
+
+  it("D-CN demands all three counter-narrative surfaces", () => {
+    const good = {
+      competitor_named: "Homebase",
+      rep_talking_points: "1. Lead with compliance depth. 2. Free has a cost: support and audit gaps. 3. Multi-location is where free tools break.",
+      suggested_linkedin_post: "Free scheduling tools are great until your second location opens. Here is what changes at scale, and what to look for when compliance starts to matter more than price.",
+      email_reply_template: "Subject: On the Homebase news\n\nFair question. Here is how we think about free tiers vs compliance-grade scheduling...",
+      positioning_anchor: "differentiated_value: compliance automation",
+      sources: "signal abc123, dossier Homebase",
+    };
+    expect(() => WORKFLOW_REGISTRY["D-CN"].outputSchema.parse(good)).not.toThrow();
+    expect(() => WORKFLOW_REGISTRY["D-CN"].outputSchema.parse({ ...good, email_reply_template: "too short" })).toThrow();
   });
 
   it("S-PO requires exactly five elements, one per type", () => {
