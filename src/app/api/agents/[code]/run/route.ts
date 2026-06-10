@@ -8,6 +8,10 @@ import {
 } from "@/lib/demo-context";
 import { normalizeAgentCode, webhookPathFor } from "@/lib/agent-config";
 import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
+import { isNativeCsCode, runNativeCsWorkflow } from "@/lib/workflows/cs-runner";
+
+// Native runs execute the LLM call inside this function — keep it alive.
+export const maxDuration = 60;
 
 const N8N_BASE_URL =
   process.env.N8N_WEBHOOK_BASE_URL ?? "https://gtmintelligence.app.n8n.cloud";
@@ -19,6 +23,63 @@ export async function POST(
   const { code: rawCode } = await params;
   // Canonicalize. Accepts new codes ("R-CI", "r-ci") and legacy A1–A8.
   const code = normalizeAgentCode(rawCode);
+
+  // ── Native path (Phase C): CS workflows run as Vercel code, not n8n.
+  // Instructions come from workflow_configs, credentials from the
+  // request headers (the assigned profile in Settings), data from the
+  // live Customer Health tables.
+  if (code && isNativeCsCode(code)) {
+    const provider = request.headers.get("x-llm-provider") ?? "anthropic";
+    let apiKey = request.headers.get("x-llm-key") ?? "";
+    if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+      apiKey = process.env.ANTHROPIC_API_KEY;
+    }
+    const cred = {
+      provider,
+      apiKey,
+      model: request.headers.get("x-llm-model") ?? "",
+      baseUrl: request.headers.get("x-llm-base-url") ?? "",
+    };
+
+    const admin = await createAdminClient();
+    const { data: run, error: runErr } = await admin
+      .from("run_history")
+      .insert({
+        organization_id: DEMO_TENANT_ID,
+        brand_id: DEMO_BRAND_ID,
+        agent_code: code,
+        status: "running",
+      })
+      .select("id")
+      .single();
+    if (runErr || !run) {
+      return NextResponse.json(
+        { error: runErr?.message ?? "Failed to create run row" },
+        { status: 500 },
+      );
+    }
+
+    const result = await runNativeCsWorkflow(admin, code, cred);
+    await admin
+      .from("run_history")
+      .update({
+        status: result.ok ? "success" : "error",
+        finished_at: new Date().toISOString(),
+        ...(result.ok ? {} : { error_message: result.error }),
+      })
+      .eq("id", run.id);
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status ?? 502 });
+    }
+    return NextResponse.json({
+      runId: run.id,
+      native: true,
+      assetId: result.assetId,
+      title: result.title,
+    });
+  }
+
   const webhookPath = code ? webhookPathFor(code) : null;
 
   if (!code || !webhookPath) {
