@@ -39,10 +39,11 @@ export function titleToRole(title: string | null | undefined): Role | null {
 // Roles that get a dedicated workspace landing page. `admin` is intentionally
 // excluded: admins see the same landing as marketing by default and switch
 // workspaces via the sidebar pill.
+// Scope decision 2026-06-09: Sales and Product workspaces removed — the app
+// focuses on Marketing + Customer Success for now. The Role type and
+// titleToRole classification keep all roles so onboarding still detects them.
 export const WORKSPACE_ROLES: Role[] = [
   "marketing",
-  "sales",
-  "product",
   "customer_success",
 ];
 
@@ -85,8 +86,6 @@ export type Lens = Role | "all";
 export const LENS_OPTIONS: Lens[] = [
   "all",
   "marketing",
-  "sales",
-  "product",
   "customer_success",
 ];
 
@@ -122,30 +121,13 @@ export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
     { name: "Brand Voice", href: "/brand-voice", hint: "Thesis + pillars" },
     { name: "Positioning", href: "/positioning", hint: "5-element framework" },
   ],
-  sales: [
-    {
-      name: "Sales dashboard",
-      href: "/workspace/sales",
-      hint: "Role-specific landing",
-    },
-  ],
-  product: [
-    {
-      name: "Product dashboard",
-      href: "/workspace/product",
-      hint: "Role-specific landing",
-    },
-  ],
+  sales: [],
+  product: [],
   customer_success: [
     {
-      name: "CS dashboard",
-      href: "/workspace/customer_success",
-      hint: "Role-specific landing",
-    },
-    {
-      name: "Customer Health",
+      name: "Customer Success",
       href: "/customer-health",
-      hint: "VAR health model portfolio",
+      hint: "Health model + CS workflows",
     },
   ],
   admin: [],

@@ -75,13 +75,8 @@ describe("titleToRole", () => {
 });
 
 describe("WORKSPACE_ROLES", () => {
-  it("contains exactly the four customer-facing roles", () => {
-    expect(WORKSPACE_ROLES).toEqual([
-      "marketing",
-      "sales",
-      "product",
-      "customer_success",
-    ]);
+  it("contains exactly the in-scope roles (marketing + CS, 2026-06-09 scope)", () => {
+    expect(WORKSPACE_ROLES).toEqual(["marketing", "customer_success"]);
   });
 
   it("does not include admin (admins use the marketing workspace by default)", () => {
@@ -103,10 +98,13 @@ describe("ROLE_LABEL / ROLE_LABEL_SHORT / ROLE_TAGLINE", () => {
 describe("isValidRole", () => {
   it("accepts all workspace roles plus admin", () => {
     expect(isValidRole("marketing")).toBe(true);
-    expect(isValidRole("sales")).toBe(true);
-    expect(isValidRole("product")).toBe(true);
     expect(isValidRole("customer_success")).toBe(true);
     expect(isValidRole("admin")).toBe(true);
+  });
+
+  it("rejects out-of-scope roles (sales/product removed 2026-06-09)", () => {
+    expect(isValidRole("sales")).toBe(false);
+    expect(isValidRole("product")).toBe(false);
   });
 
   it("rejects unknown role strings", () => {
@@ -173,18 +171,13 @@ describe("outputsForLens", () => {
     expect(out.some((o) => o.href === "/positioning")).toBe(true);
   });
 
-  it("returns just the role dashboard when lens is sales/product", () => {
-    expect(outputsForLens("sales")).toEqual([
-      expect.objectContaining({ href: "/workspace/sales" }),
-    ]);
-    expect(outputsForLens("product")).toEqual([
-      expect.objectContaining({ href: "/workspace/product" }),
-    ]);
+  it("returns no outputs for out-of-scope sales/product lenses", () => {
+    expect(outputsForLens("sales")).toEqual([]);
+    expect(outputsForLens("product")).toEqual([]);
   });
 
-  it("returns the CS dashboard plus Customer Health for customer_success", () => {
+  it("returns the merged Customer Success area for customer_success", () => {
     expect(outputsForLens("customer_success")).toEqual([
-      expect.objectContaining({ href: "/workspace/customer_success" }),
       expect.objectContaining({ href: "/customer-health" }),
     ]);
   });
@@ -195,40 +188,29 @@ describe("outputsForLens", () => {
     // Each marketing surface present
     expect(hrefs).toContain("/workspace/marketing");
     expect(hrefs).toContain("/positioning");
-    // Each non-marketing role dashboard present
-    expect(hrefs).toContain("/workspace/sales");
-    expect(hrefs).toContain("/workspace/product");
-    expect(hrefs).toContain("/workspace/customer_success");
+    // CS area present; out-of-scope dashboards absent
+    expect(hrefs).toContain("/customer-health");
+    expect(hrefs).not.toContain("/workspace/sales");
+    expect(hrefs).not.toContain("/workspace/product");
     // No duplicates
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
   it("ranks role dashboards by workflow count when workflows list is provided", () => {
-    // Synthetic workflow set: product (4) > marketing (2) > customer_success (1) > sales (0)
+    // Synthetic workflow set: customer_success (2) > marketing (1)
     const workflows = [
-      { roles: ["product"] as Role[] },
-      { roles: ["product"] as Role[] },
-      { roles: ["product"] as Role[] },
-      { roles: ["product", "marketing"] as Role[] },
-      { roles: ["marketing"] as Role[] },
       { roles: ["customer_success"] as Role[] },
+      { roles: ["customer_success"] as Role[] },
+      { roles: ["marketing"] as Role[] },
     ];
     const all = outputsForLens("all", workflows);
-    // First items should be dashboards in count order
-    expect(all[0].href).toBe("/workspace/product");
+    expect(all[0].href).toBe("/customer-health");
     expect(all[1].href).toBe("/workspace/marketing");
-    expect(all[2].href).toBe("/workspace/customer_success");
-    expect(all[3].href).toBe("/workspace/sales");
   });
 
   it("places dashboards before non-dashboard outputs in 'all' view", () => {
     const all = outputsForLens("all");
-    const dashboardHrefs = [
-      "/workspace/marketing",
-      "/workspace/sales",
-      "/workspace/product",
-      "/workspace/customer_success",
-    ];
+    const dashboardHrefs = ["/workspace/marketing", "/customer-health"];
     const lastDashboardIdx = Math.max(
       ...dashboardHrefs.map((h) => all.findIndex((o) => o.href === h)),
     );

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { PageHeader, SectionDivider } from "../../_components/page-header";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -69,6 +69,8 @@ export default async function WorkspacePage({
 }) {
   const { role: rawRole } = await params;
   const role = rawRole.toLowerCase() as Role;
+  // CS workspace merged into the Customer Health area (2026-06-09).
+  if (role === "customer_success") redirect("/customer-health");
   if (!WORKSPACE_ROLES.includes(role)) notFound();
 
   const admin = await createAdminClient();
@@ -85,8 +87,6 @@ export default async function WorkspacePage({
       return <SalesWorkspace admin={admin} />;
     case "product":
       return <ProductWorkspace admin={admin} />;
-    case "customer_success":
-      return <CustomerSuccessWorkspace admin={admin} />;
     default:
       notFound();
   }

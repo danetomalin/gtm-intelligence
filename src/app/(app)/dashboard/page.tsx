@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   PageHeader,
   SectionDivider,
@@ -5,18 +6,29 @@ import {
 } from "../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
-import { DEMO_BRAND_ID, DEMO_BRAND_NAME } from "@/lib/demo-context";
+import { DEMO_BRAND_ID, DEMO_BRAND_NAME, DEMO_CS_COMPANY } from "@/lib/demo-context";
 import { ActivePipeline } from "./active-pipeline";
 import { DailyBrief, type BriefSnapshot } from "./daily-brief";
+import { loadPortfolioData } from "@/features/cs-health/lib/loadPortfolio";
+import { buildScoredAccounts } from "@/features/cs-health/lib/scoringEngine";
 
 export const dynamic = "force-dynamic";
 
+const fmtM = (n: number) => `$${(n / 1_000_000).toFixed(1)}M`;
+
+// Pipeline / marketing activity — static demo numbers for now (decision
+// 2026-06-09: mock this side of the overview until pipeline data exists).
+const PIPELINE_STATS = [
+  { label: "Pipeline created (QTD)", value: "$2.4M", sublabel: "62% marketing-sourced" },
+  { label: "Open opportunities", value: "38", sublabel: "11 in negotiation" },
+  { label: "Campaigns in flight", value: "6", sublabel: "2 launching this week" },
+  { label: "Content shipped (7d)", value: "12", sublabel: "via Delivery workflows" },
+];
+
 export default async function DashboardPage() {
-  // Pull the most recent brief server-side so the panel renders with content
-  // on first load (when one exists). If none exists yet, DailyBrief shows
-  // the empty-state with a 'Brief me' button.
+  // Daily brief renders with content on first load when one exists.
   const admin = await createAdminClient();
-  const [briefRowRes, brandRes] = await Promise.all([
+  const [briefRowRes, brandRes, portfolio] = await Promise.all([
     admin
       .from("daily_briefs")
       .select("id, generated_at, headline, focus_items")
@@ -24,11 +36,8 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    admin
-      .from("brands")
-      .select("name")
-      .eq("id", DEMO_BRAND_ID)
-      .maybeSingle(),
+    admin.from("brands").select("name").eq("id", DEMO_BRAND_ID).maybeSingle(),
+    loadPortfolioData(),
   ]);
   const initialBrief = (briefRowRes.data ?? null) as BriefSnapshot | null;
   const activeBrandName =
@@ -36,90 +45,121 @@ export default async function DashboardPage() {
     DEMO_BRAND_NAME ||
     "active brand";
 
-  // Stats reflect the live state of the platform, not a stale hardcoded count.
-  const workflowCount = agentTooling.length;
-  const overviewStats = [
-    {
-      label: "Time saved per week",
-      value: "12 hrs",
-      sublabel: "per PMM seat",
-    },
-    {
-      label: "Active brand",
-      value: activeBrandName,
-      sublabel: "demo tenant",
-    },
-    {
-      label: "Workflows shipping",
-      value: `${workflowCount}`,
-      sublabel: "across R / S / D / X layers",
-    },
-    {
-      label: "Tenant isolation",
-      value: "RLS",
-      sublabel: "Postgres-enforced",
-    },
+  // Revenue + customer health, live from the VAR engine.
+  const scored = buildScoredAccounts([...portfolio.enterprise, ...portfolio.midmarket]);
+  const totalARR =
+    scored.reduce((s, a) => s + a.arr, 0) + portfolio.smbCohort.totalARR;
+  const arrAtRisk =
+    scored.reduce((s, a) => s + (a.scoring.band !== "Healthy" ? a.arr : 0), 0) +
+    portfolio.smbCohort.arrAtRisk;
+  const renewalAtRisk = scored.filter(
+    (a) => a.stage === "Renewal Window" && a.scoring.band !== "Healthy",
+  );
+  const renewalAtRiskARR = renewalAtRisk.reduce((s, a) => s + a.arr, 0);
+  const bands = {
+    Healthy:
+      scored.filter((a) => a.scoring.band === "Healthy").length +
+      portfolio.smbCohort.healthy,
+    "At Risk":
+      scored.filter((a) => a.scoring.band === "At Risk").length +
+      portfolio.smbCohort.atRisk,
+    Critical:
+      scored.filter((a) => a.scoring.band === "Critical").length +
+      portfolio.smbCohort.critical,
+  };
+  const totalAccounts = scored.length + portfolio.smbCohort.total;
+  const priorityActions = scored
+    .filter((a) => ["P0", "P1"].includes(a.action.priority))
+    .sort((a, b) =>
+      a.action.priority === b.action.priority
+        ? b.arr - a.arr
+        : a.action.priority.localeCompare(b.action.priority),
+    )
+    .slice(0, 4);
+
+  const revenueStats = [
+    { label: "Total ARR", value: fmtM(totalARR), sublabel: `${totalAccounts} accounts (${DEMO_CS_COMPANY} portfolio)` },
+    { label: "ARR at risk", value: fmtM(arrAtRisk), sublabel: `${Math.round((arrAtRisk / totalARR) * 100)}% of portfolio` },
+    { label: "Renewal window at risk", value: `${renewalAtRisk.length}`, sublabel: `${fmtM(renewalAtRiskARR)} ARR` },
+    { label: "Net revenue retention", value: "104%", sublabel: "trailing 12 months" },
   ];
+
+  const bandColor: Record<string, string> = {
+    Healthy: "text-win",
+    "At Risk": "text-warn",
+    Critical: "text-danger",
+  };
 
   return (
     <div className="px-8 py-10 max-w-6xl space-y-10">
       <PageHeader
-        eyebrow="Brand intelligence"
-        title={activeBrandName}
-        subtitle={`The full multi-workflow intelligence chain running against ${activeBrandName}. Research → Synthesis → Delivery → Distribution, with every output landing in a tenant-scoped store you can read like a dashboard.`}
+        eyebrow="Overview"
+        title="Company overview"
+        subtitle={`Revenue and customer health from the live VAR model, alongside pipeline and marketing activity. Marketing intelligence runs against ${activeBrandName}; the customer portfolio is ${DEMO_CS_COMPANY}'s.`}
       />
 
       <DailyBrief initialBrief={initialBrief} />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {overviewStats.map((s) => (
-          <StatCard key={s.label} {...s} />
-        ))}
-      </div>
-
-      <ActivePipeline workflows={agentTooling} />
-
+      {/* Revenue / customer health — live */}
       <section>
-        <SectionDivider
-          title="What ships when the chain runs"
-          sub="Output by section"
-        />
-        <div className="space-y-2 text-sm">
-          {[
-            {
-              name: "Market Context",
-              desc: "Category dynamics + competitive landscape cards",
-              href: "/market-context",
-            },
-            {
-              name: "Brand Voice",
-              desc: "Central thesis, voice pillars, narrative through-line",
-              href: "/brand-voice",
-            },
-            {
-              name: "Positioning Framework",
-              desc: "Five-element positioning framework",
-              href: "/positioning",
-            },
-            {
-              name: "Workflows",
-              desc: `Pipeline status across all ${workflowCount} workflows`,
-              href: "/agent-tooling",
-            },
-          ].map((row) => (
-            <a
-              key={row.href}
-              href={row.href}
-              className="flex items-center justify-between rounded-md border border-border bg-card hover:bg-card-hover px-4 py-3 transition"
-            >
-              <div>
-                <div className="text-text font-medium">{row.name}</div>
-                <div className="text-xs text-text-dim">{row.desc}</div>
-              </div>
-              <div className="text-accent text-sm">View →</div>
-            </a>
+        <SectionDivider title="Revenue & customer health" sub="Live · VAR model" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {revenueStats.map((s) => (
+            <StatCard key={s.label} {...s} />
           ))}
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs uppercase tracking-wider text-text-muted mb-3">
+              Health distribution — all segments
+            </div>
+            <div className="space-y-2">
+              {(Object.keys(bands) as (keyof typeof bands)[]).map((b) => (
+                <div key={b} className="flex items-center justify-between text-sm">
+                  <span className={bandColor[b]}>{b}</span>
+                  <span className="text-text-muted">
+                    {bands[b]} ({Math.round((bands[b] / totalAccounts) * 100)}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Link href="/customer-health" className="text-accent text-sm mt-4 inline-block">
+              Open Customer Health →
+            </Link>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="text-xs uppercase tracking-wider text-text-muted mb-3">
+              Priority actions this week
+            </div>
+            <div className="space-y-2">
+              {priorityActions.map((a) => (
+                <div key={a.id} className="flex items-center justify-between text-sm gap-3">
+                  <span className="truncate">
+                    <span className={a.action.priority === "P0" ? "text-danger font-semibold" : "text-warn font-semibold"}>
+                      {a.action.priority}
+                    </span>{" "}
+                    {a.name}
+                  </span>
+                  <span className="text-text-dim whitespace-nowrap">{fmtM(a.arr).replace(".0", "")}</span>
+                </div>
+              ))}
+            </div>
+            <Link href="/customer-health" className="text-accent text-sm mt-4 inline-block">
+              All accounts →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Pipeline / marketing — mocked until pipeline data lands */}
+      <section>
+        <SectionDivider title="Pipeline & marketing activity" sub="Demo data" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {PIPELINE_STATS.map((s) => (
+            <StatCard key={s.label} {...s} />
+          ))}
+        </div>
+        <ActivePipeline workflows={agentTooling} />
       </section>
     </div>
   );
