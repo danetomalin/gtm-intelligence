@@ -11,6 +11,8 @@ import CampaignsTab from "@/features/marketing-health/components/tabs/CampaignsT
 import ChannelsTab from "@/features/marketing-health/components/tabs/ChannelsTab";
 import FunnelTab from "@/features/marketing-health/components/tabs/FunnelTab";
 import SignalsTab from "@/features/marketing-health/components/tabs/SignalsTab";
+import { FloatingCopilot } from "@/components/floating-copilot";
+import { buildMarketingSystemPrompt, MARKETING_SUGGESTED_PROMPTS } from "@/features/marketing-health/lib/chatContext";
 
 const TABS = [
   "weekly review",
@@ -22,8 +24,10 @@ const TABS = [
 
 export default function MarketingHealthDashboard({
   data = MARKETING_DATA,
+  brandName,
 }: {
   data?: MarketingData;
+  brandName?: string;
 }) {
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("weekly review");
 
@@ -71,6 +75,14 @@ export default function MarketingHealthDashboard({
         <span>Marketing Health · KPI + trend signals (no composite score by design)</span>
         <span>generateMarketingData() → Supabase reads in a later phase · rollups are pure functions</span>
       </div>
+
+      {/* Workspace copilot — floating, bottom-right */}
+      <FloatingCopilot
+        name="Mara"
+        description="Mara reads every campaign, channel roll-up, funnel stage, and trend signal on this dashboard — and answers with campaign names, spend, CPL, and pipeline numbers, not generalities."
+        systemPrompt={buildMarketingSystemPrompt(scored, rollups, data.funnel, data.aggregateTrends, brandName)}
+        suggestions={MARKETING_SUGGESTED_PROMPTS}
+      />
     </div>
   );
 }

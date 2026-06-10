@@ -13,6 +13,8 @@ import { useMemo, useState } from "react";
 import { DATA, type PortfolioData } from "@/features/cs-health/lib/generateData";
 import { buildScoredAccounts } from "@/features/cs-health/lib/scoringEngine";
 import { PortfolioProvider } from "@/features/cs-health/components/PortfolioProvider";
+import { FloatingCopilot } from "@/components/floating-copilot";
+import { buildSystemPrompt, SUGGESTED_PROMPTS } from "@/features/cs-health/lib/chatContext";
 import WeeklyReviewTab from "@/features/cs-health/components/tabs/WeeklyReviewTab";
 import ImplLaunchTab from "@/features/cs-health/components/tabs/ImplLaunchTab";
 import AccountsTab from "@/features/cs-health/components/tabs/AccountsTab";
@@ -20,7 +22,6 @@ import RenewalForecastTab from "@/features/cs-health/components/tabs/RenewalFore
 import ExpansionTab from "@/features/cs-health/components/tabs/ExpansionTab";
 import ChurnIntelligenceTab from "@/features/cs-health/components/tabs/ChurnIntelligenceTab";
 import EmergingSignalsTab from "@/features/cs-health/components/tabs/EmergingSignalsTab";
-import AskTab from "@/features/cs-health/components/tabs/AskTab";
 
 const TABS = [
   "weekly review",
@@ -30,7 +31,6 @@ const TABS = [
   "churn intelligence",
   "emerging signals",
   "implementation & launch",
-  "ask jon",
 ] as const;
 
 export default function HealthDashboard({ data = DATA }: { data?: PortfolioData }) {
@@ -89,18 +89,11 @@ export default function HealthDashboard({ data = DATA }: { data?: PortfolioData 
       >
         {TABS.map((t) => (
           <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>
-            {t === "ask jon" ? (
-              <>
-                <span style={{ color: activeTab === t ? "hsl(var(--background))" : "var(--primary)" }}>✦</span> Ask Jon
-              </>
-            ) : (
-              t
-            )}
+            {t}
           </button>
         ))}
       </nav>
 
-      {activeTab === "ask jon" && <AskTab allScored={allScored} />}
       {activeTab === "weekly review" && <WeeklyReviewTab allScored={allScored} stats={stats} />}
       {activeTab === "implementation & launch" && <ImplLaunchTab />}
       {activeTab === "accounts" && <AccountsTab allScored={allScored} />}
@@ -114,6 +107,13 @@ export default function HealthDashboard({ data = DATA }: { data?: PortfolioData 
         <span>Supabase-backed (CS_HEALTH_DATA_SOURCE=mock to fall back) · scoringEngine() is a pure function</span>
       </div>
     </div>
+      {/* Workspace copilot — floating, bottom-right (moved out of the tab bar 2026-06-09) */}
+      <FloatingCopilot
+        name="Jon"
+        description="Jon sees every account, VAR score, override, renewal forecast, expansion signal, and churn learning on this dashboard — and answers with names and numbers, not generalities."
+        systemPrompt={buildSystemPrompt(allScored, data)}
+        suggestions={SUGGESTED_PROMPTS}
+      />
     </PortfolioProvider>
   );
 }

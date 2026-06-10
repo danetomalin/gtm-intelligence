@@ -34,7 +34,7 @@ export default async function MarketingHealthPage() {
         title="Marketing Health"
         subtitle={`Campaign portfolio KPIs, channel roll-ups, funnel conversion, and trend signals for ${brandName} — 14 campaigns across 8 channels, 4-week trailing window.`}
       />
-      <MarketingHealthDashboard />
+      <MarketingHealthDashboard brandName={brandName} />
 
       {/* Marketing workflows — merged from the old Marketing workspace landing */}
       {marketingWorkflows.length > 0 && (

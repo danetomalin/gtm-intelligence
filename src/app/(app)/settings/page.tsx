@@ -2,6 +2,7 @@ import { PageHeader, SectionDivider } from "../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { CredentialsSection } from "./credentials-section";
 import { InstructionsSection } from "./instructions-section";
+import { DataSourcesSection } from "./data-sources-section";
 
 export const metadata = {
   title: "Settings · Throughline",
@@ -24,7 +25,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Settings"
         title="Settings"
-        subtitle="API credentials for every workflow and copilot, plus each workflow's operating instructions."
+        subtitle="API credentials for every workflow and copilot, each workflow's operating instructions, and data source connections."
       />
 
       <section>
@@ -41,6 +42,14 @@ export default function SettingsPage() {
           sub="Operating briefs · stored per workflow"
         />
         <InstructionsSection workflows={workflows} />
+      </section>
+
+      <section>
+        <SectionDivider
+          title="Data sources"
+          sub="Connectors · simulated until OAuth lands"
+        />
+        <DataSourcesSection />
       </section>
     </div>
   );
