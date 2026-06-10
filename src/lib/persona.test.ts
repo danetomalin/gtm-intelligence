@@ -167,7 +167,7 @@ describe("filterWorkflowsForLens", () => {
 describe("outputsForLens", () => {
   it("returns the marketing list when lens is marketing", () => {
     const out = outputsForLens("marketing");
-    expect(out.some((o) => o.href === "/workspace/marketing")).toBe(true);
+    expect(out.some((o) => o.href === "/marketing-health")).toBe(true);
     expect(out.some((o) => o.href === "/positioning")).toBe(true);
   });
 
@@ -186,7 +186,7 @@ describe("outputsForLens", () => {
     const all = outputsForLens("all");
     const hrefs = all.map((o) => o.href);
     // Each marketing surface present
-    expect(hrefs).toContain("/workspace/marketing");
+    expect(hrefs).toContain("/marketing-health");
     expect(hrefs).toContain("/positioning");
     // CS area present; out-of-scope dashboards absent
     expect(hrefs).toContain("/customer-health");
@@ -205,12 +205,12 @@ describe("outputsForLens", () => {
     ];
     const all = outputsForLens("all", workflows);
     expect(all[0].href).toBe("/customer-health");
-    expect(all[1].href).toBe("/workspace/marketing");
+    expect(all[1].href).toBe("/marketing-health");
   });
 
   it("places dashboards before non-dashboard outputs in 'all' view", () => {
     const all = outputsForLens("all");
-    const dashboardHrefs = ["/workspace/marketing", "/customer-health"];
+    const dashboardHrefs = ["/marketing-health", "/customer-health"];
     const lastDashboardIdx = Math.max(
       ...dashboardHrefs.map((h) => all.findIndex((o) => o.href === h)),
     );
@@ -221,7 +221,7 @@ describe("outputsForLens", () => {
   it("falls back to WORKSPACE_ROLES order when no workflow list is supplied", () => {
     const all = outputsForLens("all");
     // First dashboard is Marketing (first in WORKSPACE_ROLES)
-    expect(all[0].href).toBe("/workspace/marketing");
+    expect(all[0].href).toBe("/marketing-health");
   });
 });
 

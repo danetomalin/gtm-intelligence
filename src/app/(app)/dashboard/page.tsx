@@ -11,19 +11,29 @@ import { ActivePipeline } from "./active-pipeline";
 import { DailyBrief, type BriefSnapshot } from "./daily-brief";
 import { loadPortfolioData } from "@/features/cs-health/lib/loadPortfolio";
 import { buildScoredAccounts } from "@/features/cs-health/lib/scoringEngine";
+import { MARKETING_DATA } from "@/features/marketing-health/lib/generateData";
+import { scoreCampaigns } from "@/features/marketing-health/lib/rollups";
 
 export const dynamic = "force-dynamic";
 
 const fmtM = (n: number) => `$${(n / 1_000_000).toFixed(1)}M`;
 
-// Pipeline / marketing activity — static demo numbers for now (decision
-// 2026-06-09: mock this side of the overview until pipeline data exists).
-const PIPELINE_STATS = [
-  { label: "Pipeline created (QTD)", value: "$2.4M", sublabel: "62% marketing-sourced" },
-  { label: "Open opportunities", value: "38", sublabel: "11 in negotiation" },
-  { label: "Campaigns in flight", value: "6", sublabel: "2 launching this week" },
-  { label: "Content shipped (7d)", value: "12", sublabel: "via Delivery workflows" },
-];
+// Pipeline / marketing activity — computed from the Marketing Health
+// mock portfolio (Phase B.1) so the overview and /marketing-health agree.
+function marketingStats() {
+  const scored = scoreCampaigns(MARKETING_DATA.campaigns);
+  const active = scored.filter((c) => c.status === "active");
+  const pipeline4w = scored.reduce((s, c) => s + c.kpis.pipeline4w, 0);
+  const last = (xs: number[]) => xs[xs.length - 1] ?? 0;
+  const mqlsWk = active.reduce((s, c) => s + last(c.weekly.mqls), 0);
+  const spendWk = active.reduce((s, c) => s + last(c.weekly.spend), 0);
+  return [
+    { label: "Pipeline sourced (4w)", value: fmtM(pipeline4w), sublabel: "marketing campaigns" },
+    { label: "MQLs (this week)", value: `${mqlsWk.toLocaleString()}`, sublabel: "all channels" },
+    { label: "Campaigns in flight", value: `${active.length}`, sublabel: `across ${new Set(active.map((c) => c.channel)).size} channels` },
+    { label: "Spend (this week)", value: `$${(spendWk / 1000).toFixed(0)}K`, sublabel: `blended CPL $${(spendWk / mqlsWk).toFixed(0)}` },
+  ];
+}
 
 export default async function DashboardPage() {
   // Daily brief renders with content on first load when one exists.
@@ -151,14 +161,17 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Pipeline / marketing — mocked until pipeline data lands */}
+      {/* Pipeline / marketing — Marketing Health mock portfolio */}
       <section>
-        <SectionDivider title="Pipeline & marketing activity" sub="Demo data" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          {PIPELINE_STATS.map((s) => (
+        <SectionDivider title="Pipeline & marketing activity" sub="Demo data · 4-week window" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {marketingStats().map((s) => (
             <StatCard key={s.label} {...s} />
           ))}
         </div>
+        <Link href="/marketing-health" className="text-accent text-sm inline-block mb-6">
+          Open Marketing Health →
+        </Link>
         <ActivePipeline workflows={agentTooling} />
       </section>
     </div>

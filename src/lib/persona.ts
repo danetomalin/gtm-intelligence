@@ -109,9 +109,9 @@ export type WorkspaceOutput = {
 export const LENS_OUTPUTS: Record<Role, WorkspaceOutput[]> = {
   marketing: [
     {
-      name: "Marketing dashboard",
-      href: "/workspace/marketing",
-      hint: "Role-specific landing",
+      name: "Marketing",
+      href: "/marketing-health",
+      hint: "Campaign health + workflows",
     },
     {
       name: "Market Context",
