@@ -1,23 +1,25 @@
 @import "tailwindcss";
+@import "@palashjain95/touchable/styles.css";
+@source "../../node_modules/@palashjain95/touchable/dist";
 
 @theme {
-  --color-bg: #0d0d12;
-  --color-surface: #16161e;
-  --color-card: #1c1c28;
-  --color-card-hover: #22222f;
-  --color-border: #2a2a3a;
-  --color-text: #f0f0f4;
-  --color-text-muted: #9b9baf;
-  --color-text-dim: #6b6b80;
-  --color-accent: #a78bfa;
-  --color-accent-strong: #7c3aed;
-  --color-accent-bg: rgba(167, 139, 250, 0.12);
-  --color-win: #66bb6a;
-  --color-win-bg: rgba(102, 187, 106, 0.12);
-  --color-warn: #ffa726;
-  --color-warn-bg: rgba(255, 167, 38, 0.12);
-  --color-danger: #ef5350;
-  --color-danger-bg: rgba(239, 83, 80, 0.12);
+  --color-bg: hsl(var(--background));
+  --color-surface: hsl(var(--card));
+  --color-card: hsl(var(--card));
+  --color-card-hover: hsl(var(--muted));
+  --color-border: hsl(var(--border));
+  --color-text: hsl(var(--foreground));
+  --color-text-muted: var(--fg-secondary);
+  --color-text-dim: var(--fg-tertiary);
+  --color-accent: var(--primary);
+  --color-accent-strong: var(--primary);
+  --color-accent-bg: color-mix(in srgb, var(--primary) 12%, transparent);
+  --color-win: hsl(var(--success));
+  --color-win-bg: hsl(var(--success) / 0.12);
+  --color-warn: hsl(var(--warning));
+  --color-warn-bg: hsl(var(--warning) / 0.14);
+  --color-danger: hsl(var(--destructive));
+  --color-danger-bg: hsl(var(--destructive) / 0.12);
 
   --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
