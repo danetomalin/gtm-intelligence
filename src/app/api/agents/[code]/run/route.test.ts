@@ -22,6 +22,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import { POST } from "./route";
+import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 
 describe("POST /api/agents/[code]/run", () => {
   beforeEach(() => {
@@ -68,7 +69,7 @@ describe("POST /api/agents/[code]/run", () => {
     const payload = JSON.parse(fetchInit.body);
     expect(payload).toMatchObject({
       runId: "run-abc-123",
-      brandName: "Throughline",
+      brandName: DEMO_BRAND_NAME,
     });
   });
 
