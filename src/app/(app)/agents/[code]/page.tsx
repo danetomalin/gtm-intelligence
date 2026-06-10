@@ -751,9 +751,11 @@ export default async function AgentPage({
     : "—";
   const lastRunSub = latestRun?.status === "running"
     ? "Currently running"
-    : latestRun
-      ? latestRun.status
-      : "awaiting first run";
+    : latestRun?.status === "error"
+      ? `error — ${(latestRun.error_message ?? "no message recorded").slice(0, 90)}`
+      : latestRun
+        ? latestRun.status
+        : "awaiting first run";
 
   return (
     <div className="px-8 py-10 max-w-6xl space-y-10">

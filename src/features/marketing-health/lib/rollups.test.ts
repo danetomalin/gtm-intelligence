@@ -106,7 +106,7 @@ describe("rollupChannels", () => {
     const li = rollupChannels(scored).find((r) => r.channel === "linkedin")!;
     expect(li.campaignCount).toBe(2);
     expect(li.activeCount).toBe(1);
-    expect(li.topCampaign).toBe("Telehealth Access — Thought Leadership");
+    expect(li.topCampaign).toBe("Future of Hourly Work — Thought Leadership");
     expect(li.bottomCampaign).toBeNull(); // only one active campaign
   });
 });
@@ -133,7 +133,7 @@ describe("demo narrative coherence", () => {
     expect(["warning", "spike"]).toContain(c01.kpis.signals.cpl);
   });
 
-  it("women's health launch is improving", () => {
+  it("healthcare shift-ops launch is improving", () => {
     const scored = scoreCampaigns(MARKETING_DATA.campaigns);
     const c03 = scored.find((c) => c.id === "C03")!;
     expect(c03.kpis.signals.mqls).toBe("improving");

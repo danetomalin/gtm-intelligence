@@ -60,15 +60,15 @@ export function RunButton({
             `/api/agents/${agentCode.toLowerCase()}/status?runId=${runId}`,
           );
           if (!statusRes.ok) return;
-          const { status: runStatus } = await statusRes.json();
+          const { status: runStatus, error_message: errMsg } = await statusRes.json();
           if (runStatus === "success") {
             if (pollRef.current) clearInterval(pollRef.current);
             setStatus("success");
             router.refresh();
-          } else if (runStatus === "error") {
+          } else if (runStatus === "error" || runStatus === "canceled") {
             if (pollRef.current) clearInterval(pollRef.current);
             setStatus("error");
-            setError("The agent run errored. Check n8n executions for detail.");
+            setError(errMsg || "The run errored without a recorded message — see Observability.");
           }
         } catch {
           // swallow, keep polling

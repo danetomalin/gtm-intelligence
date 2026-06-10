@@ -1,9 +1,10 @@
 // ============================================================
-// Marketing Health — deterministic mock data (Phase B.1)
-// Hims-flavored campaign portfolio so the marketing story lines up
-// with the demo brand's market signals (generic-ED pressure pushing
-// branded-search CPL, Roman's mental-health launch pressuring paid
-// social, the women's health launch ramping).
+// Marketing Health — deterministic mock data (Phase B.1, re-themed
+// to Deputy 2026-06-10). Workforce-management campaign portfolio so
+// the marketing story lines up with the demo brand: SMB rivals
+// (Homebase, When I Work) bidding on branded search, a healthcare
+// shift-ops launch ramping, the compliance content hub compounding.
+// Numbers unchanged from the original set — names/notes only.
 // Swap for Supabase reads in a later phase — UI reads only DATA.
 // ============================================================
 
@@ -14,7 +15,7 @@ const campaigns: Campaign[] = [
   // ── Paid search ─────────────────────────────────────────────
   {
     id: "C01",
-    name: "ED Branded Defense — Search",
+    name: "Scheduling Software — Branded Defense",
     channel: "paid_search",
     objective: "demand_gen",
     status: "active",
@@ -27,11 +28,11 @@ const campaigns: Campaign[] = [
       mqls: [410, 396, 378, 344],
       pipeline: [510000, 488000, 452000, 405000],
     },
-    note: "Generic entrants bidding on branded terms — CPC up 31%, CPL climbing 3 straight weeks.",
+    note: "Homebase and When I Work bidding on Deputy branded terms — CPC up 31%, CPL climbing 3 straight weeks.",
   },
   {
     id: "C02",
-    name: "Hair Loss Non-Brand — Search",
+    name: "Employee Scheduling Non-Brand — Search",
     channel: "paid_search",
     objective: "demand_gen",
     status: "active",
@@ -47,7 +48,7 @@ const campaigns: Campaign[] = [
   },
   {
     id: "C03",
-    name: "Women's Health Launch — Search",
+    name: "Healthcare Shift Ops Launch — Search",
     channel: "paid_search",
     objective: "launch",
     status: "active",
@@ -65,7 +66,7 @@ const campaigns: Campaign[] = [
   // ── Paid social ─────────────────────────────────────────────
   {
     id: "C04",
-    name: "Mental Health Awareness — IG/TikTok",
+    name: "Hourly Work Stories — IG/TikTok",
     channel: "paid_social",
     objective: "brand",
     status: "active",
@@ -78,11 +79,11 @@ const campaigns: Campaign[] = [
       mqls: [188, 176, 158, 139],
       pipeline: [142000, 131000, 118000, 102000],
     },
-    note: "Roman's mental-health launch is bidding into the same audiences — CPM up, engagement down.",
+    note: "Homebase's free-tier push is bidding into the same SMB audiences — CPM up, engagement down.",
   },
   {
     id: "C05",
-    name: "Weight Care Retargeting",
+    name: "Retail Ops Retargeting",
     channel: "paid_social",
     objective: "demand_gen",
     status: "active",
@@ -99,7 +100,7 @@ const campaigns: Campaign[] = [
   // ── Content / SEO ───────────────────────────────────────────
   {
     id: "C06",
-    name: "Primary Care Content Hub",
+    name: "Workforce Compliance Content Hub",
     channel: "content_seo",
     objective: "brand",
     status: "active",
@@ -112,11 +113,11 @@ const campaigns: Campaign[] = [
       mqls: [205, 214, 228, 244],
       pipeline: [168000, 176000, 188000, 202000],
     },
-    note: "Organic compounding — content hub now beats paid social on pipeline per dollar.",
+    note: "Organic compounding — compliance hub now beats paid social on pipeline per dollar.",
   },
   {
     id: "C07",
-    name: "ED Education SEO Cluster",
+    name: "Fair Workweek SEO Cluster",
     channel: "content_seo",
     objective: "demand_gen",
     status: "active",
@@ -133,7 +134,7 @@ const campaigns: Campaign[] = [
   // ── Email + lifecycle ───────────────────────────────────────
   {
     id: "C08",
-    name: "Welcome Series — Women's Health",
+    name: "Welcome Series — Healthcare Shift Ops",
     channel: "email",
     objective: "launch",
     status: "active",
@@ -149,7 +150,7 @@ const campaigns: Campaign[] = [
   },
   {
     id: "C09",
-    name: "Winback — Lapsed ED Subscribers",
+    name: "Winback — Lapsed Hospitality Accounts",
     channel: "lifecycle",
     objective: "lifecycle",
     status: "active",
@@ -166,7 +167,7 @@ const campaigns: Campaign[] = [
   },
   {
     id: "C10",
-    name: "Subscription Upgrade Nudges",
+    name: "Seat Expansion Nudges",
     channel: "lifecycle",
     objective: "lifecycle",
     status: "active",
@@ -183,7 +184,7 @@ const campaigns: Campaign[] = [
   // ── LinkedIn ────────────────────────────────────────────────
   {
     id: "C11",
-    name: "Telehealth Access — Thought Leadership",
+    name: "Future of Hourly Work — Thought Leadership",
     channel: "linkedin",
     objective: "brand",
     status: "active",
@@ -199,7 +200,7 @@ const campaigns: Campaign[] = [
   },
   {
     id: "C12",
-    name: "Employer Benefits ABM",
+    name: "Enterprise Retail ABM",
     channel: "linkedin",
     objective: "demand_gen",
     status: "paused",
@@ -217,7 +218,7 @@ const campaigns: Campaign[] = [
   // ── Webinars + partner ──────────────────────────────────────
   {
     id: "C13",
-    name: "Clinician Webinar Series",
+    name: "Compliance Webinar Series",
     channel: "webinars",
     objective: "demand_gen",
     status: "active",
@@ -233,7 +234,7 @@ const campaigns: Campaign[] = [
   },
   {
     id: "C14",
-    name: "Pharmacy Partner Co-Marketing",
+    name: "Payroll Partner Co-Marketing",
     channel: "partner",
     objective: "demand_gen",
     status: "active",
@@ -277,21 +278,21 @@ const trend = (
 
 const aggregateTrends: MarketingTrendMetric[] = [
   trend("Blended CAC", "$", [318, 322, 341, 367], false,
-    "Up 14% over 4 weeks — driven almost entirely by branded-search CPC inflation from generic-ED entrants."),
+    "Up 14% over 4 weeks — driven almost entirely by branded-search CPC inflation from SMB scheduling rivals."),
   trend("Branded search CPC", "$", [4.1, 4.3, 4.9, 5.6], false,
-    "Generic manufacturers bidding on Hims branded terms post-FDA fast-track. Defense budget decision needed."),
+    "Homebase and When I Work bidding on Deputy branded terms. Defense budget decision needed."),
   trend("Email deliverability", "% inbox", [97.2, 96.8, 92.1, 88.3], false,
     "Slipping since the June template change. Lifecycle MQLs falling in lockstep — fix before scaling winback."),
   trend("Paid social CPM", "$", [11.2, 11.5, 12.6, 13.8], false,
-    "Roman's mental-health launch bidding into the same wellness audiences. Consider creative refresh or audience shift."),
+    "Homebase's free-tier campaign bidding into the same SMB audiences. Consider creative refresh or audience shift."),
   trend("Organic sessions", "weekly", [298000, 312000, 331000, 354000], true,
-    "Content hub compounding — fourth straight week of growth, now the cheapest MQL source."),
+    "Compliance hub compounding — fourth straight week of growth, now the cheapest MQL source."),
   trend("MQL → SQL rate", "%", [35.0, 34.7, 33.7, 31.8], false,
     "Volume up but quality dipping — launch-campaign MQLs converting 8pts below portfolio average. Tighten scoring."),
   trend("Webinar attendance rate", "%", [42, 44, 41, 45], true,
-    "Healthy and stable. Clinician series remains the highest pipeline-per-dollar demand program."),
+    "Healthy and stable. Compliance series remains the highest pipeline-per-dollar demand program."),
   trend("Brand search volume", "weekly", [88000, 90000, 93000, 97000], true,
-    "Women's health launch lifting branded queries — halo effect visible within 5 weeks of launch."),
+    "Healthcare shift-ops launch lifting branded queries — halo effect visible within 5 weeks of launch."),
 ];
 
 export function generateMarketingData() {
