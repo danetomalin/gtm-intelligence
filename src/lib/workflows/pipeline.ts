@@ -23,6 +23,7 @@ export type PipelineStage = {
   codes: string[];
   /** Human steps required before/while advancing past this stage. */
   gateNote?: string;
+  /** Stage does web research: needs a Tavily key OR all-Gemini credential assignments (native grounding). */
   needsSearchKey: boolean;
 };
 

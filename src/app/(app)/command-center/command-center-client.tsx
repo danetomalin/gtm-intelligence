@@ -216,12 +216,19 @@ export function CommandCenterClient({
     stopRef.current = false;
 
     if (stage.needsSearchKey && !getSearchApiKey()) {
-      setStageLog((l) => [
-        ...l,
-        "✗ This stage needs web research but no Tavily key is saved — add one in Settings → API credentials → Search API.",
-      ]);
-      setRunningStage(null);
-      return;
+      // Gemini profiles research via native Google Search grounding, so
+      // a stage is runnable without Tavily when every workflow in it
+      // resolves to a google credential.
+      const nonGemini = stage.codes.filter((c) => resolveCredential(c)?.provider !== "google");
+      if (nonGemini.length > 0) {
+        setStageLog((l) => [
+          ...l,
+          `✗ This stage needs web research. Assign a Gemini profile (native Google Search grounding) to: ${nonGemini.join(", ")} — or add a Tavily key in Settings → API credentials → Search API.`,
+        ]);
+        setRunningStage(null);
+        return;
+      }
+      setStageLog((l) => [...l, "Web research via Gemini's native Google Search grounding (no Tavily key)."]);
     }
 
     const remaining = stage.codes.filter(

@@ -32,7 +32,9 @@ const DEFAULT_BASE: Record<string, string> = {
 export async function callProvider(
   config: ProviderConfig,
   messages: ProviderMessage[],
-  opts?: { system?: string; maxTokens?: number },
+  // webSearch: enable the provider's native web grounding (currently
+  // Google's google_search tool on Gemini; ignored elsewhere).
+  opts?: { system?: string; maxTokens?: number; webSearch?: boolean },
 ): Promise<ProviderResult> {
   const { provider, apiKey, model } = config;
   const maxTokens = Math.min(opts?.maxTokens ?? 1024, 8192);
@@ -82,6 +84,7 @@ export async function callProvider(
         body: JSON.stringify({
           contents,
           ...(opts?.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
+          ...(opts?.webSearch ? { tools: [{ google_search: {} }] } : {}),
           generationConfig: { maxOutputTokens: maxTokens },
         }),
       });

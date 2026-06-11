@@ -97,31 +97,42 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   // 2. Data context.
   const context = await spec.buildContext(admin, ids);
 
-  // 3. Optional web research via Tavily.
+  // 3. Optional web research. Gemini profiles use the model's native
+  // Google Search grounding (Dane 2026-06-11 — best access to current
+  // info, no Tavily key needed); other providers use Tavily.
   let research = "";
+  let useGrounding = false;
   if (spec.buildSearchQueries) {
-    if (!searchKey) {
+    const queries = (await spec.buildSearchQueries(admin, ids)).slice(0, MAX_QUERIES);
+    if (cred.provider === "google") {
+      useGrounding = true;
+      research =
+        `\n\n=== WEB RESEARCH (REQUIRED — use Google Search grounding) ===\n` +
+        `Search the live web for each topic below BEFORE answering. Ground every claim in what you find — current pricing, recent announcements, real product changes. Cite the source title or domain for each claim in the output's sources fields. Never invent facts the search did not surface.\n` +
+        queries.map((q) => `- ${q}`).join("\n");
+    } else if (searchKey) {
+      const blocks: string[] = [];
+      for (const q of queries) {
+        const res = await searchTavily(searchKey, q, RESULTS_PER_QUERY);
+        if (!res.ok) {
+          return { ok: false, error: `Web search failed ("${q}"): ${res.error}`, status: res.status };
+        }
+        blocks.push(
+          `Query: ${q}\n` +
+            res.results
+              .map((r: SearchResult) => `- ${r.title} (${r.url})\n  ${r.content.slice(0, 400)}`)
+              .join("\n"),
+        );
+      }
+      research = `\n\n=== WEB RESEARCH (Tavily) ===\n${blocks.join("\n\n")}`;
+    } else {
       return {
         ok: false,
         status: 401,
-        error: "This research workflow needs a Tavily search key. Add it in Settings → API credentials → Search API.",
+        error:
+          "This research workflow needs web access: assign it a Gemini credential profile (native Google Search grounding) or add a Tavily key in Settings → API credentials → Search API.",
       };
     }
-    const queries = (await spec.buildSearchQueries(admin, ids)).slice(0, MAX_QUERIES);
-    const blocks: string[] = [];
-    for (const q of queries) {
-      const res = await searchTavily(searchKey, q, RESULTS_PER_QUERY);
-      if (!res.ok) {
-        return { ok: false, error: `Web search failed ("${q}"): ${res.error}`, status: res.status };
-      }
-      blocks.push(
-        `Query: ${q}\n` +
-          res.results
-            .map((r: SearchResult) => `- ${r.title} (${r.url})\n  ${r.content.slice(0, 400)}`)
-            .join("\n"),
-      );
-    }
-    research = `\n\n=== WEB RESEARCH (Tavily) ===\n${blocks.join("\n\n")}`;
   }
 
   // 4. Model call on the assigned credential profile.
@@ -129,6 +140,7 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   let result = await callProvider(cred, [{ role: "user", content: user }], {
     system: instructions,
     maxTokens: spec.maxTokens ?? 4096,
+    webSearch: useGrounding,
   });
   if (!result.ok || !result.text.trim()) {
     return { ok: false, error: result.error ?? "Model returned an empty response.", status: result.status };
@@ -149,7 +161,7 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
           content: `Your output failed validation: ${firstErr instanceof Error ? firstErr.message.slice(0, 500) : "invalid JSON"}. Return ONLY the corrected valid JSON.`,
         },
       ],
-      { system: instructions, maxTokens: spec.maxTokens ?? 4096 },
+      { system: instructions, maxTokens: spec.maxTokens ?? 4096, webSearch: useGrounding },
     );
     if (!result.ok || !result.text.trim()) {
       return { ok: false, error: result.error ?? "Model returned an empty response on retry.", status: result.status };
