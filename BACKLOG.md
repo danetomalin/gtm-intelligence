@@ -14,6 +14,8 @@ A Feedback button on every output card (dossiers first): verdict (keep / not rel
 - **Instruction synthesis** — Haiku/Flash merges open comments into a "User steering notes" section appended to `workflow_configs.instructions` (the system prompt every run already uses), so future runs obey automatically. Reviewable in the tile's Manage panel; Reset to default stays the escape hatch.
 - **Immediate injection** — until applied, open feedback rides the next run's context as "USER FEEDBACK (must respect)".
 
+- **Brand-code layer** — feedback that's really about the brand, not the workflow, updates the brand repository itself: "we'd never say it like this" edits/adds a `brand_voice_rules` row, "that claim is wrong" corrects or retires a `brand_proof_points` row, "that's not our buyer" amends `buyer_personas`. Because every workflow reads the brand code on each run, one piece of feedback propagates to ALL future outputs, not just the workflow it was left on. The feedback form routes this: "apply to this workflow" vs "apply to the brand."
+
 Manage panel gains a Feedback tab (history + what's been applied). Feedback never touches schemas.
 
 ## 2 · Signal → Action Recommender (CS × PMM bridge)
@@ -47,6 +49,18 @@ Evolve the mock X-* adapters into actual delivery of messaging, narratives, and 
 - **Delivery rules:** artifact types auto-queue to channels (e.g. approved D-CN → LinkedIn draft + email template).
 - **Non-negotiable:** HITL approval remains mandatory before any external send.
 - Real engagement events replace synthetic `campaign_metrics`, so S-CP analyzes actual performance — the loop closes for real.
+
+## 5 · Performance-informed messaging (metrics close the creative loop)
+**Status: Backlog · Depends on #4 for real metrics; works on synthetic ones sooner**
+
+Campaign performance becomes an INPUT to messaging generation, so deliverables improve run over run:
+
+- **Attribution:** campaign_sends already links every send to its artifact (`artifact_table`/`artifact_id`), and S-CP rolls metrics up per send — extend the rollup to score the underlying artifact and its `messaging_refs` (which positioning element/message it traced to).
+- **Performance memory:** a `message_performance` view per messaging angle: opens/clicks/replies by positioning anchor, channel, persona. "Compliance-angle emails reply 3x better than price-angle" becomes data.
+- **Feed-forward:** D-MG/D-SN/S-PO contexts gain a "What performed" block — top and bottom performing angles with their metrics — and instructions to lean into winners, rework or retire losers. S-PO's last_change_reason can cite performance ("compliance value prop promoted: 3x reply rate").
+- **HITL stays:** performance steers drafts; humans still approve them.
+
+This plus the feedback loop (#1) gives the system both judgment signals: human feedback (what we want) and market feedback (what works).
 
 ---
 
