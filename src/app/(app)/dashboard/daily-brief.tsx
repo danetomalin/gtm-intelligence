@@ -201,7 +201,7 @@ function FocusRow({ item }: { item: FocusItem }) {
   const rank = item.rank ?? "•";
   const related = item.related_artifact;
   // If the action contains a slash path, surface it as a clickable link.
-  const actionLinkMatch = item.action?.match(/(\/(?:agents|workspace|review-queue|launches|cost-model|observability|positioning|brand-voice|market-context|collateral)\/?[a-z0-9-_/]*)/i);
+  const actionLinkMatch = item.action?.match(/(\/(?:agents|workspace|review-queue|launches|cost-model|command-center|positioning|brand-voice|market-context|collateral)\/?[a-z0-9-_/]*)/i);
   const actionPath = actionLinkMatch?.[1];
 
   return (
