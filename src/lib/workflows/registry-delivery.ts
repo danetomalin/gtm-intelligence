@@ -10,6 +10,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { flexText } from "./schema-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
 
@@ -41,12 +42,12 @@ const collateralSchema = z.object({
     .array(
       z.object({
         collateral_type: z.enum(["pitch_deck_outline", "competitive_comparison", "roi_calculator_inputs", "case_study_draft", "executive_briefing"]),
-        target_account: z.string(),
-        target_segment: z.string().min(2).max(80),
-        competitors: z.string(),
-        content: z.string().min(100),
-        positioning_refs: z.string().min(5),
-        messaging_refs: z.string(),
+        target_account: flexText(0),
+        target_segment: flexText(2, 80),
+        competitors: flexText(0),
+        content: flexText(100),
+        positioning_refs: flexText(5),
+        messaging_refs: flexText(0),
       }),
     )
     .min(1)
@@ -91,12 +92,12 @@ const dsn: WorkflowSpec<typeof collateralSchema> = {
 // ── D-CN · Counter-Narrative Responder ──────────────────────────
 
 const counterSchema = z.object({
-  competitor_named: z.string().min(2).max(120),
-  rep_talking_points: z.string().min(50),
-  suggested_linkedin_post: z.string().min(50),
-  email_reply_template: z.string().min(50),
-  positioning_anchor: z.string().min(5),
-  sources: z.string(),
+  competitor_named: flexText(2, 120),
+  rep_talking_points: flexText(50),
+  suggested_linkedin_post: flexText(50),
+  email_reply_template: flexText(50),
+  positioning_anchor: flexText(5),
+  sources: flexText(0),
 });
 
 const dcn: WorkflowSpec<typeof counterSchema> = {
@@ -148,9 +149,9 @@ const dcn: WorkflowSpec<typeof counterSchema> = {
 // ── D-OB / D-WW · enablement assets ─────────────────────────────
 
 const enablementSchema = z.object({
-  title: z.string().min(5).max(200),
-  body_markdown: z.string().min(150),
-  source_refs: z.string().min(5),
+  title: flexText(5, 200),
+  body_markdown: flexText(150),
+  source_refs: flexText(5),
 });
 
 function enablementSpec(
@@ -231,14 +232,7 @@ const dww = enablementSpec(
 
 // ── R-BR · Brand Repository (Brand Code Ingestion) ──────────────
 
-// Models often return list-y prose fields (pain points, goals) as JSON
-// arrays no matter what the instruction says — first live run proved it.
-// Accept both shapes and join arrays into a single string.
-const flexText = (min: number) =>
-  z.preprocess(
-    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string").join("; ") : v),
-    z.string().min(min),
-  );
+// flexText now lives in schema-utils (shared by every spec file).
 
 const brandRepoSchema = z.object({
   voice_rules: z
@@ -246,7 +240,7 @@ const brandRepoSchema = z.object({
       z.object({
         rule_type: z.enum(["tone", "banned_phrase", "preferred_term", "formatting", "do_not_say", "always_say", "reading_level"]),
         rule: flexText(5),
-        rationale: z.preprocess((v) => (Array.isArray(v) ? v.join("; ") : v), z.string()),
+        rationale: flexText(0),
       }),
     )
     .min(3)
@@ -255,8 +249,8 @@ const brandRepoSchema = z.object({
     .array(
       z.object({
         proof_type: z.enum(["metric", "customer_quote", "case_study_excerpt", "third_party_validation", "award", "certification"]),
-        claim: z.string().min(10),
-        attribution: z.string(),
+        claim: flexText(10),
+        attribution: flexText(0),
       }),
     )
     .min(2)
@@ -264,11 +258,11 @@ const brandRepoSchema = z.object({
   capabilities: z
     .array(
       z.object({
-        capability_name: z.string().min(3).max(160),
-        category: z.string(),
+        capability_name: flexText(3, 160),
+        category: flexText(0),
         feature_description: flexText(10),
         buyer_benefit: flexText(10),
-        competitive_gap: z.string(),
+        competitive_gap: flexText(0),
         status: z.enum(["ga", "beta", "alpha", "planned", "sunset"]),
       }),
     )
@@ -277,9 +271,9 @@ const brandRepoSchema = z.object({
   personas: z
     .array(
       z.object({
-        persona_name: z.string().min(3).max(120),
-        title: z.string().min(3).max(160),
-        segment: z.string(),
+        persona_name: flexText(3, 120),
+        title: flexText(3, 160),
+        segment: flexText(0),
         pain_points: flexText(10),
         goals: flexText(10),
       }),

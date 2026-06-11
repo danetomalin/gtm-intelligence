@@ -12,6 +12,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { flexText } from "./schema-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
 
@@ -57,16 +58,16 @@ const dossierSchema = z.object({
   dossiers: z
     .array(
       z.object({
-        competitor_name: z.string().min(2).max(120),
-        strategic_move: z.string().min(10),
-        messaging_drift: z.string().min(5),
-        pricing_intelligence: z.string().min(5),
-        product_signals: z.string().min(5),
-        talent_signals: z.string().min(5),
-        competitive_landmines: z.string().min(10), // 3 numbered questions
+        competitor_name: flexText(2, 120),
+        strategic_move: flexText(10),
+        messaging_drift: flexText(5),
+        pricing_intelligence: flexText(5),
+        product_signals: flexText(5),
+        talent_signals: flexText(5),
+        competitive_landmines: flexText(10), // 3 numbered questions
         risk_assessment: z.enum(["LOW", "MEDIUM", "HIGH"]),
-        risk_justification: z.string().min(5),
-        sources: z.string().min(5),
+        risk_justification: flexText(5),
+        sources: flexText(5),
       }),
     )
     .min(1)
@@ -120,23 +121,23 @@ const pricingSchema = z.object({
   snapshots: z
     .array(
       z.object({
-        competitor_name: z.string().min(2).max(120),
+        competitor_name: flexText(2, 120),
         pricing_model: z.enum(["tiered", "usage", "seat", "flat", "hybrid", "custom", "subscription", "freemium", "unknown"]),
         tiers: z
           .array(
             z.object({
-              name: z.string(),
-              price: z.string(),
+              name: flexText(0),
+              price: flexText(0),
               unit: z.string().optional(),
               features: z.array(z.string()).max(6).optional(),
             }),
           )
           .max(6),
-        packaging_observations: z.string().min(5),
+        packaging_observations: flexText(5),
         pricing_velocity: z.enum(["stable", "changing", "recently_changed", "unknown"]),
-        recent_changes: z.string(),
-        positioning_implications: z.string().min(10),
-        sources: z.string().min(5),
+        recent_changes: flexText(0),
+        positioning_implications: flexText(10),
+        sources: flexText(5),
       }),
     )
     .min(1)
@@ -190,17 +191,17 @@ const winLossSchema = z.object({
   analyses: z
     .array(
       z.object({
-        deal_id: z.string().min(2).max(60),
+        deal_id: flexText(2, 60),
         outcome: z.enum(["win", "loss", "no_decision", "closed_lost_to_competitor", "closed_lost_to_status_quo"]),
-        account_name: z.string().min(2).max(120),
+        account_name: flexText(2, 120),
         account_segment: z.string().max(60),
         account_size: z.string().max(60),
         competitor: z.string().max(120),
-        primary_factors: z.string().min(10),
-        key_quotes: z.string().min(5),
-        patterns_observed: z.string().min(10),
-        recommendation: z.string().min(10),
-        sources: z.string(),
+        primary_factors: flexText(10),
+        key_quotes: flexText(5),
+        patterns_observed: flexText(10),
+        recommendation: flexText(10),
+        sources: flexText(0),
       }),
     )
     .min(2)
@@ -257,22 +258,22 @@ const roadmapSchema = z.object({
   items: z
     .array(
       z.object({
-        title: z.string().min(5).max(160),
-        category: z.string().min(3).max(80),
-        summary: z.string().min(10),
-        evidence: z.string().min(10),
+        title: flexText(5, 160),
+        category: flexText(3, 80),
+        summary: flexText(10),
+        evidence: flexText(10),
         usable_score: z.number().int().min(1).max(10),
-        usable_rationale: z.string().min(5),
+        usable_rationale: flexText(5),
         valuable_score: z.number().int().min(1).max(10),
-        valuable_rationale: z.string().min(5),
+        valuable_rationale: flexText(5),
         feasible_score: z.number().int().min(1).max(10),
-        feasible_rationale: z.string().min(5),
+        feasible_rationale: flexText(5),
         viable_score: z.number().int().min(1).max(10),
-        viable_rationale: z.string().min(5),
+        viable_rationale: flexText(5),
         recommendation: z.enum(["build", "investigate", "defer", "kill"]),
         priority: z.enum(["critical", "high", "medium", "low"]),
-        tags: z.string(),
-        sources: z.string().min(5),
+        tags: flexText(0),
+        sources: flexText(5),
       }),
     )
     .min(2)

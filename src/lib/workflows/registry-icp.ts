@@ -13,6 +13,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { flexText } from "./schema-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
 import { DEMO_CS_ORG_ID } from "@/lib/demo-context";
@@ -51,8 +52,8 @@ async function latestRow<T = Record<string, unknown>>(
 // ── R-CR · Customer Revenue Analyst ─────────────────────────────
 
 const cohortSchema = z.object({
-  cohort_name: z.string().min(5).max(160),
-  methodology: z.string().min(20),
+  cohort_name: flexText(5, 160),
+  methodology: flexText(20),
   filter_criteria: loose,
   cohort_accounts: looseArray.min(3).max(15),
   excluded_accounts: looseArray.max(10),
@@ -196,16 +197,16 @@ const rvc: WorkflowSpec<typeof vocSchema> = {
 // ── S-IC · ICP Synthesizer ──────────────────────────────────────
 
 const icpSchema = z.object({
-  segment_name: z.string().min(5).max(160),
-  one_line_definition: z.string().min(20).max(400),
+  segment_name: flexText(5, 160),
+  one_line_definition: flexText(20, 400),
   firmographics: loose,
   technographics: loose,
   trigger_signals: looseArray,
   primary_pains: looseArray.min(2),
   buying_committee: looseArray.min(1),
-  typical_sales_cycle: z.string().min(3).max(120),
+  typical_sales_cycle: flexText(3, 120),
   anti_icp: looseArray.min(1),
-  evidence_basis: z.string().min(20),
+  evidence_basis: flexText(20),
 });
 
 const sic: WorkflowSpec<typeof icpSchema> = {

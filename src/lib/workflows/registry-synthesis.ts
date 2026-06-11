@@ -11,6 +11,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { flexText } from "./schema-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
 import { buildDailyBriefSnapshot } from "@/lib/daily-brief-snapshot";
@@ -68,9 +69,9 @@ const positioningSchema = z.object({
     .array(
       z.object({
         element_type: z.enum(["competitive_alternatives", "distinct_capabilities", "differentiated_value", "best_fit_accounts", "market_category"]),
-        content: z.string().min(20),
-        evidence: z.string().min(10),
-        last_change_reason: z.string().min(5),
+        content: flexText(20),
+        evidence: flexText(10),
+        last_change_reason: flexText(5),
       }),
     )
     .length(5),
@@ -115,19 +116,19 @@ const battlecardSchema = z.object({
   cards: z
     .array(
       z.object({
-        competitor_name: z.string().min(2).max(120),
-        elevator_pitch: z.string().min(20),
-        value_prop: z.string().min(10),
-        features_benefits: z.string().min(10),
-        target_personas: z.string().min(5),
-        pain_points: z.string().min(10),
-        qualifying_questions: z.string().min(10),
-        competitor_profile: z.string().min(10),
-        competitor_strengths: z.string().min(10),
-        competitor_weaknesses: z.string().min(10),
-        kill_points: z.string().min(10),
-        objections: z.string().min(10),
-        success_stories: z.string().min(5),
+        competitor_name: flexText(2, 120),
+        elevator_pitch: flexText(20),
+        value_prop: flexText(10),
+        features_benefits: flexText(10),
+        target_personas: flexText(5),
+        pain_points: flexText(10),
+        qualifying_questions: flexText(10),
+        competitor_profile: flexText(10),
+        competitor_strengths: flexText(10),
+        competitor_weaknesses: flexText(10),
+        kill_points: flexText(10),
+        objections: flexText(10),
+        success_stories: flexText(5),
       }),
     )
     .min(1)
@@ -173,17 +174,17 @@ const themesSchema = z.object({
   themes: z
     .array(
       z.object({
-        theme_name: z.string().min(3).max(160),
-        category: z.string().min(3).max(80),
-        summary: z.string().min(20),
-        representative_quotes: z.string().min(10),
+        theme_name: flexText(3, 160),
+        category: flexText(3, 80),
+        summary: flexText(20),
+        representative_quotes: flexText(10),
         frequency: z.enum(["low", "medium", "high"]),
         urgency: z.enum(["Critical", "High", "Medium", "Low"]),
         revenue_impact: z.enum(["High", "Medium", "Low"]),
         strategic_alignment: z.enum(["Aligned", "Neutral", "Misaligned"]),
         // min(3): terse-but-legit actions ("Monitor") shouldn't fail the
         // run — live R-CF run tripped the old min(10) on one theme.
-        recommended_action: z.string().min(3),
+        recommended_action: flexText(3),
       }),
     )
     .min(2)
@@ -237,13 +238,13 @@ const productFeedbackSchema = z.object({
     .array(
       z.object({
         source: z.enum(["support_ticket", "sales_call", "nps_open", "user_interview", "community", "review"]),
-        customer_segment: z.string().min(2).max(60),
-        raw_excerpt: z.string().min(10),
-        themed_summary: z.string().min(10),
+        customer_segment: flexText(2, 60),
+        raw_excerpt: flexText(10),
+        themed_summary: flexText(10),
         severity: z.enum(["low", "medium", "high", "critical"]),
         recurrence_count: z.number().int().min(1).max(50),
-        recommendation: z.string().min(10),
-        sources: z.string(),
+        recommendation: flexText(10),
+        sources: flexText(0),
       }),
     )
     .min(2)
@@ -280,14 +281,14 @@ const evidenceSchema = z.object({
   evidence: z
     .array(
       z.object({
-        customer_name: z.string().min(2).max(120),
-        customer_segment: z.string().min(2).max(60),
+        customer_name: flexText(2, 120),
+        customer_segment: flexText(2, 60),
         evidence_type: z.enum(["quote", "case_study", "metric", "nps_verbatim", "review", "reference_call_note"]),
-        content: z.string().min(15),
-        attribution: z.string().min(3),
-        positioning_alignment: z.string().min(5),
+        content: flexText(15),
+        attribution: flexText(3),
+        positioning_alignment: flexText(5),
         legal_status: z.enum(["approved", "pending_legal", "anonymize_only", "do_not_use"]),
-        sources: z.string(),
+        sources: flexText(0),
       }),
     )
     .min(2)
@@ -333,14 +334,14 @@ const briefingSchema = z.object({
   briefings: z
     .array(
       z.object({
-        analyst_firm: z.string().min(2).max(120),
+        analyst_firm: flexText(2, 120),
         briefing_type: z.enum(["initial", "update", "inquiry", "quadrant_input", "wave_input"]),
-        key_messages: z.string().min(20),
-        proof_points: z.string().min(10),
-        competitor_framing: z.string().min(10),
-        questions_likely: z.string().min(10),
-        positioning_anchor: z.string().min(5),
-        sources: z.string(),
+        key_messages: flexText(20),
+        proof_points: flexText(10),
+        competitor_framing: flexText(10),
+        questions_likely: flexText(10),
+        positioning_anchor: flexText(5),
+        sources: flexText(0),
       }),
     )
     .min(1)
@@ -384,14 +385,14 @@ const launchPlanSchema = z.object({
   plans: z
     .array(
       z.object({
-        launch_name: z.string().min(5).max(160),
+        launch_name: flexText(5, 160),
         launch_type: z.enum(["feature", "product", "announcement", "rebrand", "pricing_change", "partnership"]),
-        target_personas: z.string().min(10),
-        messaging_pillars: z.string().min(20),
-        channel_plan: z.string().min(20),
-        success_metrics: z.string().min(10),
-        positioning_anchor: z.string().min(5),
-        sources: z.string(),
+        target_personas: flexText(10),
+        messaging_pillars: flexText(20),
+        channel_plan: flexText(20),
+        success_metrics: flexText(10),
+        positioning_anchor: flexText(5),
+        sources: flexText(0),
       }),
     )
     .min(1)
@@ -437,17 +438,17 @@ const perfSchema = z.object({
     .array(
       z.object({
         scope: z.enum(["messaging_theme", "channel", "persona", "positioning_element", "overall"]),
-        scope_value: z.string().min(2).max(120),
-        window_label: z.string().min(2).max(60),
+        scope_value: flexText(2, 120),
+        window_label: flexText(2, 60),
         sends_count: z.number().int().min(0),
         open_rate_pct: z.number().min(0).max(100),
         click_through_rate_pct: z.number().min(0).max(100),
         reply_rate_pct: z.number().min(0).max(100),
-        winning_theme: z.string(),
-        losing_theme: z.string(),
-        narrative: z.string().min(20),
-        recommendation: z.string().min(10),
-        sources: z.string(),
+        winning_theme: flexText(0),
+        losing_theme: flexText(0),
+        narrative: flexText(20),
+        recommendation: flexText(10),
+        sources: flexText(0),
       }),
     )
     .min(1)
@@ -493,14 +494,14 @@ const scp: WorkflowSpec<typeof perfSchema> = {
 // ── S-DB · Daily Brief ──────────────────────────────────────────
 
 const briefSchema = z.object({
-  headline: z.string().min(10).max(300),
+  headline: flexText(10, 300),
   focus_items: z
     .array(
       z.object({
         rank: z.number().int().min(1).max(5),
-        title: z.string().min(5).max(200),
-        why: z.string().min(10),
-        action: z.string().min(5),
+        title: flexText(5, 200),
+        why: flexText(10),
+        action: flexText(5),
         related_artifact: loose.nullable(),
       }),
     )

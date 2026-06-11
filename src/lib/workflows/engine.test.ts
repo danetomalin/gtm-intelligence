@@ -94,6 +94,23 @@ describe("workflow registry", () => {
     expect(parsed.voice_rules[0].rule).toBe("Plainspoken; operational; no hype");
   });
 
+  it("S-LP tolerates array-shaped prose (live-run regression: messaging_pillars)", () => {
+    const plan = {
+      plans: [{
+        launch_name: "Fair-workweek compliance engine GA",
+        launch_type: "feature",
+        target_personas: ["VP Operations", "HR Directors at multi-location operators"],
+        messaging_pillars: ["Compliance without spreadsheets", "Forecast-driven scheduling", "Audit-ready by default"],
+        channel_plan: ["Week 1: customer email + in-app", "Week 2: LinkedIn + webinar", "Week 3: analyst briefing"],
+        success_metrics: "200 webinar registrations; 15% feature adoption in 60d",
+        positioning_anchor: "distinct_capabilities",
+        sources: "roadmap item: compliance engine (build)",
+      }],
+    };
+    const parsed = WORKFLOW_REGISTRY["S-LP"].outputSchema.parse(plan) as { plans: { messaging_pillars: string }[] };
+    expect(parsed.plans[0].messaging_pillars).toBe("Compliance without spreadsheets; Forecast-driven scheduling; Audit-ready by default");
+  });
+
   it("D-CN demands all three counter-narrative surfaces", () => {
     const good = {
       competitor_named: "Homebase",

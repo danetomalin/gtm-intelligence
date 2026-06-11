@@ -8,6 +8,7 @@
 // ============================================================
 
 import { z } from "zod";
+import { flexText } from "./schema-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WorkflowIds, WorkflowSpec } from "./engine";
 import { RESEARCH_SPECS } from "./registry-research";
@@ -33,14 +34,14 @@ const signalSchema = z.object({
     .array(
       z.object({
         category: z.enum(["spend_shifts", "market_expansion", "regulatory", "competitive_positioning"]),
-        headline: z.string().min(5).max(160),
-        summary: z.string().min(10),
-        strategic_commentary: z.string().min(10),
+        headline: flexText(5, 160),
+        summary: flexText(10),
+        strategic_commentary: flexText(10),
         impact_score: z.number().int().min(1).max(10),
         sentiment: z.enum(["bullish", "bearish", "neutral"]),
-        sentiment_reason: z.string().min(3),
-        tags: z.string(),
-        sources: z.string().min(5), // comma-separated URLs from the research block
+        sentiment_reason: flexText(3),
+        tags: flexText(0),
+        sources: flexText(5), // comma-separated URLs from the research block
       }),
     )
     .min(1)
@@ -108,10 +109,10 @@ const contentSchema = z.object({
     .array(
       z.object({
         channel: z.enum(["email", "linkedin", "ad", "one_pager", "talk_track"]),
-        topic: z.string().min(3).max(200),
-        target_persona: z.string().min(3).max(160),
-        content: z.string().min(40),
-        messaging_refs: z.string(),
+        topic: flexText(3, 200),
+        target_persona: flexText(3, 160),
+        content: flexText(40),
+        messaging_refs: flexText(0),
         proof_pending: z.boolean(),
       }),
     )
