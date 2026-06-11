@@ -90,7 +90,16 @@ export async function callProvider(
           contents,
           ...(opts?.system ? { systemInstruction: { parts: [{ text: opts.system }] } } : {}),
           ...(opts?.webSearch ? { tools: [{ google_search: {} }] } : {}),
-          generationConfig: { maxOutputTokens: maxTokens },
+          generationConfig: {
+            maxOutputTokens: maxTokens,
+            // Flash spends output budget on hidden thinking tokens and
+            // truncated R-CR's large JSON mid-brace. Plain (non-grounded)
+            // flash calls don't need reasoning — give the whole budget
+            // to the answer. Grounded calls and Pro keep thinking.
+            ...(!opts?.webSearch && /flash/i.test(model)
+              ? { thinkingConfig: { thinkingBudget: 0 } }
+              : {}),
+          },
         }),
       });
       const data = await res.json();

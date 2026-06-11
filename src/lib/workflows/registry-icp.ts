@@ -65,7 +65,7 @@ const rcr: WorkflowSpec<typeof cohortSchema> = {
   outputInstruction:
     '{"cohort_name": "...", "methodology": "filter logic incl. data source caveat", "filter_criteria": {"min_health": N, "...": "..."}, "cohort_accounts": [{"name": "...", "segment": "...", "arr_usd": N, "health_score": N, "adoption_score": N, "included_reason": "..."}], "excluded_accounts": [{"name": "...", "excluded_reason": "..."}]} — 3 to 15 cohort accounts.',
   outputSchema: cohortSchema,
-  maxTokens: 6000,
+  maxTokens: 8000, // largest JSON in the system (up to 15 cohort accounts)
   buildContext: async (admin) => {
     // The customer portfolio lives under the CS demo org (Halcyon).
     const { data: accounts } = await admin
