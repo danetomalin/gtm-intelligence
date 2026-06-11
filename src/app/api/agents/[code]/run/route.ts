@@ -14,7 +14,10 @@ import { WORKFLOW_REGISTRY, isRegistryCode } from "@/lib/workflows/registry";
 import { isDistributionCode, runDistribution } from "@/lib/workflows/distribution-runner";
 
 // Native runs execute the LLM call inside this function — keep it alive.
-export const maxDuration = 60;
+// 300s (Fluid compute): heavy synthesis runs (S-PO writes all five
+// positioning elements + a possible corrective retry in one invocation)
+// were 504ing at the old 60s ceiling.
+export const maxDuration = 300;
 
 const N8N_BASE_URL =
   process.env.N8N_WEBHOOK_BASE_URL ?? "https://gtmintelligence.app.n8n.cloud";

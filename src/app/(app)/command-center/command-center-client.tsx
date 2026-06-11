@@ -47,7 +47,8 @@ type PersistedState = {
 const STORAGE_KEY = "throughline.commandCenter";
 const DEFAULT_STATE: PersistedState = { activeStage: 1, skipped: {}, pauseSeconds: 30 };
 const POLL_MS = 4000;
-const RUN_TIMEOUT_MS = 3 * 60 * 1000;
+// Slightly past the route's 300s maxDuration so the server always loses first.
+const RUN_TIMEOUT_MS = 5.5 * 60 * 1000;
 
 function loadState(): PersistedState {
   if (typeof window === "undefined") return DEFAULT_STATE;
@@ -203,7 +204,7 @@ export function CommandCenterClient({
     }
     // Timed out client-side: cancel the row so it can't block the stage.
     await fetch(`/api/runs/${runId}/cancel`, { method: "POST" }).catch(() => null);
-    setStageLog((l) => [...l, `✗ ${code}: timed out after 3 minutes — run canceled`]);
+    setStageLog((l) => [...l, `✗ ${code}: timed out after 5.5 minutes — run canceled`]);
     await refresh();
     return "error";
   }

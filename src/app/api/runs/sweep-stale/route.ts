@@ -4,9 +4,9 @@ import { STALE_RUN_MS } from "@/lib/workflows/pipeline";
 
 /**
  * Mark every run still `running` past the stale threshold as an error.
- * The engine's serverless ceiling is 60s, so a 3-minute-old `running`
- * row means the function died without updating it (deploy interrupt,
- * crash, or a legacy n8n row).
+ * The engine's serverless ceiling is 300s, so a 6-minute-old `running`
+ * row means the function died without updating it (504 kill, deploy
+ * interrupt, crash, or a legacy n8n row).
  */
 export async function POST() {
   const admin = await createAdminClient();
@@ -17,7 +17,7 @@ export async function POST() {
       status: "error",
       finished_at: new Date().toISOString(),
       error_message:
-        "Timed out: still marked running past the 3-minute stale threshold (engine ceiling is 60s). Marked stale by the Command Center sweep.",
+        "Timed out: still marked running past the 6-minute stale threshold (engine ceiling is 300s). Marked stale by the Command Center sweep.",
     })
     .eq("status", "running")
     .lt("started_at", cutoff)

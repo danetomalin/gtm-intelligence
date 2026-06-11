@@ -108,10 +108,10 @@ export const ALL_PIPELINE_CODES: string[] = [
 
 /**
  * A run still marked `running` after this long is dead: the engine's
- * serverless ceiling is 60s, so 3 minutes means the function died
- * without updating its row (deploy interrupt, crash, n8n legacy row).
+ * serverless ceiling is 300s, so 6 minutes means the function died
+ * without updating its row (504 kill, deploy interrupt, crash).
  */
-export const STALE_RUN_MS = 3 * 60 * 1000;
+export const STALE_RUN_MS = 6 * 60 * 1000;
 
 export function isStaleRun(status: string | null | undefined, startedAt: string | null | undefined): boolean {
   if (status !== "running" || !startedAt) return false;
