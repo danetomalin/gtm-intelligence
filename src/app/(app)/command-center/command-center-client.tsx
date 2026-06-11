@@ -372,7 +372,7 @@ export function CommandCenterClient({
           </p>
         )}
         <div className="mt-auto flex items-center gap-1.5 pt-0.5">
-          {status === "error" && !runningStage && unlocked && (
+          {(status === "error" || status === "canceled") && !runningStage && unlocked && (
             <>
               <button onClick={() => void runOne(code).then(() => setActiveCode(null))} className={btn}>
                 Retry
