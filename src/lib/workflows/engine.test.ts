@@ -62,6 +62,38 @@ describe("workflow registry", () => {
     expect(() => WORKFLOW_REGISTRY["R-BR"].outputSchema.parse({ ...good, voice_rules: good.voice_rules.slice(0, 2) })).toThrow();
   });
 
+  it("R-BR tolerates array-shaped prose fields (live-run regression, 2026-06-11)", () => {
+    // The first live run failed because the model returned pain_points
+    // as an array. The schema must coerce arrays of strings into one
+    // joined string for the prose fields.
+    const arrayified = {
+      voice_rules: [
+        { rule_type: "tone", rule: ["Plainspoken", "operational", "no hype"], rationale: ["Ops buyers distrust marketing language."] },
+        { rule_type: "banned_phrase", rule: "game-changing", rationale: "Hype." },
+        { rule_type: "preferred_term", rule: "team members (not 'resources')", rationale: "Respectful." },
+      ],
+      proof_points: [
+        { proof_type: "metric", claim: "Customers report weekly admin savings", attribution: "unverified — needs source" },
+        { proof_type: "award", claim: "Recognized in workforce management category", attribution: "unverified — needs source" },
+      ],
+      capabilities: [
+        { capability_name: "Demand-based scheduling", category: "scheduling", feature_description: ["Forecast-driven shifts", "auto-fill"], buyer_benefit: ["Lower labor cost"], competitive_gap: "SMB rivals lack it", status: "ga" },
+        { capability_name: "Compliance engine", category: "compliance", feature_description: "Jurisdiction rules", buyer_benefit: "Avoid penalties", competitive_gap: "Differentiator", status: "ga" },
+        { capability_name: "Time & attendance", category: "time", feature_description: "Verified clock-in", buyer_benefit: "Accurate payroll", competitive_gap: "Table stakes", status: "ga" },
+      ],
+      personas: [
+        { persona_name: "Multi-location ops lead", title: "VP Operations", segment: "mid-market", pain_points: ["Schedule chaos", "compliance exposure", "overtime creep"], goals: ["Predictable labor cost", "fewer violations"] },
+        { persona_name: "Franchise owner", title: "Owner/Operator", segment: "SMB", pain_points: "Compliance exposure across sites", goals: "Stay out of trouble, save time" },
+      ],
+    };
+    const parsed = WORKFLOW_REGISTRY["R-BR"].outputSchema.parse(arrayified) as {
+      personas: { pain_points: string }[];
+      voice_rules: { rule: string }[];
+    };
+    expect(parsed.personas[0].pain_points).toBe("Schedule chaos; compliance exposure; overtime creep");
+    expect(parsed.voice_rules[0].rule).toBe("Plainspoken; operational; no hype");
+  });
+
   it("D-CN demands all three counter-narrative surfaces", () => {
     const good = {
       competitor_named: "Homebase",

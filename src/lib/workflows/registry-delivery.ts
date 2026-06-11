@@ -231,13 +231,22 @@ const dww = enablementSpec(
 
 // ── R-BR · Brand Repository (Brand Code Ingestion) ──────────────
 
+// Models often return list-y prose fields (pain points, goals) as JSON
+// arrays no matter what the instruction says — first live run proved it.
+// Accept both shapes and join arrays into a single string.
+const flexText = (min: number) =>
+  z.preprocess(
+    (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string").join("; ") : v),
+    z.string().min(min),
+  );
+
 const brandRepoSchema = z.object({
   voice_rules: z
     .array(
       z.object({
         rule_type: z.enum(["tone", "banned_phrase", "preferred_term", "formatting", "do_not_say", "always_say", "reading_level"]),
-        rule: z.string().min(5),
-        rationale: z.string(),
+        rule: flexText(5),
+        rationale: z.preprocess((v) => (Array.isArray(v) ? v.join("; ") : v), z.string()),
       }),
     )
     .min(3)
@@ -257,8 +266,8 @@ const brandRepoSchema = z.object({
       z.object({
         capability_name: z.string().min(3).max(160),
         category: z.string(),
-        feature_description: z.string().min(10),
-        buyer_benefit: z.string().min(10),
+        feature_description: flexText(10),
+        buyer_benefit: flexText(10),
         competitive_gap: z.string(),
         status: z.enum(["ga", "beta", "alpha", "planned", "sunset"]),
       }),
@@ -271,8 +280,8 @@ const brandRepoSchema = z.object({
         persona_name: z.string().min(3).max(120),
         title: z.string().min(3).max(160),
         segment: z.string(),
-        pain_points: z.string().min(10),
-        goals: z.string().min(10),
+        pain_points: flexText(10),
+        goals: flexText(10),
       }),
     )
     .min(2)
@@ -283,7 +292,7 @@ const rbr: WorkflowSpec<typeof brandRepoSchema> = {
   code: "R-BR",
   task: "Ingest this brand's brand code from the brand context below (no web research is available in this run): voice rules (tone, preferred/banned terms), proof points (mark every claim's attribution honestly — use 'unverified — needs source' where you cannot ground it), product capabilities (with buyer benefit + competitive gap), and buyer personas. Every downstream workflow reads these tables, so be precise rather than exhaustive.",
   outputInstruction:
-    '{"voice_rules": [{"rule_type": "tone|banned_phrase|preferred_term|formatting|do_not_say|always_say|reading_level", "rule": "...", "rationale": "..."}], "proof_points": [{"proof_type": "metric|customer_quote|case_study_excerpt|third_party_validation|award|certification", "claim": "...", "attribution": "source or \'unverified — from research\'"}], "capabilities": [{"capability_name": "...", "category": "...", "feature_description": "...", "buyer_benefit": "...", "competitive_gap": "...", "status": "ga|beta|alpha|planned|sunset"}], "personas": [{"persona_name": "...", "title": "...", "segment": "...", "pain_points": "...", "goals": "..."}]}',
+    '{"voice_rules": [{"rule_type": "tone|banned_phrase|preferred_term|formatting|do_not_say|always_say|reading_level", "rule": "...", "rationale": "..."}], "proof_points": [{"proof_type": "metric|customer_quote|case_study_excerpt|third_party_validation|award|certification", "claim": "...", "attribution": "source or \'unverified — from research\'"}], "capabilities": [{"capability_name": "...", "category": "...", "feature_description": "...", "buyer_benefit": "...", "competitive_gap": "...", "status": "ga|beta|alpha|planned|sunset"}], "personas": [{"persona_name": "...", "title": "...", "segment": "...", "pain_points": "single semicolon-separated STRING, not an array", "goals": "single STRING, not an array"}]} — every field is a plain string; never use nested arrays for prose fields.',
   outputSchema: brandRepoSchema,
   maxTokens: 8000,
   // Tavily intentionally removed for now (Dane 2026-06-11) — R-BR runs on
