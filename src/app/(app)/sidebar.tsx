@@ -110,12 +110,16 @@ export function Sidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, outputs, contextItems, workflows, distributionWorkflows]);
 
-  const [open, setOpen] = useState<Record<string, boolean>>(DEFAULT_OPEN);
+  // `open` holds only EXPLICIT user choices. Sections without an entry
+  // fall back to: auto-open if they own the current route, else their
+  // default. This way the chevron always wins — a section is never
+  // force-held open against a click (that bug shipped first).
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(SECTIONS_KEY);
-      if (raw) setOpen({ ...DEFAULT_OPEN, ...(JSON.parse(raw) as Record<string, boolean>) });
+      if (raw) setOpen(JSON.parse(raw) as Record<string, boolean>);
     } catch {
       // localStorage unavailable — defaults stand
     }
@@ -144,7 +148,7 @@ export function Sidebar() {
     count?: number;
     children: React.ReactNode;
   }) {
-    const isOpen = open[id] || activeSection === id;
+    const isOpen = open[id] ?? (activeSection === id || (DEFAULT_OPEN[id] ?? false));
     return (
       <div>
         <button
