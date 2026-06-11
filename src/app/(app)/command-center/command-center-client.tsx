@@ -447,11 +447,7 @@ export function CommandCenterClient({
     return (
       <section
         className={`rounded-lg border px-4 py-4 space-y-3 ${
-          isCurrent
-            ? "border-accent/60 bg-card/60"
-            : unlocked
-              ? "border-border bg-card/30"
-              : "border-border/50 bg-card/10 opacity-60"
+          isCurrent ? "border-accent/60 bg-card/60" : "border-border bg-card/30"
         }`}
       >
         <header className="flex items-start gap-3">
@@ -460,6 +456,11 @@ export function CommandCenterClient({
               {isCs ? stage.title : `Stage ${stage.index} · ${stage.title}`}
               {complete && <span className="ml-2 text-xs text-success">✓ complete</span>}
               {blocked && <span className="ml-2 text-xs text-danger">needs attention</span>}
+              {!unlocked && !complete && (
+                <span className="ml-2 text-xs font-normal text-text-dim">
+                  locked · advance to Stage {stage.index} to run (managing is fine)
+                </span>
+              )}
             </h2>
             <p className="mt-1 text-xs text-text-muted">{stage.description}</p>
             {stage.gateNote && (
