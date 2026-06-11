@@ -53,4 +53,13 @@ describe("classifyRunError", () => {
       expect(d.hint).toBeTruthy();
     }
   });
+
+  it("classifies schema-validation failures as Output contract", () => {
+    const d = classifyRunError(
+      'Output failed validation twice: [{"origin":"string","code":"too_small","minimum":10,"path":["themes",2,"recommended_action"]}]',
+    );
+    expect(d.category).toBe("validation");
+    expect(d.label).toBe("Output contract");
+    expect(classifyRunError("No JSON found in model output.").category).toBe("validation");
+  });
 });

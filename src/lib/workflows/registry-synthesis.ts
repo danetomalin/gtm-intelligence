@@ -181,7 +181,9 @@ const themesSchema = z.object({
         urgency: z.enum(["Critical", "High", "Medium", "Low"]),
         revenue_impact: z.enum(["High", "Medium", "Low"]),
         strategic_alignment: z.enum(["Aligned", "Neutral", "Misaligned"]),
-        recommended_action: z.string().min(10),
+        // min(3): terse-but-legit actions ("Monitor") shouldn't fail the
+        // run — live R-CF run tripped the old min(10) on one theme.
+        recommended_action: z.string().min(3),
       }),
     )
     .min(2)

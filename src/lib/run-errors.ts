@@ -11,6 +11,7 @@ export type RunErrorCategory =
   | "timeout"
   | "n8n"
   | "model"
+  | "validation"
   | "data"
   | "canceled"
   | "unknown";
@@ -42,6 +43,10 @@ const DIAGNOSES: Record<RunErrorCategory, Omit<RunErrorDiagnosis, "category">> =
     label: "Model",
     hint: "The provider rejected the model id or the request shape. Check the model on the assigned credential profile in Settings → API credentials.",
   },
+  validation: {
+    label: "Output contract",
+    hint: "The model's output failed the workflow's schema twice (the path in the message shows the exact field). Often a one-off — Retry first; a smarter model on the workflow's credential profile also helps. If it repeats on the same field, the schema bound or prompt needs a code-level adjustment.",
+  },
   data: {
     label: "Data",
     hint: "A database read or write failed during the run. Check that the upstream tables this workflow reads have rows for the active brand.",
@@ -61,6 +66,7 @@ const RULES: { pattern: RegExp; category: RunErrorCategory }[] = [
   { pattern: /429|rate.?limit|quota|resource_exhausted|overloaded|too many requests/i, category: "rate_limit" },
   { pattern: /timed? ?out|did not complete|deadline|maxduration|aborted/i, category: "timeout" },
   { pattern: /n8n|webhook/i, category: "n8n" },
+  { pattern: /failed validation|invalid_type|too_small|too_big|invalid_enum|no json found/i, category: "validation" },
   { pattern: /model.*(not.?found|does not exist|invalid)|not.?found.*model|max_tokens|unsupported model|empty response/i, category: "model" },
   { pattern: /supabase|relation .* does not exist|violates|constraint|column|failed to (write|create|insert)|snapshot build failed/i, category: "data" },
   { pattern: /stale run canceled|canceled/i, category: "canceled" },
