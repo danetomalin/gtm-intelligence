@@ -272,7 +272,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
     skipped: { label: "Skipped", cls: "bg-card text-text-muted border-border line-through" },
   };
 
-  function WorkflowRow({ code, stage }: { code: string; stage: PipelineStage }) {
+  function WorkflowRow({ code, unlocked }: { code: string; unlocked: boolean }) {
     const status = cellStatus(code);
     const run = runs[code];
     const c = chip[status];
@@ -288,7 +288,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
           </Link>
           {isActive && <span className="text-xs text-info">← current</span>}
           <span className="ml-auto flex items-center gap-2">
-            {status === "error" && !runningStage && (
+            {status === "error" && !runningStage && unlocked && (
               <>
                 <button
                   onClick={() => void runOne(code).then(() => setActiveCode(null))}
@@ -325,7 +325,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
                 Cancel
               </button>
             )}
-            {status === "idle" && !runningStage && stage.id !== "" && (
+            {status === "idle" && !runningStage && unlocked && (
               <button
                 onClick={() => void runOne(code).then(() => setActiveCode(null))}
                 className="text-xs rounded border border-border px-2 py-0.5 text-text hover:bg-card"
@@ -417,7 +417,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
         </header>
         <ul className="space-y-2">
           {stage.codes.map((code) => (
-            <WorkflowRow key={code} code={code} stage={stage} />
+            <WorkflowRow key={code} code={code} unlocked={unlocked} />
           ))}
         </ul>
       </section>
