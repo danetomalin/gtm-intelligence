@@ -2,7 +2,6 @@ import { PageHeader } from "../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { CommandCenterClient } from "./command-center-client";
-import { RunErrorsPanel } from "./run-errors-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +22,6 @@ export default function CommandCenterPage() {
       />
       <CommandCenterClient names={names} purposes={purposes} />
 
-      <section className="space-y-3">
-        <header>
-          <h2 className="text-base font-semibold text-text">Troubleshooting</h2>
-          <p className="text-xs text-text-muted">
-            Recent failed and canceled runs across all brands — classified
-            cause, suggested fix, full provider message, one-click retry.
-          </p>
-        </header>
-        <RunErrorsPanel />
-      </section>
     </div>
   );
 }
