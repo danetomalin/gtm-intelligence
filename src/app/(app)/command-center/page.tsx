@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 
 export default function CommandCenterPage() {
   const names: Record<string, string> = {};
-  for (const a of agentTooling) names[a.code] = a.name;
+  const purposes: Record<string, string> = {};
+  for (const a of agentTooling) {
+    names[a.code] = a.name;
+    purposes[a.code] = a.purpose;
+  }
 
   return (
     <div className="px-8 py-10 max-w-7xl space-y-8">
@@ -17,7 +21,7 @@ export default function CommandCenterPage() {
         title="Command Center"
         subtitle={`Run the full workflow system on ${DEMO_BRAND_NAME}, stage by stage. Each stage runs sequentially with a pause between workflows; advance manually once everything is green. The Customer Success track runs independently off the Halcyon portfolio.`}
       />
-      <CommandCenterClient names={names} />
+      <CommandCenterClient names={names} purposes={purposes} />
 
       <section className="space-y-3">
         <header>

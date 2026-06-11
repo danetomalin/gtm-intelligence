@@ -9,8 +9,6 @@ import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
 import { DEMO_BRAND_ID, DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { LIVE_AGENTS, normalizeAgentCode } from "@/lib/agent-config";
-import { RunButton } from "./run-button";
-import { WorkflowConfigStatus } from "./workflow-config-status";
 import { SignalCard, type Signal } from "./signal-card";
 import { PastSignalsArchive } from "./past-signals";
 import { DossierCard, type Dossier } from "./dossier-card";
@@ -766,26 +764,14 @@ export default async function AgentPage({
             title={agent.name}
             subtitle={agent.purpose}
           />
-          {isLive ? (
-            <RunButton
-              agentCode={code}
-              initialLastStatus={latestRun?.status ?? null}
-            />
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="flex-shrink-0 inline-flex items-center gap-2 rounded-md bg-accent-strong px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
-              title="On-demand triggering ships once this agent is migrated to Supabase"
-            >
-              Run now
-              <span className="text-[10px] uppercase tracking-wider opacity-75">
-                soon
-              </span>
-            </button>
-          )}
+          <Link
+            href="/command-center"
+            className="flex-shrink-0 inline-flex items-center gap-2 rounded-md border border-border px-4 py-2.5 text-sm font-medium text-text hover:bg-card transition"
+            title="Run this workflow and manage its credentials, model, and instructions in the Command Center"
+          >
+            Manage in Command Center →
+          </Link>
         </div>
-        <WorkflowConfigStatus agentCode={agent.code} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -821,8 +807,8 @@ export default async function AgentPage({
             />
             {latestSignals.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No signals yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No signals yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — the first run typically takes 30–60 seconds and produces
                 4–8 signals.
               </div>
@@ -854,8 +840,8 @@ export default async function AgentPage({
             />
             {latestDossiers.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No dossiers yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No dossiers yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — R-CI generates one dossier per competitor in
                 brand_competitors. ~30–60 seconds.
               </div>
@@ -887,8 +873,8 @@ export default async function AgentPage({
             />
             {latestRoadmap.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No roadmap items yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No roadmap items yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — S-RM produces 5–8 UVFV-scored items in ~30–60 seconds.
               </div>
             ) : (
@@ -918,7 +904,7 @@ export default async function AgentPage({
           />
           {pastContent.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-              No messages yet. Click <strong className="text-text">Run now</strong> to fire D-MG — it produces 6–10 channel-aware messages anchored to positioning.
+              No messages yet. Run D-MG from the <strong className="text-text">Command Center</strong> — it produces 6–10 channel-aware messages anchored to positioning.
             </div>
           ) : (
             <div className="space-y-2">
@@ -938,7 +924,7 @@ export default async function AgentPage({
           />
           {pastCollateral.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-              No collateral yet. Click <strong className="text-text">Run now</strong> to fire D-SN — it produces 4–6 collateral pieces (narrative arc, one-pager, SKO outline, exec briefing).
+              No collateral yet. Run D-SN from the <strong className="text-text">Command Center</strong> — it produces 4–6 collateral pieces (narrative arc, one-pager, SKO outline, exec briefing).
             </div>
           ) : (
             <div className="space-y-3">
@@ -959,8 +945,8 @@ export default async function AgentPage({
             />
             {latestThemes.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No themes yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire R-CF — it
+                No themes yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire R-CF — it
                 synthesizes 5–8 feedback themes from the market context in
                 ~30–45 seconds.
               </div>
@@ -998,8 +984,8 @@ export default async function AgentPage({
             />
             {latestBattlecards.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No battlecards yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No battlecards yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — S-BC generates one battlecard per competitor in ~30–60
                 seconds, pulling from positioning + dossiers.
               </div>
@@ -1064,8 +1050,8 @@ export default async function AgentPage({
             />
             {latestPositioning.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No positioning yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No positioning yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — S-PO produces all 5 elements in ~30–45 seconds.
               </div>
             ) : (
@@ -1123,8 +1109,8 @@ export default async function AgentPage({
             />
             {latestPricing.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No pricing snapshots yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No pricing snapshots yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — R-PP produces one snapshot per competitor in ~30–60
                 seconds.
               </div>
@@ -1162,8 +1148,8 @@ export default async function AgentPage({
             />
             {latestWinLoss.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No win/loss data yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No win/loss data yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — R-WL synthesizes from dummy CRM data + R-CI dossiers.
               </div>
             ) : (
@@ -1199,8 +1185,8 @@ export default async function AgentPage({
             />
             {latestEvidence.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No evidence yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire the
+                No evidence yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire the
                 agent — R-EV curates quotes, case studies, and metrics from
                 review and NPS sources.
               </div>
@@ -1237,8 +1223,8 @@ export default async function AgentPage({
             />
             {latestFeedback.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No feedback synthesized yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire R-PF —
+                No feedback synthesized yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire R-PF —
                 it clusters support tickets, sales-call notes, and NPS verbatims
                 into themes with severity scoring.
               </div>
@@ -1275,8 +1261,8 @@ export default async function AgentPage({
             />
             {latestBriefings.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No briefings yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire S-AR —
+                No briefings yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire S-AR —
                 it generates briefing prep using S-PO, R-CI, S-RM, and R-EV.
               </div>
             ) : (
@@ -1337,7 +1323,7 @@ export default async function AgentPage({
             />
             {enablementAssets.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No assets yet. Click <strong className="text-text">Run now</strong>{" "}
+                No assets yet. Run it from the <strong className="text-text">Command Center</strong>{" "}
                 to synthesize. Output lands in the unified enablement library
                 and the Review Queue.
               </div>
@@ -1361,8 +1347,8 @@ export default async function AgentPage({
             />
             {cohorts.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No cohorts yet. Click{" "}
-                <strong className="text-text">Run now</strong> to analyze the
+                No cohorts yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to analyze the
                 customer base. R-CR ranks accounts by NRR + LTV + adoption,
                 filters support-burdened or low-adoption accounts, and writes
                 a top-decile cohort that lands in HITL Gate 1 before
@@ -1490,7 +1476,7 @@ export default async function AgentPage({
             />
             {latestMemos.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No memos yet. Click <strong className="text-text">Run now</strong>{" "}
+                No memos yet. Run it from the <strong className="text-text">Command Center</strong>{" "}
                 to apply the compound trigger rule against the latest R-MS
                 signals (impact ≥ 8, OR impact ≥ 7 + bearish + sensitive
                 category). Scheduled firing is paused for now to keep API
@@ -1616,8 +1602,8 @@ export default async function AgentPage({
             />
             {latestLaunches.length === 0 ? (
               <div className="rounded-lg border border-dashed border-border bg-card/40 px-8 py-12 text-center text-sm text-text-muted">
-                No launches planned yet. Click{" "}
-                <strong className="text-text">Run now</strong> to fire S-LP —
+                No launches planned yet. Run it from the{" "}
+                <strong className="text-text">Command Center</strong> to fire S-LP —
                 it produces a channel-aware launch plan anchored to S-PO
                 positioning.
               </div>

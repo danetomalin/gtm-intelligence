@@ -19,6 +19,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSearchApiKey, resolveCredential } from "@/lib/llm/apiConfig";
 import { classifyRunError } from "@/lib/run-errors";
+import { CredentialAssign } from "../settings/credential-assign";
+import { InstructionsEditor } from "../settings/instructions-editor";
 import {
   CS_TRACK,
   PIPELINE_STAGES,
@@ -68,7 +70,13 @@ function saveState(s: PersistedState) {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function CommandCenterClient({ names }: { names: Record<string, string> }) {
+export function CommandCenterClient({
+  names,
+  purposes,
+}: {
+  names: Record<string, string>;
+  purposes: Record<string, string>;
+}) {
   const [runs, setRuns] = useState<Record<string, RunRow>>({});
   const [state, setState] = useState<PersistedState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
@@ -76,6 +84,13 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const [stageLog, setStageLog] = useState<string[]>([]);
   const [sweeping, setSweeping] = useState(false);
+  // Which tile has its Manage panel open (credentials / model /
+  // instructions / full error) — one at a time; the open tile spans
+  // the full grid row so the editor has room.
+  const [managing, setManaging] = useState<string | null>(null);
+  // Bumped when a credential assignment changes so the resolved
+  // provider · model line re-renders.
+  const [credBump, setCredBump] = useState(0);
   const stopRef = useRef(false);
 
   // ── status polling ────────────────────────────────────────────
@@ -280,9 +295,16 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
     const diagnosis =
       status === "error" && run?.error_message ? classifyRunError(run.error_message) : null;
     const btn = "text-xs rounded border border-border px-2 py-0.5 text-text hover:bg-card";
+    const isManaging = managing === code;
+    // credBump is read so the resolved provider/model line refreshes
+    // after an assignment change. eslint: intentional.
+    void credBump;
+    const cred = resolveCredential(code);
     return (
       <li
         className={`flex flex-col gap-1.5 rounded-md border bg-card/40 px-3 py-2.5 ${
+          isManaging ? "col-span-full" : ""
+        } ${
           isActive ? "border-info/60" : status === "error" ? "border-danger/40" : "border-border"
         }`}
       >
@@ -348,7 +370,70 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
               Run
             </button>
           )}
+          <button
+            onClick={() => setManaging(isManaging ? null : code)}
+            className={`ml-auto text-xs rounded border px-2 py-0.5 transition ${
+              isManaging
+                ? "border-accent/50 text-accent bg-accent-bg/30"
+                : "border-border text-text-muted hover:text-text hover:bg-card"
+            }`}
+            title="Credentials, model, instructions, and errors for this workflow"
+          >
+            {isManaging ? "Close" : "Manage"}
+          </button>
         </div>
+
+        {isManaging && (
+          <div className="mt-2 space-y-4 border-t border-border pt-3">
+            {/* Credentials + LLM selection — assignment picks the profile,
+                the profile carries provider + model. */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-dim">
+                Credentials & model
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <CredentialAssign workflowCode={code} onChanged={() => setCredBump((n) => n + 1)} />
+                <span className="text-xs text-text-muted">
+                  {cred
+                    ? `Runs on ${cred.provider} · ${cred.model || "default model"}`
+                    : "No credential profile saved yet"}
+                </span>
+                <Link href="/settings" className="text-xs text-accent hover:underline">
+                  Manage profiles & models in Settings →
+                </Link>
+              </div>
+            </div>
+
+            {/* Operating instructions — same workflow_configs row Settings edits. */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-dim">
+                Instructions
+              </p>
+              <InstructionsEditor
+                code={code}
+                defaultInstructions={purposes[code] ?? "Behave per the workflow's built-in brief."}
+              />
+            </div>
+
+            {/* Last error in full, with the classified diagnosis. */}
+            {run?.error_message && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-dim">
+                  Last error
+                </p>
+                {diagnosis && (
+                  <p className="text-xs">
+                    <span className="rounded bg-danger/10 px-1.5 py-0.5 text-danger">{diagnosis.label}</span>
+                    <span className="ml-2 text-text-muted">{diagnosis.hint}</span>
+                  </p>
+                )}
+                <pre className="whitespace-pre-wrap break-words rounded-md border border-border bg-surface px-3 py-2 text-xs text-text-muted max-h-48 overflow-y-auto">
+                  {run.error_message}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
       </li>
     );
   }
