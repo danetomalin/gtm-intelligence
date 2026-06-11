@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { agentTooling } from "@/lib/demo-data";
 import {
@@ -17,8 +17,9 @@ import {
 // Role-independent sections that surface for every lens. Launches lives here
 // per Dane's call (cross-functional operational object — every role touches
 // it but it doesn't belong inside any one workspace).
+// Command Center is NOT here — it's pinned above Settings at the bottom
+// (Dane 2026-06-11: it's the primary run surface, always one click away).
 const OPERATIONS_ITEMS = [
-  { name: "Command Center", href: "/command-center", hint: "Staged pipeline runner" },
   { name: "Launches", href: "/launches", hint: "Release readiness packs" },
   { name: "Review Queue", href: "/review-queue", hint: "HITL approvals" },
   { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
@@ -43,6 +44,19 @@ const SETUP_ITEMS = [
     hint: "Colors, logo, footer — applied to branded PDFs",
   },
 ];
+
+const SECTIONS_KEY = "throughline.sidebarSections";
+
+// Workspace stays open by default — it's the two main dashboards. Everything
+// else starts collapsed to keep the nav scannable (Dane 2026-06-11).
+const DEFAULT_OPEN: Record<string, boolean> = {
+  workspace: true,
+  workflows: false,
+  operations: false,
+  distribution: false,
+  context: false,
+  setup: false,
+};
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -81,6 +95,115 @@ export function Sidebar() {
     return all.filter((w) => layerForCode(w.code) === "X");
   }, [lens]);
 
+  // Which section owns the current route — that one is forced open so the
+  // active link is never hidden behind a collapsed header.
+  const activeSection = useMemo(() => {
+    if (outputs.some((o) => isActive(o.href))) return "workspace";
+    if (OPERATIONS_ITEMS.some((o) => isActive(o.href))) return "operations";
+    if (contextItems.some((o) => isActive(o.href))) return "context";
+    if (SETUP_ITEMS.some((o) => isActive(o.href))) return "setup";
+    if (distributionWorkflows.some((w) => isActive(`/agents/${w.code.toLowerCase()}`)))
+      return "distribution";
+    if (workflows.some((w) => isActive(`/agents/${w.code.toLowerCase()}`)))
+      return "workflows";
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, outputs, contextItems, workflows, distributionWorkflows]);
+
+  const [open, setOpen] = useState<Record<string, boolean>>(DEFAULT_OPEN);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SECTIONS_KEY);
+      if (raw) setOpen({ ...DEFAULT_OPEN, ...(JSON.parse(raw) as Record<string, boolean>) });
+    } catch {
+      // localStorage unavailable — defaults stand
+    }
+  }, []);
+
+  function toggle(id: string) {
+    setOpen((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        window.localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
+  function Section({
+    id,
+    label,
+    count,
+    children,
+  }: {
+    id: string;
+    label: string;
+    count?: number;
+    children: React.ReactNode;
+  }) {
+    const isOpen = open[id] || activeSection === id;
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => toggle(id)}
+          aria-expanded={isOpen}
+          className="w-full px-2 mb-1 flex items-baseline gap-1.5 text-left group"
+        >
+          <span
+            className={cn(
+              "text-[9px] text-text-dim transition-transform inline-block",
+              isOpen ? "rotate-90" : "rotate-0",
+            )}
+            aria-hidden
+          >
+            ▶
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim group-hover:text-text-muted transition">
+            {label}
+          </span>
+          {typeof count === "number" && (
+            <span className="ml-auto text-[10px] text-text-dim">{count}</span>
+          )}
+        </button>
+        {isOpen && <div className="mt-1">{children}</div>}
+      </div>
+    );
+  }
+
+  function NavLink({
+    href,
+    name,
+    hint,
+    compact,
+  }: {
+    href: string;
+    name: string;
+    hint?: string;
+    compact?: boolean;
+  }) {
+    const active = isActive(href);
+    return (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "block rounded-md px-3 text-sm transition",
+          compact ? "py-1.5" : "py-2",
+          active
+            ? "bg-accent-bg text-accent"
+            : "text-text-muted hover:text-text hover:bg-card-hover/50",
+        )}
+      >
+        <div className="font-medium truncate">{name}</div>
+        {hint && <div className="text-[11px] text-text-dim mt-0.5">{hint}</div>}
+      </Link>
+    );
+  }
+
   return (
     <aside className="w-64 border-r border-border bg-surface/40 flex-shrink-0 sticky top-0 h-screen flex flex-col">
       <div className="px-5 py-5 border-b border-border">
@@ -94,46 +217,20 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {/* Workspaces — role dashboards (lens picker + Overview removed 2026-06-09) */}
-        <div>
-          <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-            Workspace
-          </div>
-          {outputs.length > 0 && (
-            <ul className="space-y-0.5 mb-3">
-              {outputs.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={isActive(item.href) ? "page" : undefined}
-                    className={cn(
-                      "block rounded-md px-3 py-2 text-sm transition",
-                      isActive(item.href)
-                        ? "bg-accent-bg text-accent"
-                        : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                    )}
-                  >
-                    <div className="font-medium">{item.name}</div>
-                    {item.hint && (
-                      <div className="text-[11px] text-text-dim mt-0.5">
-                        {item.hint}
-                      </div>
-                    )}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+        {/* Workspaces — role dashboards */}
+        <Section id="workspace" label="Workspace">
+          <ul className="space-y-0.5">
+            {outputs.map((item) => (
+              <li key={item.href}>
+                <NavLink href={item.href} name={item.name} hint={item.hint} />
+              </li>
+            ))}
+          </ul>
+        </Section>
 
-          <div className="px-2 mb-2 flex items-baseline justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-              Workflows
-            </span>
-            <span className="text-[10px] text-text-dim">
-              {workflows.length}
-            </span>
-          </div>
+        {/* Workflows — R/S/D layers (A + X live in their own sections) */}
+        <Section id="workflows" label="Workflows" count={workflows.length}>
           {workflows.length === 0 ? (
             <div className="px-3 py-2 text-[11px] text-text-dim italic">
               No workflows tagged for this lens yet.
@@ -146,175 +243,89 @@ export function Sidebar() {
                    * Layer subheader is intentionally quiet — sentence case, no
                    * tracking, smaller and dimmer than the outer WORKFLOWS
                    * section head so the hierarchy reads as parent/child rather
-                   * than as peers. Count dropped to reduce label competition.
+                   * than as peers.
                    */}
                   <div className="px-3 mb-1 text-[11px] text-text-dim/70">
                     {group.label}
                   </div>
                   <ul className="space-y-0.5">
-                    {group.workflows.map((agent) => {
-                      const href = `/agents/${agent.code.toLowerCase()}`;
-                      const active = isActive(href);
-                      return (
-                        <li key={agent.code}>
-                          <Link
-                            href={href}
-                            aria-current={active ? "page" : undefined}
-                            className={cn(
-                              "block rounded-md px-3 py-1.5 text-sm transition",
-                              active
-                                ? "bg-accent-bg text-accent"
-                                : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                            )}
-                          >
-                            <span className="font-medium truncate block">
-                              {agent.name}
-                            </span>
-                          </Link>
-                        </li>
-                      );
-                    })}
+                    {group.workflows.map((agent) => (
+                      <li key={agent.code}>
+                        <NavLink
+                          href={`/agents/${agent.code.toLowerCase()}`}
+                          name={agent.name}
+                          compact
+                        />
+                      </li>
+                    ))}
                   </ul>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Section>
 
         {/* Operations — role-independent ops/admin surfaces */}
-        <div>
-          <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-            Operations
-          </div>
+        <Section id="operations" label="Operations">
           <ul className="space-y-0.5">
             {OPERATIONS_ITEMS.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={isActive(item.href) ? "page" : undefined}
-                  className={cn(
-                    "block rounded-md px-3 py-2 text-sm transition",
-                    isActive(item.href)
-                      ? "bg-accent-bg text-accent"
-                      : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                  )}
-                >
-                  <div className="font-medium">{item.name}</div>
-                </Link>
+                <NavLink href={item.href} name={item.name} />
               </li>
             ))}
           </ul>
-        </div>
+        </Section>
 
-        {/* Distribution — promoted out of Workflows to a top-level section.
-            These X-* adapters ship approved Library artifacts to external
-            channels, so they belong with the operational surfaces rather
-            than nested as a Workflows subheader. */}
+        {/* Distribution — X-* adapters shipping approved Library artifacts */}
         {distributionWorkflows.length > 0 && (
-          <div>
-            <div className="px-2 mb-2 flex items-baseline justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-                Distribution
-              </span>
-              <span className="text-[10px] text-text-dim">
-                {distributionWorkflows.length}
-              </span>
-            </div>
+          <Section
+            id="distribution"
+            label="Distribution"
+            count={distributionWorkflows.length}
+          >
             <ul className="space-y-0.5">
-              {distributionWorkflows.map((agent) => {
-                const href = `/agents/${agent.code.toLowerCase()}`;
-                const active = isActive(href);
-                return (
-                  <li key={agent.code}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "block rounded-md px-3 py-1.5 text-sm transition",
-                        active
-                          ? "bg-accent-bg text-accent"
-                          : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                      )}
-                    >
-                      <span className="font-medium truncate block">
-                        {agent.name}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
-        {/* Context — brand/category reference pages (moved out of the
-            Workspace outputs per Dane 2026-06-09: these are read-mostly
-            reference surfaces, not role dashboards). */}
-        {contextItems.length > 0 && (
-          <div>
-            <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-              Context
-            </div>
-            <ul className="space-y-0.5">
-              {contextItems.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={isActive(item.href) ? "page" : undefined}
-                    className={cn(
-                      "block rounded-md px-3 py-2 text-sm transition",
-                      isActive(item.href)
-                        ? "bg-accent-bg text-accent"
-                        : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                    )}
-                  >
-                    <div className="font-medium">{item.name}</div>
-                  </Link>
+              {distributionWorkflows.map((agent) => (
+                <li key={agent.code}>
+                  <NavLink
+                    href={`/agents/${agent.code.toLowerCase()}`}
+                    name={agent.name}
+                    compact
+                  />
                 </li>
               ))}
             </ul>
-          </div>
+          </Section>
+        )}
+
+        {/* Context — brand/category reference pages */}
+        {contextItems.length > 0 && (
+          <Section id="context" label="Context">
+            <ul className="space-y-0.5">
+              {contextItems.map((item) => (
+                <li key={item.href}>
+                  <NavLink href={item.href} name={item.name} />
+                </li>
+              ))}
+            </ul>
+          </Section>
         )}
 
         {/* Setup — onboarding entry points */}
-        <div>
-          <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[1.5px] text-text-dim">
-            Setup
-          </div>
+        <Section id="setup" label="Setup">
           <ul className="space-y-0.5">
             {SETUP_ITEMS.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-current={isActive(item.href) ? "page" : undefined}
-                  className={cn(
-                    "block rounded-md px-3 py-2 text-sm transition",
-                    isActive(item.href)
-                      ? "bg-accent-bg text-accent"
-                      : "text-text-muted hover:text-text hover:bg-card-hover/50",
-                  )}
-                >
-                  <div className="font-medium">{item.name}</div>
-                </Link>
+                <NavLink href={item.href} name={item.name} />
               </li>
             ))}
           </ul>
-        </div>
+        </Section>
       </nav>
 
-      <div className="px-3 py-3 border-t border-border">
-        <Link
-          href="/settings"
-          aria-current={isActive("/settings") ? "page" : undefined}
-          className={cn(
-            "block rounded-md px-3 py-2 text-sm transition",
-            isActive("/settings")
-              ? "bg-accent-bg text-accent"
-              : "text-text-muted hover:text-text hover:bg-card-hover/50",
-          )}
-        >
-          <div className="font-medium">Settings</div>
-        </Link>
+      {/* Pinned: Command Center (primary run surface) + Settings */}
+      <div className="px-3 py-3 border-t border-border space-y-0.5">
+        <NavLink href="/command-center" name="Command Center" />
+        <NavLink href="/settings" name="Settings" />
       </div>
       <div className="px-5 py-3 border-t border-border text-[11px] text-text-dim">
         Demo mode — single-tenant view (pre-multi-brand switcher).
