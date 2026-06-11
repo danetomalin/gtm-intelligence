@@ -18,7 +18,7 @@ export default function CommandCenterPage() {
       <PageHeader
         eyebrow="Operations"
         title="Command Center"
-        subtitle={`Run the full workflow system on ${DEMO_BRAND_NAME}, stage by stage. Each stage runs sequentially with a pause between workflows; advance manually once everything is green. The Customer Success track runs independently off the Halcyon portfolio.`}
+        subtitle={`Run the full workflow system on ${DEMO_BRAND_NAME}, stage by stage. Each stage runs sequentially with a pause between workflows; advance manually once everything is green. The Customer Success track runs independently off the customer portfolio.`}
       />
       <CommandCenterClient names={names} purposes={purposes} />
 

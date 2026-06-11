@@ -96,7 +96,7 @@ export const CS_TRACK: PipelineStage = {
   index: 0,
   title: "Customer Success track",
   description:
-    "CS deliverables generated from the live Customer Health portfolio (Halcyon). Independent of the marketing pipeline — run any time.",
+    "CS deliverables generated from the live Customer Health portfolio. Independent of the marketing pipeline — run any time.",
   codes: ["D-QB", "D-RT", "D-HP", "D-XP"],
   needsSearchKey: false,
 };

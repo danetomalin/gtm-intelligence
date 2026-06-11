@@ -103,7 +103,7 @@ export default function HealthDashboard({ data = DATA }: { data?: PortfolioData 
       {activeTab === "emerging signals" && <EmergingSignalsTab allScored={allScored} />}
 
       <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid hsl(var(--border))", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--fg-tertiary)", flexWrap: "wrap", gap: 8 }}>
-        <span>Halcyon portfolio · Customer Health · VAR model v2.0</span>
+        <span>Deputy portfolio · Customer Health · VAR model v2.0</span>
         <span>Supabase-backed (CS_HEALTH_DATA_SOURCE=mock to fall back) · scoringEngine() is a pure function</span>
       </div>
     </div>

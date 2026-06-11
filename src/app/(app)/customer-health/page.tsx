@@ -23,7 +23,7 @@ export default async function CustomerHealthPage() {
       <PageHeader
         eyebrow="Customer Success"
         title="Customer Health"
-        subtitle="VAR health model, confidence-weighted renewal forecasting, and expansion readiness across the Halcyon customer portfolio — workforce management platform, 30 named accounts plus an SMB cohort."
+        subtitle="VAR health model, confidence-weighted renewal forecasting, and expansion readiness across the Deputy customer portfolio — 30 named accounts plus an SMB cohort."
       />
       <HealthDashboard data={data} />
 
