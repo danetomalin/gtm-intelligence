@@ -272,82 +272,83 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
     skipped: { label: "Skipped", cls: "bg-card text-text-muted border-border line-through" },
   };
 
-  function WorkflowRow({ code, unlocked }: { code: string; unlocked: boolean }) {
+  function WorkflowTile({ code, unlocked }: { code: string; unlocked: boolean }) {
     const status = cellStatus(code);
     const run = runs[code];
     const c = chip[status];
     const isActive = activeCode === code;
     const diagnosis =
       status === "error" && run?.error_message ? classifyRunError(run.error_message) : null;
+    const btn = "text-xs rounded border border-border px-2 py-0.5 text-text hover:bg-card";
     return (
-      <li className="flex flex-col gap-1 rounded-md border border-border bg-card/40 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] text-text-muted w-10 shrink-0">{code}</span>
-          <Link href={`/agents/${code.toLowerCase()}`} className="text-sm text-text hover:underline truncate">
-            {names[code] ?? code}
-          </Link>
-          {isActive && <span className="text-xs text-info">← current</span>}
-          <span className="ml-auto flex items-center gap-2">
-            {status === "error" && !runningStage && unlocked && (
-              <>
-                <button
-                  onClick={() => void runOne(code).then(() => setActiveCode(null))}
-                  className="text-xs rounded border border-border px-2 py-0.5 text-text hover:bg-card"
-                >
-                  Retry
-                </button>
-                <button
-                  onClick={() => update({ skipped: { ...state.skipped, [code]: true } })}
-                  className="text-xs rounded border border-border px-2 py-0.5 text-text-muted hover:bg-card"
-                  title="Mark as intentionally skipped so the stage can advance without it"
-                >
-                  Skip
-                </button>
-              </>
-            )}
-            {status === "skipped" && (
-              <button
-                onClick={() => {
-                  const next = { ...state.skipped };
-                  delete next[code];
-                  update({ skipped: next });
-                }}
-                className="text-xs rounded border border-border px-2 py-0.5 text-text-muted hover:bg-card"
-              >
-                Unskip
-              </button>
-            )}
-            {(status === "stale" || status === "running") && run && (
-              <button
-                onClick={() => void cancelRun(run.id)}
-                className="text-xs rounded border border-danger/40 px-2 py-0.5 text-danger hover:bg-danger/10"
-              >
-                Cancel
-              </button>
-            )}
-            {status === "idle" && !runningStage && unlocked && (
-              <button
-                onClick={() => void runOne(code).then(() => setActiveCode(null))}
-                className="text-xs rounded border border-border px-2 py-0.5 text-text hover:bg-card"
-              >
-                Run
-              </button>
-            )}
-            <span className={`text-xs rounded-full border px-2 py-0.5 ${c.cls}`}>{c.label}</span>
-          </span>
+      <li
+        className={`flex flex-col gap-1.5 rounded-md border bg-card/40 px-3 py-2.5 ${
+          isActive ? "border-info/60" : status === "error" ? "border-danger/40" : "border-border"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-[11px] text-text-muted">{code}</span>
+          <span className={`text-xs rounded-full border px-2 py-0.5 ${c.cls}`}>{c.label}</span>
         </div>
+        <Link
+          href={`/agents/${code.toLowerCase()}`}
+          className="text-sm font-medium leading-tight text-text hover:underline line-clamp-2"
+        >
+          {names[code] ?? code}
+        </Link>
+        {isActive && <span className="text-xs text-info">running now…</span>}
         {status === "error" && run?.error_message && (
-          <div className="ml-15 pl-0 text-xs text-text-muted">
+          <div className="text-xs text-text-muted" title={`${run.error_message}${diagnosis?.hint ? `\n\n${diagnosis.hint}` : ""}`}>
             {diagnosis && (
-              <span className="mr-2 rounded bg-danger/10 px-1.5 py-0.5 text-danger">{diagnosis.label}</span>
+              <span className="mr-1.5 rounded bg-danger/10 px-1.5 py-0.5 text-danger">{diagnosis.label}</span>
             )}
-            <span className="break-words">{run.error_message.slice(0, 240)}</span>
-            {diagnosis?.hint && <span className="block mt-0.5 text-text-muted/80">{diagnosis.hint}</span>}
+            <span className="break-words line-clamp-2">{run.error_message}</span>
           </div>
         )}
         {status === "success" && run?.summary && (
-          <p className="text-xs text-text-muted truncate">{run.summary}</p>
+          <p className="text-xs text-text-muted line-clamp-2" title={run.summary}>{run.summary}</p>
         )}
+        <div className="mt-auto flex items-center gap-1.5 pt-0.5">
+          {status === "error" && !runningStage && unlocked && (
+            <>
+              <button onClick={() => void runOne(code).then(() => setActiveCode(null))} className={btn}>
+                Retry
+              </button>
+              <button
+                onClick={() => update({ skipped: { ...state.skipped, [code]: true } })}
+                className={`${btn} text-text-muted`}
+                title="Mark as intentionally skipped so the stage can advance without it"
+              >
+                Skip
+              </button>
+            </>
+          )}
+          {status === "skipped" && (
+            <button
+              onClick={() => {
+                const next = { ...state.skipped };
+                delete next[code];
+                update({ skipped: next });
+              }}
+              className={`${btn} text-text-muted`}
+            >
+              Unskip
+            </button>
+          )}
+          {(status === "stale" || status === "running") && run && (
+            <button
+              onClick={() => void cancelRun(run.id)}
+              className="text-xs rounded border border-danger/40 px-2 py-0.5 text-danger hover:bg-danger/10"
+            >
+              Cancel
+            </button>
+          )}
+          {status === "idle" && !runningStage && unlocked && (
+            <button onClick={() => void runOne(code).then(() => setActiveCode(null))} className={btn}>
+              Run
+            </button>
+          )}
+        </div>
       </li>
     );
   }
@@ -368,16 +369,14 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
               : "border-border/50 bg-card/10 opacity-60"
         }`}
       >
-        <header className="space-y-2">
+        <header className="flex items-start gap-3">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-text">
+            <h2 className="text-base font-semibold text-text">
               {isCs ? stage.title : `Stage ${stage.index} · ${stage.title}`}
               {complete && <span className="ml-2 text-xs text-success">✓ complete</span>}
               {blocked && <span className="ml-2 text-xs text-danger">needs attention</span>}
             </h2>
-            <p className="mt-1 text-xs text-text-muted line-clamp-2" title={stage.description}>
-              {stage.description}
-            </p>
+            <p className="mt-1 text-xs text-text-muted">{stage.description}</p>
             {stage.gateNote && (
               <p className="mt-1 text-xs text-warning/90">
                 Gate: {stage.gateNote}{" "}
@@ -387,7 +386,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
               </p>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {unlocked && !complete && (
               <button
                 onClick={() => (isRunningThis ? (stopRef.current = true) : void runStage(stage))}
@@ -417,9 +416,9 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
             )}
           </div>
         </header>
-        <ul className="space-y-1.5">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
           {stage.codes.map((code) => (
-            <WorkflowRow key={code} code={code} unlocked={unlocked} />
+            <WorkflowTile key={code} code={code} unlocked={unlocked} />
           ))}
         </ul>
       </section>
@@ -481,13 +480,12 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
         </div>
       )}
 
-      {/* Stage tiles — grid by stage instead of a stacked list (Dane 2026-06-11) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
-        {PIPELINE_STAGES.map((stage) => (
-          <StageCard key={stage.id} stage={stage} />
-        ))}
-        <StageCard stage={CS_TRACK} isCs />
-      </div>
+      {/* Stage sections, each holding a grid of per-workflow tiles
+          (Dane 2026-06-11: every workflow is its own tile). */}
+      {PIPELINE_STAGES.map((stage) => (
+        <StageCard key={stage.id} stage={stage} />
+      ))}
+      <StageCard stage={CS_TRACK} isCs />
     </div>
   );
 }
