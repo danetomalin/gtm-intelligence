@@ -18,6 +18,7 @@ import {
 // per Dane's call (cross-functional operational object — every role touches
 // it but it doesn't belong inside any one workspace).
 const OPERATIONS_ITEMS = [
+  { name: "Command Center", href: "/command-center", hint: "Staged pipeline runner" },
   { name: "Launches", href: "/launches", hint: "Release readiness packs" },
   { name: "Review Queue", href: "/review-queue", hint: "HITL approvals" },
   { name: "Observability", href: "/observability", hint: "Run health, HITL load" },
