@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   PageHeader,
   SectionDivider,
-  StatCard,
 } from "../../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { createAdminClient } from "@/lib/supabase/server";
@@ -772,21 +771,6 @@ export default async function AgentPage({
             Manage in Command Center →
           </Link>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Status" value={isLive ? "live" : agent.status} />
-        <StatCard label="Cadence" value={agent.cadence} />
-        <StatCard
-          label="Last run"
-          value={lastRunValue}
-          sublabel={lastRunSub}
-        />
-        <StatCard
-          label="Runs (30d)"
-          value={isLive ? String(runs30dCount) : "—"}
-          sublabel={isLive ? "completed + running" : "awaiting first run"}
-        />
       </div>
 
       {framework && (
@@ -1671,6 +1655,23 @@ export default async function AgentPage({
           , etc.).
         </div>
       </section>
+
+      {/* Compact run facts — moved below the outputs (Dane 2026-06-11) */}
+      <div className="border-t border-border pt-4 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-xs text-text-muted">
+        <span>
+          Status <span className="font-medium text-text">{isLive ? "live" : agent.status}</span>
+        </span>
+        <span>
+          Cadence <span className="font-medium text-text">{agent.cadence}</span>
+        </span>
+        <span>
+          Last run <span className="font-medium text-text">{lastRunValue}</span>
+          {lastRunSub ? <span className="ml-1 text-text-dim">({lastRunSub})</span> : null}
+        </span>
+        <span>
+          Runs 30d <span className="font-medium text-text">{isLive ? String(runs30dCount) : "—"}</span>
+        </span>
+      </div>
     </div>
   );
 }
