@@ -294,7 +294,7 @@ export function CommandCenterClient({
     skipped: { label: "Skipped", cls: "bg-card text-text-muted border-border line-through" },
   };
 
-  function WorkflowTile({ code, unlocked }: { code: string; unlocked: boolean }) {
+  function workflowTile(code: string, unlocked: boolean) {
     const status = cellStatus(code);
     const run = runs[code];
     const c = chip[status];
@@ -309,6 +309,7 @@ export function CommandCenterClient({
     const cred = resolveCredential(code);
     return (
       <li
+        key={code}
         className={`flex flex-col gap-1.5 rounded-md border bg-card/40 px-3 py-2.5 ${
           isManaging ? "col-span-full" : ""
         } ${
@@ -445,7 +446,7 @@ export function CommandCenterClient({
     );
   }
 
-  function StageCard({ stage, isCs }: { stage: PipelineStage; isCs?: boolean }) {
+  function stageCard(stage: PipelineStage, isCs?: boolean) {
     const unlocked = isCs || stage.index <= state.activeStage;
     const complete = stageComplete(stage);
     const blocked = stageHasBlockers(stage);
@@ -453,6 +454,7 @@ export function CommandCenterClient({
     const isRunningThis = runningStage === stage.id;
     return (
       <section
+        key={stage.id}
         className={`rounded-lg border px-4 py-4 space-y-3 ${
           isCurrent ? "border-accent/60 bg-card/60" : "border-border bg-card/30"
         }`}
@@ -510,9 +512,7 @@ export function CommandCenterClient({
           </div>
         </header>
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-          {stage.codes.map((code) => (
-            <WorkflowTile key={code} code={code} unlocked={unlocked} />
-          ))}
+          {stage.codes.map((code) => workflowTile(code, unlocked))}
         </ul>
       </section>
     );
@@ -575,10 +575,8 @@ export function CommandCenterClient({
 
       {/* Stage sections, each holding a grid of per-workflow tiles
           (Dane 2026-06-11: every workflow is its own tile). */}
-      {PIPELINE_STAGES.map((stage) => (
-        <StageCard key={stage.id} stage={stage} />
-      ))}
-      <StageCard stage={CS_TRACK} isCs />
+      {PIPELINE_STAGES.map((stage) => stageCard(stage))}
+      {stageCard(CS_TRACK, true)}
     </div>
   );
 }
