@@ -11,6 +11,11 @@ export type PipelineRunRow = {
   finished_at: string | null;
   error_message: string | null;
   summary: string | null;
+  provider: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost_usd: number | null;
 };
 
 /**
@@ -21,7 +26,7 @@ export async function GET() {
   const admin = await createAdminClient();
   const { data, error } = await admin
     .from("run_history")
-    .select("id, agent_code, status, started_at, finished_at, error_message, summary")
+    .select("id, agent_code, status, started_at, finished_at, error_message, summary, provider, model, input_tokens, output_tokens, cost_usd")
     .eq("brand_id", DEMO_BRAND_ID)
     .in("agent_code", ALL_PIPELINE_CODES)
     .order("started_at", { ascending: false })

@@ -12,6 +12,19 @@ import { isNativeCsCode, runNativeCsWorkflow } from "@/lib/workflows/cs-runner";
 import { runWorkflowSpec } from "@/lib/workflows/engine";
 import { WORKFLOW_REGISTRY, isRegistryCode } from "@/lib/workflows/registry";
 import { isDistributionCode, runDistribution } from "@/lib/workflows/distribution-runner";
+import { costUsd } from "@/lib/llm/pricing";
+
+/** run_history columns for a finished run's token usage + frozen cost. */
+function usageColumns(usage?: { provider: string; model: string; inputTokens: number; outputTokens: number }) {
+  if (!usage || (usage.inputTokens === 0 && usage.outputTokens === 0)) return {};
+  return {
+    provider: usage.provider,
+    model: usage.model,
+    input_tokens: usage.inputTokens,
+    output_tokens: usage.outputTokens,
+    cost_usd: costUsd(usage.model, usage),
+  };
+}
 
 // Native runs execute the LLM call inside this function — keep it alive.
 // 300s (Fluid compute): heavy synthesis runs (S-PO writes all five
@@ -131,7 +144,8 @@ export async function POST(
       .update({
         status: result.ok ? "success" : "error",
         finished_at: new Date().toISOString(),
-        ...(result.ok ? {} : { error_message: result.error }),
+        ...(result.ok ? { summary: result.summary } : { error_message: result.error }),
+        ...usageColumns(result.usage),
       })
       .eq("id", run.id);
 
@@ -182,7 +196,8 @@ export async function POST(
       .update({
         status: result.ok ? "success" : "error",
         finished_at: new Date().toISOString(),
-        ...(result.ok ? {} : { error_message: result.error }),
+        ...(result.ok ? { summary: result.title } : { error_message: result.error }),
+        ...usageColumns(result.usage),
       })
       .eq("id", run.id);
 

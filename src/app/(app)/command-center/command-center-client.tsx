@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSearchApiKey, resolveCredential } from "@/lib/llm/apiConfig";
 import { classifyRunError } from "@/lib/run-errors";
+import { formatCost, formatTokens } from "@/lib/llm/pricing";
 import { CredentialAssign } from "../settings/credential-assign";
 import { InstructionsEditor } from "../settings/instructions-editor";
 import {
@@ -36,6 +37,11 @@ type RunRow = {
   finished_at: string | null;
   error_message: string | null;
   summary: string | null;
+  provider: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost_usd: number | null;
 };
 
 type PersistedState = {
@@ -141,6 +147,21 @@ export function CommandCenterClient({
 
   function stageHasBlockers(stage: PipelineStage): boolean {
     return stage.codes.some((c) => ["error", "stale", "canceled"].includes(cellStatus(c)));
+  }
+
+  // Latest-run LLM cost of a stage (null when nothing priced yet);
+  // `partial` flags stages where some workflows have no cost data.
+  function stageCost(stage: PipelineStage): { cost: number; priced: number } {
+    let cost = 0;
+    let priced = 0;
+    for (const c of stage.codes) {
+      const r = runs[c];
+      if (r?.cost_usd !== null && r?.cost_usd !== undefined) {
+        cost += Number(r.cost_usd);
+        priced += 1;
+      }
+    }
+    return { cost, priced };
   }
 
   // ── single run, awaited to terminal status ────────────────────
@@ -339,6 +360,13 @@ export function CommandCenterClient({
         {status === "success" && run?.summary && (
           <p className="text-xs text-text-muted line-clamp-2" title={run.summary}>{run.summary}</p>
         )}
+        {run && (run.input_tokens !== null || run.output_tokens !== null) && (
+          <p className="text-[11px] text-text-dim" title="Last run: frozen cost · exact billed tokens · model">
+            <span className="font-medium text-text-muted">{formatCost(run.cost_usd === null ? null : Number(run.cost_usd))}</span>
+            {" · "}{formatTokens(run.input_tokens)} in / {formatTokens(run.output_tokens)} out
+            {run.model ? <span className="font-mono"> · {run.model}</span> : null}
+          </p>
+        )}
         <div className="mt-auto flex items-center gap-1.5 pt-0.5">
           {status === "error" && !runningStage && unlocked && (
             <>
@@ -471,6 +499,16 @@ export function CommandCenterClient({
                   locked · advance to Stage {stage.index} to run (managing is fine)
                 </span>
               )}
+              {(() => {
+                const { cost, priced } = stageCost(stage);
+                if (priced === 0) return null;
+                return (
+                  <span className="ml-2 text-xs font-normal text-text-muted" title="Sum of each workflow's latest priced run">
+                    {formatCost(cost)}
+                    {priced < stage.codes.length ? " (partial)" : " last full run"}
+                  </span>
+                );
+              })()}
             </h2>
             <p className="mt-1 text-xs text-text-muted">{stage.description}</p>
             {stage.gateNote && (
@@ -526,6 +564,21 @@ export function CommandCenterClient({
         <span className="text-text-muted">
           Active stage: <strong className="text-text">{state.activeStage} of {PIPELINE_STAGES.length}</strong>
         </span>
+        {(() => {
+          let cost = 0;
+          let priced = 0;
+          for (const s of [...PIPELINE_STAGES, CS_TRACK]) {
+            const c = stageCost(s);
+            cost += c.cost;
+            priced += c.priced;
+          }
+          if (priced === 0) return null;
+          return (
+            <span className="text-text-muted" title="Sum of every workflow's latest priced run (pipeline + CS track)">
+              Pipeline cost: <strong className="text-text">{formatCost(cost)}</strong>
+            </span>
+          );
+        })()}
         <label className="flex items-center gap-2 text-text-muted">
           Pause between runs
           <select

@@ -112,7 +112,10 @@ export async function runNativeCsWorkflow(
   admin: SupabaseClient,
   code: NativeCsCode,
   cred: ProviderConfig,
-): Promise<{ ok: true; assetId: string; title: string } | { ok: false; error: string; status?: number }> {
+): Promise<
+  | { ok: true; assetId: string; title: string; usage?: { provider: string; model: string; inputTokens: number; outputTokens: number } }
+  | { ok: false; error: string; status?: number; usage?: { provider: string; model: string; inputTokens: number; outputTokens: number } }
+> {
   // 1. Operating instructions from the warehouse (Settings-editable).
   const { data: cfg } = await admin
     .from("workflow_configs")
@@ -139,8 +142,14 @@ Context: the customer portfolio belongs to ${DEMO_CS_COMPANY}, a workforce manag
     system,
     maxTokens: 4096,
   });
+  const usage = {
+    provider: cred.provider,
+    model: cred.model,
+    inputTokens: result.usage?.inputTokens ?? 0,
+    outputTokens: result.usage?.outputTokens ?? 0,
+  };
   if (!result.ok || !result.text.trim()) {
-    return { ok: false, error: result.error ?? "Model returned an empty response.", status: result.status };
+    return { ok: false, error: result.error ?? "Model returned an empty response.", status: result.status, usage };
   }
 
   // 4. Land in the enablement library as pending review (HITL).
@@ -163,5 +172,5 @@ Context: the customer portfolio belongs to ${DEMO_CS_COMPANY}, a workforce manag
     return { ok: false, error: assetErr?.message ?? "Failed to write enablement asset.", status: 500 };
   }
 
-  return { ok: true, assetId: asset.id, title };
+  return { ok: true, assetId: asset.id, title, usage };
 }

@@ -42,9 +42,17 @@ export interface WorkflowSpec<S extends ZodTypeAny = ZodTypeAny> {
   maxTokens?: number;
 }
 
+export interface RunUsage {
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export type EngineResult =
-  | { ok: true; summary: string }
-  | { ok: false; error: string; status?: number };
+  | { ok: true; summary: string; usage?: RunUsage }
+  // Validation failures still consumed tokens — usage rides along.
+  | { ok: false; error: string; status?: number; usage?: RunUsage };
 
 // Pull the first JSON value out of a model reply (handles ```json fences
 // and leading prose).
@@ -137,13 +145,21 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
 
   // 4. Model call on the assigned credential profile.
   const user = `${spec.task}\n\n=== DATA CONTEXT ===\n${context}${research}\n\n=== OUTPUT FORMAT (MANDATORY) ===\n${spec.outputInstruction}\nReturn ONLY valid JSON — no prose, no markdown fences.`;
+  const usage: RunUsage = { provider: cred.provider, model: cred.model, inputTokens: 0, outputTokens: 0 };
+  const addUsage = (u?: { inputTokens: number; outputTokens: number }) => {
+    if (u) {
+      usage.inputTokens += u.inputTokens;
+      usage.outputTokens += u.outputTokens;
+    }
+  };
   let result = await callProvider(cred, [{ role: "user", content: user }], {
     system: instructions,
     maxTokens: spec.maxTokens ?? 4096,
     webSearch: useGrounding,
   });
+  addUsage(result.usage);
   if (!result.ok || !result.text.trim()) {
-    return { ok: false, error: result.error ?? "Model returned an empty response.", status: result.status };
+    return { ok: false, error: result.error ?? "Model returned an empty response.", status: result.status, usage };
   }
 
   // 5. Parse + validate (one corrective retry on bad JSON).
@@ -163,8 +179,9 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
       ],
       { system: instructions, maxTokens: spec.maxTokens ?? 4096, webSearch: useGrounding },
     );
+    addUsage(result.usage);
     if (!result.ok || !result.text.trim()) {
-      return { ok: false, error: result.error ?? "Model returned an empty response on retry.", status: result.status };
+      return { ok: false, error: result.error ?? "Model returned an empty response on retry.", status: result.status, usage };
     }
     try {
       parsed = spec.outputSchema.parse(extractJson(result.text));
@@ -173,11 +190,12 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
         ok: false,
         status: 502,
         error: `Output failed validation twice: ${secondErr instanceof Error ? secondErr.message.slice(0, 300) : "invalid"}`,
+        usage,
       };
     }
   }
 
   // 6. Persist (pending_review HITL inside each spec's write).
   const summary = await spec.write(admin, ids, parsed);
-  return { ok: true, summary };
+  return { ok: true, summary, usage };
 }

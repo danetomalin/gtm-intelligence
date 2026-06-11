@@ -2,6 +2,7 @@ import { PageHeader } from "../_components/page-header";
 import { agentTooling } from "@/lib/demo-data";
 import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { CommandCenterClient } from "./command-center-client";
+import { CostLedger } from "./cost-ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default function CommandCenterPage() {
       />
       <CommandCenterClient names={names} purposes={purposes} />
 
+      <CostLedger names={names} />
     </div>
   );
 }

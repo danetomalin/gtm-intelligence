@@ -21,6 +21,8 @@ export interface ProviderResult {
   text: string;
   error?: string;
   status?: number;
+  /** Exact billed tokens from the provider's response (when reported). */
+  usage?: { inputTokens: number; outputTokens: number };
 }
 
 const DEFAULT_BASE: Record<string, string> = {
@@ -67,7 +69,10 @@ export async function callProvider(
       const text = Array.isArray(data.content)
         ? data.content.filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("")
         : "";
-      return { ok: true, text };
+      const usage = data.usage
+        ? { inputTokens: data.usage.input_tokens ?? 0, outputTokens: data.usage.output_tokens ?? 0 }
+        : undefined;
+      return { ok: true, text, usage };
     }
 
     if (provider === "google") {
@@ -93,7 +98,15 @@ export async function callProvider(
         return { ok: false, text: "", error: data?.error?.message ?? `Provider error (HTTP ${res.status})`, status: res.status };
       }
       const parts = data?.candidates?.[0]?.content?.parts ?? [];
-      return { ok: true, text: parts.map((p: { text?: string }) => p.text ?? "").join("") };
+      const meta = data?.usageMetadata;
+      const usage = meta
+        ? {
+            // Grounding/tool prompt tokens bill as input; thinking tokens as output.
+            inputTokens: (meta.promptTokenCount ?? 0) + (meta.toolUsePromptTokenCount ?? 0),
+            outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
+          }
+        : undefined;
+      return { ok: true, text: parts.map((p: { text?: string }) => p.text ?? "").join(""), usage };
     }
 
     // OpenAI and OpenAI-compatible endpoints
@@ -116,7 +129,13 @@ export async function callProvider(
     if (!res.ok) {
       return { ok: false, text: "", error: data?.error?.message ?? `Provider error (HTTP ${res.status})`, status: res.status };
     }
-    return { ok: true, text: data?.choices?.[0]?.message?.content ?? "" };
+    return {
+      ok: true,
+      text: data?.choices?.[0]?.message?.content ?? "",
+      usage: data?.usage
+        ? { inputTokens: data.usage.prompt_tokens ?? 0, outputTokens: data.usage.completion_tokens ?? 0 }
+        : undefined,
+    };
   } catch (e) {
     return { ok: false, text: "", error: e instanceof Error ? e.message : "Upstream request failed.", status: 502 };
   }
