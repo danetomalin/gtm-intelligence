@@ -204,7 +204,8 @@ const icpSchema = z.object({
   trigger_signals: looseArray,
   primary_pains: looseArray.min(2),
   buying_committee: looseArray.min(1),
-  typical_sales_cycle: flexText(3, 120),
+  // 500: live run wrote a descriptive sentence; a tight cap buys nothing here.
+  typical_sales_cycle: flexText(3, 500),
   anti_icp: looseArray.min(1),
   evidence_basis: flexText(20),
 });
@@ -213,7 +214,7 @@ const sic: WorkflowSpec<typeof icpSchema> = {
   code: "S-IC",
   task: "Merge the cohort, enrichment, and voice-of-customer below into the canonical ICP playbook: segment name, one-line definition, structured firmographics and technographics, trigger signals, ordered primary pains with customer vocabulary, buying committee, typical sales cycle, and the anti-ICP (who NOT to sell to, with observable signals). evidence_basis must state which upstream rows (and their approval state) this draws on.",
   outputInstruction:
-    '{"segment_name": "...", "one_line_definition": "...", "firmographics": {"industries": [], "employee_range": {"min": N, "max": N}, "geographies": []}, "technographics": {"uses": [], "missing": []}, "trigger_signals": [{"event": "...", "frequency_pct": N}], "primary_pains": [{"rank": 1, "pain": "...", "vocabulary_examples": [], "severity": "..."}], "buying_committee": [{"role": "...", "influence_weight": "..."}], "typical_sales_cycle": "...", "anti_icp": [{"description": "...", "why_excluded": "...", "observable_signal": "..."}], "evidence_basis": "..."}',
+    '{"segment_name": "...", "one_line_definition": "...", "firmographics": {"industries": [], "employee_range": {"min": N, "max": N}, "geographies": []}, "technographics": {"uses": [], "missing": []}, "trigger_signals": [{"event": "...", "frequency_pct": N}], "primary_pains": [{"rank": 1, "pain": "...", "vocabulary_examples": [], "severity": "..."}], "buying_committee": [{"role": "...", "influence_weight": "..."}], "typical_sales_cycle": "short, e.g. 45-90 days, plus one qualifier", "anti_icp": [{"description": "...", "why_excluded": "...", "observable_signal": "..."}], "evidence_basis": "..."}',
   outputSchema: icpSchema,
   maxTokens: 7000,
   buildContext: async (admin, ids) => {
