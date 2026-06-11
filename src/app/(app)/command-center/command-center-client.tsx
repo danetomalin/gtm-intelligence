@@ -280,9 +280,9 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
     const diagnosis =
       status === "error" && run?.error_message ? classifyRunError(run.error_message) : null;
     return (
-      <li className="flex flex-col gap-1 rounded-md border border-border bg-card/40 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-text-muted w-12 shrink-0">{code}</span>
+      <li className="flex flex-col gap-1 rounded-md border border-border bg-card/40 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-text-muted w-10 shrink-0">{code}</span>
           <Link href={`/agents/${code.toLowerCase()}`} className="text-sm text-text hover:underline truncate">
             {names[code] ?? code}
           </Link>
@@ -360,7 +360,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
     const isRunningThis = runningStage === stage.id;
     return (
       <section
-        className={`rounded-lg border px-6 py-5 space-y-4 ${
+        className={`rounded-lg border px-4 py-4 space-y-3 ${
           isCurrent
             ? "border-accent/60 bg-card/60"
             : unlocked
@@ -368,14 +368,16 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
               : "border-border/50 bg-card/10 opacity-60"
         }`}
       >
-        <header className="flex items-start gap-3">
+        <header className="space-y-2">
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-text">
+            <h2 className="text-sm font-semibold text-text">
               {isCs ? stage.title : `Stage ${stage.index} · ${stage.title}`}
               {complete && <span className="ml-2 text-xs text-success">✓ complete</span>}
               {blocked && <span className="ml-2 text-xs text-danger">needs attention</span>}
             </h2>
-            <p className="mt-1 text-xs text-text-muted">{stage.description}</p>
+            <p className="mt-1 text-xs text-text-muted line-clamp-2" title={stage.description}>
+              {stage.description}
+            </p>
             {stage.gateNote && (
               <p className="mt-1 text-xs text-warning/90">
                 Gate: {stage.gateNote}{" "}
@@ -385,7 +387,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
               </p>
             )}
           </div>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-2">
             {unlocked && !complete && (
               <button
                 onClick={() => (isRunningThis ? (stopRef.current = true) : void runStage(stage))}
@@ -415,7 +417,7 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
             )}
           </div>
         </header>
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {stage.codes.map((code) => (
             <WorkflowRow key={code} code={code} unlocked={unlocked} />
           ))}
@@ -479,11 +481,13 @@ export function CommandCenterClient({ names }: { names: Record<string, string> }
         </div>
       )}
 
-      {PIPELINE_STAGES.map((stage) => (
-        <StageCard key={stage.id} stage={stage} />
-      ))}
-
-      <StageCard stage={CS_TRACK} isCs />
+      {/* Stage tiles — grid by stage instead of a stacked list (Dane 2026-06-11) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
+        {PIPELINE_STAGES.map((stage) => (
+          <StageCard key={stage.id} stage={stage} />
+        ))}
+        <StageCard stage={CS_TRACK} isCs />
+      </div>
     </div>
   );
 }

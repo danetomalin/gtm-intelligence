@@ -1,7 +1,8 @@
 "use client";
-// Settings → Troubleshooting. Recent failed/canceled runs with a
-// classified cause, plain-language fix, the full provider message,
-// and one-click Retry on the workflow's assigned credentials.
+// Command Center → Troubleshooting (moved from Settings 2026-06-11).
+// Recent failed/canceled runs with a classified cause, plain-language
+// fix, the full provider message, and one-click Retry on the
+// workflow's assigned credentials.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";

@@ -24,7 +24,7 @@ export interface RunErrorDiagnosis {
 const DIAGNOSES: Record<RunErrorCategory, Omit<RunErrorDiagnosis, "category">> = {
   credentials: {
     label: "Credentials",
-    hint: "The provider rejected the API key this workflow ran on. Test the assigned profile in the API credentials section above, or assign a different one on the workflow's row.",
+    hint: "The provider rejected the API key this workflow ran on. Test the assigned profile in Settings → API credentials, or assign a different one on the workflow's row.",
   },
   rate_limit: {
     label: "Rate limit",
@@ -40,7 +40,7 @@ const DIAGNOSES: Record<RunErrorCategory, Omit<RunErrorDiagnosis, "category">> =
   },
   model: {
     label: "Model",
-    hint: "The provider rejected the model id or the request shape. Check the model on the assigned credential profile in the API credentials section above.",
+    hint: "The provider rejected the model id or the request shape. Check the model on the assigned credential profile in Settings → API credentials.",
   },
   data: {
     label: "Data",

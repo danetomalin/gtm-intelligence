@@ -4,16 +4,15 @@ import { CollapsibleSection } from "./collapsible-section";
 import { CredentialsSection } from "./credentials-section";
 import { InstructionsSection } from "./instructions-section";
 import { DataSourcesSection } from "./data-sources-section";
-import { RunErrorsPanel } from "./run-errors-panel";
 
 export const metadata = {
   title: "Settings · Throughline",
 };
 
 // Settings — the ONE place for API credentials (BYOK, browser-only),
-// the per-workflow instruction warehouse (workflow_configs), data
-// source connections, and run troubleshooting. All sections are
-// collapsible (Dane, 2026-06-10) so the page stays scannable.
+// the per-workflow instruction warehouse (workflow_configs), and data
+// source connections. All sections are collapsible (Dane, 2026-06-10).
+// Troubleshooting moved to the Command Center (Dane, 2026-06-11).
 export default function SettingsPage() {
   const workflows = agentTooling.map((w) => ({
     code: w.code,
@@ -26,7 +25,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Settings"
         title="Settings"
-        subtitle="API credentials, workflow operating instructions, data source connections, and run troubleshooting."
+        subtitle="API credentials, workflow operating instructions, and data source connections. Run troubleshooting lives in the Command Center."
       />
 
       <CollapsibleSection
@@ -51,13 +50,6 @@ export default function SettingsPage() {
         <DataSourcesSection />
       </CollapsibleSection>
 
-      <CollapsibleSection
-        title="Troubleshooting"
-        sub="Failed runs · diagnosis + retry"
-        defaultOpen
-      >
-        <RunErrorsPanel />
-      </CollapsibleSection>
     </div>
   );
 }
