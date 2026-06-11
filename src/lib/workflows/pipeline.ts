@@ -34,7 +34,7 @@ export const PIPELINE_STAGES: PipelineStage[] = [
     description:
       "Brand code ingestion — voice rules, proof points, capabilities, personas. Every downstream workflow reads these four tables.",
     codes: ["R-BR"],
-    needsSearchKey: true,
+    needsSearchKey: false, // Tavily removed from R-BR for now (context-only)
   },
   {
     id: "research",

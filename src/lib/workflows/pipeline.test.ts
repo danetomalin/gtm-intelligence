@@ -53,7 +53,7 @@ describe("command center pipeline config", () => {
 
   it("flags search-key requirements on the right stages", () => {
     const byId = Object.fromEntries(PIPELINE_STAGES.map((s) => [s.id, s.needsSearchKey]));
-    expect(byId["foundation"]).toBe(true);
+    expect(byId["foundation"]).toBe(false); // R-BR is context-only for now
     expect(byId["research"]).toBe(true);
     expect(byId["icp"]).toBe(true); // R-CE researches via Tavily
     expect(byId["synthesis"]).toBe(false);

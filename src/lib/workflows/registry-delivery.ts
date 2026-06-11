@@ -281,21 +281,15 @@ const brandRepoSchema = z.object({
 
 const rbr: WorkflowSpec<typeof brandRepoSchema> = {
   code: "R-BR",
-  task: "Ingest this brand's brand code from its context and the web research: voice rules (tone, preferred/banned terms), proof points (only claims grounded in the research — mark attribution honestly), product capabilities (with buyer benefit + competitive gap), and buyer personas. Every downstream workflow reads these tables, so be precise rather than exhaustive.",
+  task: "Ingest this brand's brand code from the brand context below (no web research is available in this run): voice rules (tone, preferred/banned terms), proof points (mark every claim's attribution honestly — use 'unverified — needs source' where you cannot ground it), product capabilities (with buyer benefit + competitive gap), and buyer personas. Every downstream workflow reads these tables, so be precise rather than exhaustive.",
   outputInstruction:
     '{"voice_rules": [{"rule_type": "tone|banned_phrase|preferred_term|formatting|do_not_say|always_say|reading_level", "rule": "...", "rationale": "..."}], "proof_points": [{"proof_type": "metric|customer_quote|case_study_excerpt|third_party_validation|award|certification", "claim": "...", "attribution": "source or \'unverified — from research\'"}], "capabilities": [{"capability_name": "...", "category": "...", "feature_description": "...", "buyer_benefit": "...", "competitive_gap": "...", "status": "ga|beta|alpha|planned|sunset"}], "personas": [{"persona_name": "...", "title": "...", "segment": "...", "pain_points": "...", "goals": "..."}]}',
   outputSchema: brandRepoSchema,
   maxTokens: 8000,
+  // Tavily intentionally removed for now (Dane 2026-06-11) — R-BR runs on
+  // brand context alone so Stage 1 needs no search key. Re-add
+  // buildSearchQueries to ground proof points in web research later.
   buildContext: brandBlock,
-  buildSearchQueries: async (admin, ids) => {
-    const { data: brand } = await admin.from("brands").select("name, website_url").eq("id", ids.brandId).maybeSingle();
-    const name = brand?.name ?? "the company";
-    return [
-      `${name} product features capabilities`,
-      `${name} customers case studies reviews`,
-      `${name} about company messaging`,
-    ];
-  },
   write: async (admin, ids, parsed) => {
     const base = { organization_id: ids.organizationId, brand_id: ids.brandId };
     const [vr, pp, pc, bp] = await Promise.all([
