@@ -25,6 +25,7 @@ import { InstructionsEditor } from "../settings/instructions-editor";
 import {
   CS_TRACK,
   PIPELINE_STAGES,
+  WEB_RESEARCH_CODES,
   isStaleRun,
   type PipelineStage,
 } from "@/lib/workflows/pipeline";
@@ -238,10 +239,13 @@ export function CommandCenterClient({
     stopRef.current = false;
 
     if (stage.needsSearchKey && !getSearchApiKey()) {
-      // Gemini profiles research via native Google Search grounding, so
-      // a stage is runnable without Tavily when every workflow in it
-      // resolves to a google credential.
-      const nonGemini = stage.codes.filter((c) => resolveCredential(c)?.provider !== "google");
+      // Gemini profiles research via native Google Search grounding.
+      // Only the workflows that ACTUALLY search the web need google or
+      // Tavily — mixed stages (ICP: R-CE researches, R-VC/S-IC don't)
+      // must not block on their non-research workflows' providers.
+      const nonGemini = stage.codes.filter(
+        (c) => WEB_RESEARCH_CODES.has(c) && resolveCredential(c)?.provider !== "google",
+      );
       if (nonGemini.length > 0) {
         setStageLog((l) => [
           ...l,

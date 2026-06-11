@@ -101,6 +101,12 @@ export const CS_TRACK: PipelineStage = {
   needsSearchKey: false,
 };
 
+/** Workflows that actually call web search (have buildSearchQueries).
+ *  Only THESE need a Gemini profile or Tavily key — a mixed stage like
+ *  the ICP chain (R-CE researches, R-VC/S-IC don't) must not demand
+ *  Gemini for its non-research workflows. */
+export const WEB_RESEARCH_CODES = new Set(["R-MS", "R-CI", "R-PP", "R-WL", "S-RM", "R-CE"]);
+
 export const ALL_PIPELINE_CODES: string[] = [
   ...PIPELINE_STAGES.flatMap((s) => s.codes),
   ...CS_TRACK.codes,

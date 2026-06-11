@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ALL_PIPELINE_CODES,
+  WEB_RESEARCH_CODES,
   CS_TRACK,
   PIPELINE_STAGES,
   STALE_RUN_MS,
@@ -49,6 +50,13 @@ describe("command center pipeline config", () => {
     // ICP chain keeps its strict internal order.
     const icp = PIPELINE_STAGES.find((s) => s.id === "icp")!;
     expect(icp.codes).toEqual(["R-CR", "R-CE", "R-VC", "S-IC"]);
+  });
+
+  it("WEB_RESEARCH_CODES exactly matches the specs that declare search queries", () => {
+    for (const code of Object.keys(WORKFLOW_REGISTRY)) {
+      const declares = Boolean(WORKFLOW_REGISTRY[code].buildSearchQueries);
+      expect(WEB_RESEARCH_CODES.has(code), `${code}: registry/searchset mismatch`).toBe(declares);
+    }
   });
 
   it("flags search-key requirements on the right stages", () => {
