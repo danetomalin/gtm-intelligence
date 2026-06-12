@@ -10,8 +10,8 @@ Owner: Dane · Updated: 2026-06-12 (resequenced against the product vision)
 
 ## Now: close the first E2E chapter
 - Approve Stage 5 artifacts → run Stage 6 (mock sends → S-CP → S-DB). Done when the Daily Brief reflects the full loop.
-- **n8n decommission:** archive workflows, cancel subscription, strip the dead webhook fallback from the run route.
-- **Phase D freeze:** tag cs-health-app v1.0; the standalone app retires.
+- **n8n decommission:** DONE 2026-06-12 — workflows deleted, codebase excised (commit 9cb55f6).
+- ~~Phase D freeze~~ — dropped: cs-health-app is a separate active project (Dane + collaborator). Throughline never touches it.
 
 ---
 
