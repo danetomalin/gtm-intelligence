@@ -463,21 +463,41 @@ const scp: WorkflowSpec<typeof perfSchema> = {
   outputSchema: perfSchema,
   maxTokens: 5000,
   buildContext: async (admin, ids) => {
-    const { data: metrics } = await admin
-      .from("campaign_metrics")
-      .select("*")
-      .eq("brand_id", ids.brandId)
-      .order("created_at", { ascending: false })
-      .limit(60);
-    if (!metrics || metrics.length === 0) {
+    // Tally engagement per send deterministically — the model analyzes
+    // accurate aggregates instead of a skewed sample of raw event rows.
+    // (First live run bug: ordered by created_at, which campaign_metrics
+    // doesn't have — events use event_at — so the query silently
+    // errored and read as "no data".)
+    const [{ data: sends }, { data: events }] = await Promise.all([
+      admin
+        .from("campaign_sends")
+        .select("id, channel_type, artifact_table, audience_size, sent_at")
+        .eq("brand_id", ids.brandId)
+        .order("sent_at", { ascending: false })
+        .limit(50),
+      admin
+        .from("campaign_metrics")
+        .select("send_id, event_type")
+        .eq("brand_id", ids.brandId)
+        .order("event_at", { ascending: false })
+        .limit(3000),
+    ]);
+    if (!sends || sends.length === 0 || !events || events.length === 0) {
       throw new Error(
-        "No campaign_metrics rows for the active brand — run the X-* distribution adapters first so there is engagement data to analyze.",
+        "No campaign engagement data for the active brand — run the X-* distribution adapters first so there are sends and metrics to analyze.",
       );
     }
-    const lines = metrics
-      .map((m) => `- ${JSON.stringify(m).slice(0, 280)}`)
-      .join("\n");
-    return `Campaign engagement metrics (${metrics.length} rows, newest first):\n${lines}`;
+    const tally = new Map<string, Record<string, number>>();
+    for (const e of events) {
+      const t = tally.get(e.send_id) ?? {};
+      t[e.event_type] = (t[e.event_type] ?? 0) + 1;
+      tally.set(e.send_id, t);
+    }
+    const lines = sends.map((snd) => {
+      const t = tally.get(snd.id) ?? {};
+      return `- ${snd.channel_type} send of ${snd.artifact_table} (${String(snd.sent_at).slice(0, 10)}, audience ${snd.audience_size ?? "?"}): delivered ${t.delivered ?? 0}, opened ${t.opened ?? 0}, clicked ${t.clicked ?? 0}, replied ${t.replied ?? 0}, bounced ${t.bounced ?? 0}`;
+    });
+    return `Campaign engagement by send (${sends.length} sends, ${events.length} events tallied):\n${lines.join("\n")}`;
   },
   write: async (admin, ids, parsed) => {
     const rows = parsed.rollups.map((r) => ({
