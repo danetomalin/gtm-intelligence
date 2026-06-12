@@ -36,8 +36,8 @@ const DIAGNOSES: Record<RunErrorCategory, Omit<RunErrorDiagnosis, "category">> =
     hint: "The run exceeded its time budget. Retry — if it keeps happening, assign a faster model or trim the workflow's instructions.",
   },
   n8n: {
-    label: "n8n",
-    hint: "This workflow still runs on the legacy n8n chain and the webhook failed to start or complete. Check n8n executions, or prioritize porting this workflow to the native runner.",
+    label: "Legacy n8n",
+    hint: "Historical failure from the retired n8n chain. Every workflow runs natively now — Retry from the Command Center and this error class disappears.",
   },
   model: {
     label: "Model",

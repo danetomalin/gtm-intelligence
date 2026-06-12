@@ -21,130 +21,90 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
-// Pin these tests to the n8n webhook path regardless of how many
-// workflows have migrated to the native registry — the native engine
-// and cs-runner have their own coverage.
+// Pin to the registry path with a controllable engine: the engine itself
+// has its own coverage; here we test the route's lifecycle handling.
+const runWorkflowSpecMock = vi.fn();
+vi.mock("@/lib/workflows/engine", () => ({
+  runWorkflowSpec: (...args: unknown[]) => runWorkflowSpecMock(...args),
+}));
 vi.mock("@/lib/workflows/registry", () => ({
-  WORKFLOW_REGISTRY: {},
-  isRegistryCode: () => false,
+  WORKFLOW_REGISTRY: { "R-CI": { code: "R-CI" } },
+  isRegistryCode: (c: string) => c === "R-CI",
 }));
 vi.mock("@/lib/workflows/cs-runner", () => ({
   isNativeCsCode: () => false,
   runNativeCsWorkflow: vi.fn(),
 }));
+vi.mock("@/lib/workflows/distribution-runner", () => ({
+  isDistributionCode: () => false,
+  runDistribution: vi.fn(),
+}));
 
 import { POST } from "./route";
-import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 
-describe("POST /api/agents/[code]/run", () => {
+function req(headers: Record<string, string> = {}) {
+  return new Request("http://test/run", { method: "POST", headers });
+}
+
+describe("POST /api/agents/[code]/run (native-only, post-n8n)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    insertChain.mockResolvedValue({
-      data: { id: "run-abc-123" },
-      error: null,
-    });
+    insertChain.mockResolvedValue({ data: { id: "run-abc-123" }, error: null });
     updateChain.mockResolvedValue({ data: null, error: null });
-    global.fetch = vi.fn(async () =>
-      new Response("ok", { status: 200 }),
-    ) as unknown as typeof fetch;
+    runWorkflowSpecMock.mockResolvedValue({ ok: true, summary: "2 things written" });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("returns 404 when the agent code is not live", async () => {
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "ZZ" }),
-    });
-
+  it("returns 404 for unknown codes — the n8n fallback is gone", async () => {
+    const response = await POST(req(), { params: Promise.resolve({ code: "ZZ" }) });
     expect(response.status).toBe(404);
     const body = await response.json();
-    expect(body.error).toMatch(/not live/);
+    expect(body.error).toContain("Unknown workflow");
   });
 
-  it("creates a run_history row and fires the n8n webhook on happy path", async () => {
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "R-CI" }),
-    });
+  it("returns 400 for A0 (form-driven, not an agent run)", async () => {
+    const response = await POST(req(), { params: Promise.resolve({ code: "a0" }) });
+    expect(response.status).toBe(400);
+  });
 
+  it("runs a registry workflow natively and returns the runId + summary", async () => {
+    const response = await POST(req({ "x-llm-provider": "anthropic", "x-llm-key": "k" }), {
+      params: Promise.resolve({ code: "r-ci" }),
+    });
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.runId).toBe("run-abc-123");
-    expect(insertChain).toHaveBeenCalledTimes(1);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-
-    const [fetchUrl, fetchInit] = (
-      global.fetch as unknown as ReturnType<typeof vi.fn>
-    ).mock.calls[0];
-    expect(fetchUrl).toContain("/webhook/competitive-intel-supabase");
-    const payload = JSON.parse(fetchInit.body);
-    expect(payload).toMatchObject({
-      runId: "run-abc-123",
-      brandName: DEMO_BRAND_NAME,
-    });
+    expect(body.native).toBe(true);
+    expect(runWorkflowSpecMock).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts lowercase new-form codes (case-insensitive)", async () => {
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "r-ci" }),
-    });
-
-    expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("accepts legacy A1-A8 codes via the backward-compat path", async () => {
-    const response = await POST(new Request("http://test/run"), {
+  it("normalizes legacy A1 to R-CI and reaches the native path", async () => {
+    const response = await POST(req({ "x-llm-provider": "anthropic", "x-llm-key": "k" }), {
       params: Promise.resolve({ code: "A1" }),
     });
-
     expect(response.status).toBe(200);
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    // Should route to the same webhook as R-CI would.
-    const [fetchUrl] = (
-      global.fetch as unknown as ReturnType<typeof vi.fn>
-    ).mock.calls[0];
-    expect(fetchUrl).toContain("/webhook/competitive-intel-supabase");
+    expect(runWorkflowSpecMock).toHaveBeenCalledTimes(1);
   });
 
-  it("marks the run as error when n8n returns non-2xx", async () => {
-    global.fetch = vi.fn(async () =>
-      new Response("upstream broke", { status: 500 }),
-    ) as unknown as typeof fetch;
-
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "R-CI" }),
+  it("marks the run as error when the engine fails", async () => {
+    runWorkflowSpecMock.mockResolvedValue({ ok: false, error: "model exploded", status: 502 });
+    const response = await POST(req({ "x-llm-provider": "anthropic", "x-llm-key": "k" }), {
+      params: Promise.resolve({ code: "r-ci" }),
     });
-
     expect(response.status).toBe(502);
-    expect(updateChain).toHaveBeenCalledTimes(1);
+    const body = await response.json();
+    expect(body.error).toBe("model exploded");
+    expect(updateChain).toHaveBeenCalled();
   });
 
-  it("marks the run as error when fetch throws", async () => {
-    global.fetch = vi.fn(async () => {
-      throw new Error("network down");
-    }) as unknown as typeof fetch;
-
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "R-CI" }),
+  it("returns 500 if the run_history insert fails", async () => {
+    insertChain.mockResolvedValue({ data: null, error: { message: "insert blew up" } });
+    const response = await POST(req({ "x-llm-provider": "anthropic", "x-llm-key": "k" }), {
+      params: Promise.resolve({ code: "r-ci" }),
     });
-
-    expect(response.status).toBe(502);
-    expect(updateChain).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns 500 if Supabase insert fails", async () => {
-    insertChain.mockResolvedValueOnce({
-      data: null,
-      error: { message: "RLS denied" },
-    });
-
-    const response = await POST(new Request("http://test/run"), {
-      params: Promise.resolve({ code: "R-CI" }),
-    });
-
     expect(response.status).toBe(500);
-    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

@@ -14,10 +14,7 @@ import {
   DEMO_BRAND_NAME,
   DEMO_BRAND_WEBSITE,
 } from "@/lib/demo-context";
-import { webhookPathFor } from "@/lib/agent-config";
-
-const N8N_BASE_URL =
-  process.env.N8N_WEBHOOK_BASE_URL ?? "https://gtmintelligence.app.n8n.cloud";
+import { isDistributionCode, runDistribution } from "@/lib/workflows/distribution-runner";
 
 // Each X-* channel pulls from a specific delivery table. v1 uses the most
 // recent approved row from that table; v2 will use the launch_id-tagged row
@@ -107,9 +104,8 @@ export async function POST(
       continue;
     }
 
-    const webhookPath = webhookPathFor(slot.agent_code);
-    if (!webhookPath) {
-      results.push({ agent_code: slot.agent_code, ok: false, error: "no webhook path" });
+    if (!isDistributionCode(slot.agent_code)) {
+      results.push({ agent_code: slot.agent_code, ok: false, error: "unknown channel adapter" });
       continue;
     }
 
@@ -133,66 +129,40 @@ export async function POST(
       continue;
     }
 
-    const payload = {
-      tenantId: DEMO_TENANT_ID,
-      brandId: DEMO_BRAND_ID,
-      runId: run.id,
-      brandName: DEMO_BRAND_NAME,
-      websiteUrl: DEMO_BRAND_WEBSITE,
-      launch_id: launchId,
-      launch_name: launch.name,
+    // Native adapter (deterministic, no LLM) — the n8n webhook hop is gone.
+    const sendResult = await runDistribution(admin, slot.agent_code, {
       artifactTable: source.artifact_table,
       artifactId: artifactRow.id,
-      audienceDescriptor: source.default_audience,
-      audienceSize: source.default_size,
-    };
+    }).catch((err) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : String(err),
+    }));
 
-    try {
-      const res = await fetch(`${N8N_BASE_URL}${webhookPath}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        await admin
-          .from("run_history")
-          .update({
-            status: "error",
-            finished_at: new Date().toISOString(),
-            error_message: `n8n returned ${res.status}`,
-          })
-          .eq("id", run.id);
-        results.push({
-          agent_code: slot.agent_code,
-          ok: false,
-          error: `n8n returned ${res.status}`,
-        });
-        continue;
-      }
-      results.push({ agent_code: slot.agent_code, ok: true, artifact_id: artifactRow.id });
+    await admin
+      .from("run_history")
+      .update({
+        status: sendResult.ok ? "success" : "error",
+        finished_at: new Date().toISOString(),
+        ...(sendResult.ok ? { summary: sendResult.summary } : { error_message: sendResult.error }),
+      })
+      .eq("id", run.id);
 
-      // Mark the slot produced + record the artifact_id link (we know it now).
-      await admin
-        .from("launch_artifacts")
-        .update({
-          produced: true,
-          produced_at: new Date().toISOString(),
-          artifact_id: artifactRow.id,
-          status_when_produced: "running",
-        })
-        .eq("id", slot.id);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      await admin
-        .from("run_history")
-        .update({
-          status: "error",
-          finished_at: new Date().toISOString(),
-          error_message: msg,
-        })
-        .eq("id", run.id);
-      results.push({ agent_code: slot.agent_code, ok: false, error: msg });
+    if (!sendResult.ok) {
+      results.push({ agent_code: slot.agent_code, ok: false, error: sendResult.error });
+      continue;
     }
+    results.push({ agent_code: slot.agent_code, ok: true, artifact_id: artifactRow.id });
+
+    // Mark the slot produced + record the artifact_id link.
+    await admin
+      .from("launch_artifacts")
+      .update({
+        produced: true,
+        produced_at: new Date().toISOString(),
+        artifact_id: artifactRow.id,
+        status_when_produced: "success",
+      })
+      .eq("id", slot.id);
   }
 
   // 4. If anything fired, mark the launch shipped.

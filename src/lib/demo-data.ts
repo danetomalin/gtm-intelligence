@@ -89,7 +89,7 @@ export const centralThesis =
 export const voicePillars = [
   {
     name: "Workflow-native",
-    body: "Throughline replaces the work product, not the workflow. Output lands inside the systems the team already uses — Notion, Slack, Salesforce, n8n — instead of asking the team to context-switch into a new tool.",
+    body: "Throughline replaces the work product, not the workflow. Output lands inside the systems the team already uses — Notion, Slack, Salesforce — instead of asking the team to context-switch into a new tool.",
   },
   {
     name: "Operationalized PMM",
