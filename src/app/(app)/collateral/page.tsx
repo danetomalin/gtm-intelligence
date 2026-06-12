@@ -23,7 +23,6 @@ import {
   type DeploymentFormat,
 } from "../agents/[code]/deployment-format-card";
 import { CollateralLibraryFilters } from "./filters";
-import { AssessDeploymentsButton } from "./assess-deployments-button";
 import { UnapproveButton } from "./unapprove-button";
 
 export const dynamic = "force-dynamic";
@@ -350,10 +349,6 @@ function LibraryEntry({
       {children}
       <div className="flex justify-end items-center gap-2 pr-1">
         <UnapproveButton table={sourceArtifactTable} id={sourceArtifactId} />
-        <AssessDeploymentsButton
-          sourceArtifactTable={sourceArtifactTable}
-          sourceArtifactId={sourceArtifactId}
-        />
       </div>
     </div>
   );
