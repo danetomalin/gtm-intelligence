@@ -1,87 +1,113 @@
 # Throughline Backlog
 
-Owner: Dane · Updated: 2026-06-12
-Gate: items 1-4 start **after the first end-to-end pipeline run** completes (Stages 5-6 remaining).
+Owner: Dane · Updated: 2026-06-12 (resequenced against the product vision)
+
+**The vision in one line:** Throughline turns a company's go-to-market knowledge work into a governed AI pipeline that researches its market, maintains its positioning, produces its messaging in its own voice, and keeps humans in command of everything that ships.
+
+**Sequencing logic:** first make the system learn (feedback), then prove it generalizes (second brand), then make it act on its knowledge (recommender), then make it live (staleness + lineage), then connect it to the world (data in, channels out). Governance, cost, and quality items land as small increments throughout.
+
+---
+
+## Now: close the first E2E chapter
+- Approve Stage 5 artifacts → run Stage 6 (mock sends → S-CP → S-DB). Done when the Daily Brief reflects the full loop.
+- **n8n decommission:** archive workflows, cancel subscription, strip the dead webhook fallback from the run route.
+- **Phase D freeze:** tag cs-health-app v1.0; the standalone app retires.
 
 ---
 
 ## 1 · Output → Input feedback loop
-**Status: Queued (next up) · Why first: every later feature inherits the steering**
+**Status: Queued (next build) · Why first: every later feature inherits the steering**
 
-A Feedback button on every output card (dossiers first): verdict (keep / not relevant / needs change) + free-text comment → `workflow_feedback` table. Feedback applies through three layers, strongest first:
+A Feedback button on every output card (dossiers first): verdict (keep / not relevant / needs change) + free-text comment → `workflow_feedback` table. Feedback applies through four layers, strongest first:
 
-- **Structured actions** when feedback maps to data — "drop Homebase as a competitor" deactivates the `brand_competitors` row directly from the dossier card. Never becomes prompt text.
-- **Instruction synthesis** — Haiku/Flash merges open comments into a "User steering notes" section appended to `workflow_configs.instructions` (the system prompt every run already uses), so future runs obey automatically. Reviewable in the tile's Manage panel; Reset to default stays the escape hatch.
-- **Immediate injection** — until applied, open feedback rides the next run's context as "USER FEEDBACK (must respect)".
-
-- **Brand-code layer** — feedback that's really about the brand, not the workflow, updates the brand repository itself: "we'd never say it like this" edits/adds a `brand_voice_rules` row, "that claim is wrong" corrects or retires a `brand_proof_points` row, "that's not our buyer" amends `buyer_personas`. Because every workflow reads the brand code on each run, one piece of feedback propagates to ALL future outputs, not just the workflow it was left on. The feedback form routes this: "apply to this workflow" vs "apply to the brand."
+- **Structured actions** when feedback maps to data: "drop Homebase as a competitor" deactivates the `brand_competitors` row directly from the dossier card. Never becomes prompt text.
+- **Brand-code layer:** feedback that's really about the brand updates the brand repository itself ("we'd never say it like this" → `brand_voice_rules`; "that claim is wrong" → `brand_proof_points`; "that's not our buyer" → `buyer_personas`). One correction propagates to ALL future outputs. The form routes: "apply to this workflow" vs "apply to the brand."
+- **Instruction synthesis:** Haiku/Flash merges open comments into a "User steering notes" section appended to `workflow_configs.instructions` (the system prompt every run already uses). Reviewable in the tile's Manage panel; Reset to default stays the escape hatch.
+- **Immediate injection:** until applied, open feedback rides the next run's context as "USER FEEDBACK (must respect)".
 
 Manage panel gains a Feedback tab (history + what's been applied). Feedback never touches schemas.
 
-## 2 · Signal → Action Recommender (CS × PMM bridge)
-**Status: Queued (after #1)**
+## 2 · Second brand, end to end (NEW)
+**Status: Queued (after #1) · The product proof**
 
-Customer Health detects problems; the PMM workflows already built the remedies — this connects them.
+The largest gap between vision and code: everything hardcodes the Deputy demo brand. Take a brand we know nothing about through A0 → R-BR → all six stages with zero code changes.
 
-- **Trigger layer (deterministic, free):** rules over the live portfolio — health drop >N in 30d, band falls to Critical, renewal <90d with weak health, churn event, competitor named in a churn reason.
-- **Matching layer (one cheap LLM call):** picks the remedy from the existing arsenal — deploy the D-HP playbook, generate a D-RT talk track for that account, send the Homebase battlecard, fire D-CN — with a one-line rationale.
+- Flush out Deputy-shaped assumptions hidden in specs (e.g. R-MS hardcodes workforce-management search queries; D-CN audience phrasing; CS-track coupling).
+- Brand switcher becomes real (the pill already says "pre-multi-brand"); Command Center, approvals, costs, and outputs all scope to the selected brand.
+- Exit criterion: a stranger brand gets a complete GTM brain for ~$1.50 without touching the repo. This is also the sales demo: onboard a prospect's actual brand live.
+
+## 3 · Signal → Action Recommender (CS × PMM bridge)
+**Status: Queued (after #2)**
+
+Customer Health detects problems; the PMM workflows already built the remedies. This connects them.
+
+- **Trigger layer (deterministic, free):** rules over the live portfolio: health drop >N in 30d, band falls to Critical, renewal <90d with weak health, churn event, competitor named in a churn reason.
+- **Matching layer (one cheap LLM call):** picks the remedy from the existing arsenal (D-HP playbook, D-RT talk track for that account, battlecard, D-CN) with a one-line rationale.
 - **Storage:** `recommended_actions` (account, trigger, recommended artifact or workflow, rationale, urgency, open/done/dismissed, HITL columns).
 - **Surface:** "Recommended actions" panel on /dashboard and /customer-health with one-click run/deploy; S-DB folds them into the Daily Brief.
 
 Demo money moment: usage declines at an account → the system recommends the renewal talk track it already knows how to write.
 
-## 3 · Per-workflow external data connections
-**Status: PLACEHOLDER TIER SHIPPED (2026-06-12) — live connector layer remains**
+## 4 · Staleness + lineage (NEW — the "living throughline")
+**Status: Queued (after #3) · One effort, two faces**
 
-Shipped: `workflow_data_sources` table (migration 0033, applied), per-tile "Data connections" section in the Manage panel (assign sources from the integration catalog + pull instructions per connection, enable/disable/remove), and engine disclosure — assigned sources ride every run's context with their status, so the model knows what's configured and labels placeholder-dependent content honestly.
+The pipeline ran once; with no scheduled runs, the operating question is "what needs refreshing?"
 
-**Remaining — the live data pipeline:**
-- **Connector interface:** `fetchSource(sourceId, pullInstructions, ids) → { block: string, provenance }` — one module per source family (CRM, call recordings, support, NPS, analytics). The engine swaps the disclosure block for the fetched block when `connection_status = 'connected'`.
-- **Fetch model:** on-demand at run time v1 (freshest data, no sync jobs — consistent with the no-scheduled-runs rule). Later: `source_snapshots` cache table with TTL so multiple workflows reading the same source within an hour share one fetch.
-- **Credentials:** per-source keys/OAuth in Settings → Data Sources (server-held tokens, unlike the BYOK LLM keys — connectors run server-side).
-- **Shaping:** raw API responses get summarized to a bounded context block (the pull instructions drive what the connector requests AND how the block is summarized) — never dump raw payloads into prompts.
-- **Failure policy:** a connected source that fails at run time degrades gracefully — the run proceeds, the block says "fetch failed: <reason>", and the output must note the gap. Hard-fail only if the workflow's ONLY data source failed.
+- **Lineage first:** stamp `run_id` on every artifact; generalize the "built from" links the ICP chain and campaign_sends already have. Render lineage in the review modal. This is the enterprise trust story ("show me where this claim came from") and the data structure staleness needs.
+- **Staleness model:** every artifact knows the age of its inputs (`source_data_date`/`stale_flag` already exist on collateral; dossiers already track messaging drift). Command Center gains a "stale" view.
+- **Impact-aware refresh:** a new R-CI run flags only its downstream dependents (S-BC, S-PO…) as stale; one click re-runs just that chain. Cost story: refresh what changed for cents instead of rerunning everything for a dollar.
 
-Each Command Center tile's Manage panel gains a **Data connections** section: assign external sources (from the Settings Data Sources catalog — CRM, Gong, Zendesk, NPS, analytics) to that workflow, plus a per-connection pull instruction ("what to fetch and how to use it" — e.g. R-WL ← Salesforce: "closed-lost opps last quarter with competitor fields").
+## 5 · Live data connections (placeholder tier SHIPPED 2026-06-12)
+**Status: connector layer remains**
 
-- `workflow_data_sources` table (workflow_code, source_id, pull_instructions, enabled).
-- Engine `buildContext` consults assignments: live connector fetch once wired, clearly-labeled mock until then.
-- Replaces the synthetic-composite behavior currently hardcoded in R-WL / R-CF / R-PF / R-EV with user-controlled sourcing.
+Shipped: `workflow_data_sources` (migration 0033), per-tile "Data connections" in the Manage panel (assign sources + pull instructions, enable/disable/remove), engine disclosure of assignments on every run.
 
-## 4 · Real distribution automation
-**Status: Backlog**
+Remaining:
+- **Connector interface:** `fetchSource(sourceId, pullInstructions, ids) → { block, provenance }`, one module per source family (CRM, call recordings, support, NPS, analytics). Engine swaps the disclosure block for the fetched block when `connection_status = 'connected'`.
+- **Fetch model:** on-demand at run time v1 (no sync jobs, consistent with no-scheduled-runs). Later: `source_snapshots` cache with TTL.
+- **Credentials:** per-source keys/OAuth in Settings → Data Sources (server-held; connectors run server-side).
+- **Shaping:** raw responses summarized to bounded context blocks; never dump payloads into prompts.
+- **Failure policy:** a failed connected source degrades gracefully (run proceeds, block notes the gap); hard-fail only if it was the workflow's ONLY source.
 
-Evolve the mock X-* adapters into actual delivery of messaging, narratives, and collateral:
+## 6 · Real distribution — email only (NARROWED)
+**Status: Backlog · One real channel proves the loop; four multiplies integration surface**
 
-- **Channels in order of effort:** Resend email (adapter contract already designed for the swap) → LinkedIn queue/share → Outreach/Apollo sequences.
-- Per-channel credential slots (existing BYOK pattern); audience selection mapped from personas/segments.
-- **Delivery rules:** artifact types auto-queue to channels (e.g. approved D-CN → LinkedIn draft + email template).
-- **Non-negotiable:** HITL approval remains mandatory before any external send.
-- Real engagement events replace synthetic `campaign_metrics`, so S-CP analyzes actual performance — the loop closes for real.
+- **Resend email only** (the adapter contract was designed for this swap). LinkedIn/Outreach/Apollo stay mocked until email proves the loop end to end.
+- Per-channel credential slot; audience selection mapped from personas/segments; delivery rules (approved D-CN → email template).
+- **Non-negotiable:** HITL approval remains mandatory before any external send, regardless of future auto-approval policies.
+- Real engagement events replace synthetic `campaign_metrics` for the email channel → S-CP analyzes actual performance.
 
-## 5 · Performance-informed messaging (metrics close the creative loop)
-**Status: Backlog · Depends on #4 for real metrics; works on synthetic ones sooner**
+## 7 · Performance-informed messaging
+**Status: Backlog · Works on synthetic metrics sooner; real value after #6**
 
-Campaign performance becomes an INPUT to messaging generation, so deliverables improve run over run:
-
-- **Attribution:** campaign_sends already links every send to its artifact (`artifact_table`/`artifact_id`), and S-CP rolls metrics up per send — extend the rollup to score the underlying artifact and its `messaging_refs` (which positioning element/message it traced to).
-- **Performance memory:** a `message_performance` view per messaging angle: opens/clicks/replies by positioning anchor, channel, persona. "Compliance-angle emails reply 3x better than price-angle" becomes data.
-- **Feed-forward:** D-MG/D-SN/S-PO contexts gain a "What performed" block — top and bottom performing angles with their metrics — and instructions to lean into winners, rework or retire losers. S-PO's last_change_reason can cite performance ("compliance value prop promoted: 3x reply rate").
-- **HITL stays:** performance steers drafts; humans still approve them.
-
-This plus the feedback loop (#1) gives the system both judgment signals: human feedback (what we want) and market feedback (what works).
+- **Attribution:** extend S-CP rollups to score the underlying artifact and its `messaging_refs` (campaign_sends already links every send to its artifact).
+- **Performance memory:** `message_performance` per messaging angle: opens/clicks/replies by positioning anchor, channel, persona.
+- **Feed-forward:** D-MG/D-SN/S-PO contexts gain a "What performed" block; instructions lean into winners and rework losers. S-PO's last_change_reason can cite performance.
+- With #1, the system gets both judgment signals: human feedback (what we want) and market feedback (what works).
 
 ---
 
-## Smaller items
-- **R-BR web grounding:** re-add `buildSearchQueries` so brand-code proof points ground in live research (removed 2026-06-11 to unblock Stage 1; currently context-only with "unverified" attributions).
-- **Manual stale-run sweep is in place; consider auto-sweep** on Command Center load when stale runs are detected.
-- **n8n decommission:** archive workflows + cancel subscription once the E2E run is done; optionally strip the dead webhook fallback from the run route.
-- **Phase D freeze:** tag cs-health-app v1.0 (standalone app retires in favor of the merged product).
+## Continuous increments (small, drop in alongside the above)
+- **Risk-tiered auto-approval policies** (after #1 exists): low-risk artifact types may auto-approve after N consecutive human approvals; configurable, revocable; external sends ALWAYS human. HITL scales by exception instead of by reviewing every item forever.
+- **Per-brand monthly cost budget** with a soft warning in the Command Center control strip. Trivial on top of the ledger; strong enterprise signal.
+- **Quality observability:** schema-pass rate and retry rate per workflow in the ledger, so a degrading prompt shows as a trend instead of a surprise failure.
+- **R-BR web grounding:** re-add `buildSearchQueries` so brand-code proof points ground in live research (currently context-only with "unverified" attributions).
+- **Auto-sweep stale runs** on Command Center load.
+
+## Deprioritized (deliberately)
+- Outreach/Apollo/LinkedIn live adapters (until email proves the loop).
+- Editable stage groupings (fixed groupings are correct by construction).
+- Deployment forking (D-DA/D-DP) — removed from the UI 2026-06-12; if format-forking returns, it folds into #6's delivery rules.
+- Deepening S-AR / S-LP — breadth for the demo, not the spine.
+
+## Parallel business track (not product, but gating)
+- **Business-account migration:** all infra (GitHub/Vercel/Supabase/Anthropic) sits on personal accounts. The moment #2 points at real prospects, this gates commercial demos. Schedule it; don't let it block reactively.
+
+---
 
 ## Done (this week, for context)
 - n8n → native migration: 33/33 workflows, generic engine + declarative specs.
-- Command Center: staged tiles, manual advance, per-tile Manage (credentials/model/instructions/errors), stale-run handling, error classification.
+- Command Center: staged tiles, manual advance, Manage panels (credentials/model/instructions/errors/data connections), inline approvals with full review modal, stale-run handling, error classification.
 - LLM cost tracking: exact billed tokens, frozen pricing, tile/stage/pipeline costs + full ledger.
-- Gemini native Google Search grounding for the research tier (no Tavily dependency).
-- First E2E run in progress: Stages 1-4 green (~$0.50 total LLM spend so far).
+- Gemini native Google Search grounding for the research tier.
+- First E2E run: Stages 1–5 green (~$1.33 total), Stage 6 parked at the approval gate by design.
