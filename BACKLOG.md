@@ -57,8 +57,10 @@ The pipeline ran once; with no scheduled runs, the operating question is "what n
 - **Staleness model:** every artifact knows the age of its inputs (`source_data_date`/`stale_flag` already exist on collateral; dossiers already track messaging drift). Command Center gains a "stale" view.
 - **Impact-aware refresh:** a new R-CI run flags only its downstream dependents (S-BC, S-PO…) as stale; one click re-runs just that chain. Cost story: refresh what changed for cents instead of rerunning everything for a dollar.
 
-## 5 · Live data connections (placeholder tier SHIPPED 2026-06-12)
-**Status: connector layer remains**
+## 5 · Live data connections (placeholder + SIMULATED tiers SHIPPED 2026-06-12)
+**Status: real connector layer remains**
+
+Simulated tier shipped: per-source "Simulate" toggle in the Manage panel. Simulated sources actually FETCH at run time — a model plays the source's API, generating a compact realistic result set matched to the pull instructions, seeded with real demo-world facts (brand, competitors, personas) so simulations stay coherent. Blocks are labeled SIMULATED end to end, fetches bill to the run's cost ledger, max 4 per run. The engine contract is identical for real connectors — flipping a source to 'connected' later swaps data sources without touching workflows.
 
 Shipped: `workflow_data_sources` (migration 0033), per-tile "Data connections" in the Manage panel (assign sources + pull instructions, enable/disable/remove), engine disclosure of assignments on every run.
 

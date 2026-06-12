@@ -42,11 +42,17 @@ export function DataConnections({ workflowCode }: { workflowCode: string }) {
     void refresh();
   }, [refresh]);
 
-  async function upsert(source_id: string, source_name: string, pull_instructions: string, enabled: boolean) {
+  async function upsert(
+    source_id: string,
+    source_name: string,
+    pull_instructions: string,
+    enabled: boolean,
+    connection_status = "placeholder",
+  ) {
     await fetch(`/api/workflows/${workflowCode.toLowerCase()}/data-sources`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_id, source_name, pull_instructions, enabled }),
+      body: JSON.stringify({ source_id, source_name, pull_instructions, enabled, connection_status }),
     });
     await refresh();
   }
@@ -95,14 +101,43 @@ export function DataConnections({ workflowCode }: { workflowCode: string }) {
                   className={`rounded-full border px-1.5 py-0.5 text-[10px] ${
                     r.connection_status === "connected"
                       ? "border-success/40 bg-success/10 text-success"
-                      : "border-border bg-card text-text-muted"
+                      : r.connection_status === "simulated"
+                        ? "border-accent/40 bg-accent-bg/30 text-accent"
+                        : "border-border bg-card text-text-muted"
                   }`}
-                  title="Placeholder: assignment + instructions are saved and disclosed to the model, but no live connector is wired yet."
+                  title={
+                    r.connection_status === "simulated"
+                      ? "Simulated: runs fetch realistic synthetic data matched to the pull instructions, clearly labeled SIMULATED."
+                      : "Placeholder: assignment + instructions are saved and disclosed to the model, but no data is fetched."
+                  }
                 >
                   {r.connection_status}
                 </span>
                 {!r.enabled && <span className="text-[10px] text-text-dim">disabled</span>}
                 <span className="ml-auto flex items-center gap-1.5">
+                  <button
+                    onClick={() =>
+                      void upsert(
+                        r.source_id,
+                        r.source_name,
+                        r.pull_instructions,
+                        r.enabled,
+                        r.connection_status === "simulated" ? "placeholder" : "simulated",
+                      )
+                    }
+                    className={
+                      r.connection_status === "simulated"
+                        ? `${btn} text-text-muted`
+                        : "text-xs rounded border border-accent/50 bg-accent-bg/30 px-2 py-0.5 text-accent hover:bg-accent-bg/50"
+                    }
+                    title={
+                      r.connection_status === "simulated"
+                        ? "Stop fetching synthetic data; back to disclosure-only"
+                        : "Runs will fetch realistic synthetic data matched to the pull instructions (labeled SIMULATED, cost tracked)"
+                    }
+                  >
+                    {r.connection_status === "simulated" ? "Stop simulating" : "Simulate"}
+                  </button>
                   <button
                     onClick={() => {
                       setEditing(editing === r.source_id ? null : r.source_id);
@@ -113,7 +148,7 @@ export function DataConnections({ workflowCode }: { workflowCode: string }) {
                     {editing === r.source_id ? "Close" : "Edit pull"}
                   </button>
                   <button
-                    onClick={() => void upsert(r.source_id, r.source_name, r.pull_instructions, !r.enabled)}
+                    onClick={() => void upsert(r.source_id, r.source_name, r.pull_instructions, !r.enabled, r.connection_status)}
                     className={btn}
                   >
                     {r.enabled ? "Disable" : "Enable"}
@@ -137,7 +172,7 @@ export function DataConnections({ workflowCode }: { workflowCode: string }) {
                   />
                   <button
                     onClick={() => {
-                      void upsert(r.source_id, r.source_name, editText, r.enabled);
+                      void upsert(r.source_id, r.source_name, editText, r.enabled, r.connection_status);
                       setEditing(null);
                     }}
                     className="mt-1 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:opacity-90"
@@ -197,8 +232,9 @@ export function DataConnections({ workflowCode }: { workflowCode: string }) {
         )}
       </div>
       <p className="text-[11px] text-text-dim">
-        Placeholder tier: assignments and pull instructions are saved and disclosed to the model on every run, but no
-        live connector is wired yet. Connecting a source later activates real fetches without reconfiguring.
+        Placeholder sources are disclosed to the model but fetch nothing. Hit Simulate and runs will fetch realistic
+        synthetic data matched to your pull instructions (labeled SIMULATED in every artifact, cost tracked in the
+        ledger, max 4 simulated fetches per run). Real connectors swap in later without reconfiguring.
       </p>
     </div>
   );

@@ -19,6 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ZodTypeAny, infer as ZodInfer } from "zod";
 import { callProvider, type ProviderConfig } from "@/lib/llm/providers";
 import { searchTavily, type SearchResult } from "@/lib/search/tavily";
+import { buildSimSeed, runSimulatedFetch } from "@/lib/connectors/simulated";
 import { agentTooling } from "@/lib/demo-data";
 import { DEMO_TENANT_ID, DEMO_BRAND_ID } from "@/lib/demo-context";
 
@@ -105,13 +106,16 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   // 2. Data context.
   const context = await spec.buildContext(admin, ids);
 
-  // 2b. Assigned external data sources (migration 0033). Placeholder
-  // tier: no live connector yet, so the model is told exactly what's
-  // configured and that the data is NOT yet available — outputs that
-  // would rely on it must be labeled accordingly. When a source's
-  // connection_status flips to 'connected', this block becomes a live
-  // fetch through the connector layer.
+  // 2b. Assigned external data sources (migrations 0033/0034).
+  // Three tiers per source:
+  //   placeholder — disclosed as configured-but-unavailable
+  //   simulated   — a model plays the source's API and returns a
+  //                 compact, clearly-labeled synthetic result set
+  //                 matched to the pull instructions (costs tracked)
+  //   connected   — future real connector (treated as placeholder
+  //                 until the connector layer lands)
   let externalSources = "";
+  const simUsages: { inputTokens: number; outputTokens: number }[] = [];
   const { data: dataSources } = await admin
     .from("workflow_data_sources")
     .select("source_name, pull_instructions, enabled, connection_status")
@@ -119,12 +123,36 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
     .eq("workflow_code", spec.code)
     .eq("enabled", true);
   if (dataSources && dataSources.length > 0) {
-    const lines = dataSources
-      .map((s) => `- ${s.source_name} [${s.connection_status}]: ${s.pull_instructions || "(no pull instructions yet)"}`)
-      .join("\n");
-    externalSources =
-      `\n\n=== ASSIGNED EXTERNAL DATA SOURCES ===\n` +
-      `These sources are configured for this workflow. Sources marked [placeholder] are NOT yet connected — treat their data as unavailable, and clearly label any content that would normally come from them as representative/composite pending connection.\n${lines}`;
+    const blocks: string[] = [];
+    const disclosures: string[] = [];
+    // Cap simulated fetches per run — each is a model call; context
+    // budget and latency both matter.
+    const MAX_SIM_FETCHES = 4;
+    let simCount = 0;
+    let seed: Awaited<ReturnType<typeof buildSimSeed>> | null = null;
+    for (const src of dataSources) {
+      if (src.connection_status === "simulated" && simCount < MAX_SIM_FETCHES) {
+        simCount += 1;
+        seed = seed ?? (await buildSimSeed(admin, ids.organizationId, ids.brandId));
+        const sim = await runSimulatedFetch(cred, src.source_name, src.pull_instructions ?? "", seed);
+        if (sim.usage) simUsages.push(sim.usage);
+        if (sim.ok) {
+          blocks.push(sim.block);
+        } else {
+          disclosures.push(`- ${src.source_name} [simulation failed: ${sim.error?.slice(0, 120)}] — treat as unavailable`);
+        }
+      } else {
+        disclosures.push(`- ${src.source_name} [${src.connection_status}]: ${src.pull_instructions || "(no pull instructions yet)"}`);
+      }
+    }
+    const parts: string[] = [];
+    if (blocks.length > 0) parts.push(blocks.join("\n\n"));
+    if (disclosures.length > 0) {
+      parts.push(
+        `Configured but not fetched (treat as unavailable; label dependent content accordingly):\n${disclosures.join("\n")}`,
+      );
+    }
+    externalSources = `\n\n=== EXTERNAL DATA SOURCES ===\n${parts.join("\n\n")}`;
   }
 
   // 3. Optional web research. Gemini profiles use the model's native
@@ -174,6 +202,7 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
       usage.outputTokens += u.outputTokens;
     }
   };
+  for (const u of simUsages) addUsage(u); // simulated-source fetches bill to the run
   let result = await callProvider(cred, [{ role: "user", content: user }], {
     system: instructions,
     maxTokens: spec.maxTokens ?? 4096,

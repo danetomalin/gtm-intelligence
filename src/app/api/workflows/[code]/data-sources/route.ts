@@ -26,7 +26,13 @@ export async function PUT(
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code } = await params;
-  let body: { source_id?: string; source_name?: string; pull_instructions?: string; enabled?: boolean };
+  let body: {
+    source_id?: string;
+    source_name?: string;
+    pull_instructions?: string;
+    enabled?: boolean;
+    connection_status?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -34,6 +40,11 @@ export async function PUT(
   }
   if (!body.source_id || !body.source_name) {
     return NextResponse.json({ error: "source_id and source_name are required" }, { status: 400 });
+  }
+  const status = body.connection_status ?? "placeholder";
+  if (!["placeholder", "simulated"].includes(status)) {
+    // 'connected' arrives only via the real connector layer; 'error' is set server-side.
+    return NextResponse.json({ error: `connection_status must be placeholder or simulated (got ${status})` }, { status: 400 });
   }
   const admin = await createAdminClient();
   const { error } = await admin.from("workflow_data_sources").upsert(
@@ -44,6 +55,7 @@ export async function PUT(
       source_name: body.source_name,
       pull_instructions: body.pull_instructions ?? "",
       enabled: body.enabled ?? true,
+      connection_status: status,
     },
     { onConflict: "organization_id,workflow_code,source_id" },
   );
