@@ -31,7 +31,16 @@ Customer Health detects problems; the PMM workflows already built the remedies �
 Demo money moment: usage declines at an account → the system recommends the renewal talk track it already knows how to write.
 
 ## 3 · Per-workflow external data connections
-**Status: Backlog**
+**Status: PLACEHOLDER TIER SHIPPED (2026-06-12) — live connector layer remains**
+
+Shipped: `workflow_data_sources` table (migration 0033, applied), per-tile "Data connections" section in the Manage panel (assign sources from the integration catalog + pull instructions per connection, enable/disable/remove), and engine disclosure — assigned sources ride every run's context with their status, so the model knows what's configured and labels placeholder-dependent content honestly.
+
+**Remaining — the live data pipeline:**
+- **Connector interface:** `fetchSource(sourceId, pullInstructions, ids) → { block: string, provenance }` — one module per source family (CRM, call recordings, support, NPS, analytics). The engine swaps the disclosure block for the fetched block when `connection_status = 'connected'`.
+- **Fetch model:** on-demand at run time v1 (freshest data, no sync jobs — consistent with the no-scheduled-runs rule). Later: `source_snapshots` cache table with TTL so multiple workflows reading the same source within an hour share one fetch.
+- **Credentials:** per-source keys/OAuth in Settings → Data Sources (server-held tokens, unlike the BYOK LLM keys — connectors run server-side).
+- **Shaping:** raw API responses get summarized to a bounded context block (the pull instructions drive what the connector requests AND how the block is summarized) — never dump raw payloads into prompts.
+- **Failure policy:** a connected source that fails at run time degrades gracefully — the run proceeds, the block says "fetch failed: <reason>", and the output must note the gap. Hard-fail only if the workflow's ONLY data source failed.
 
 Each Command Center tile's Manage panel gains a **Data connections** section: assign external sources (from the Settings Data Sources catalog — CRM, Gong, Zendesk, NPS, analytics) to that workflow, plus a per-connection pull instruction ("what to fetch and how to use it" — e.g. R-WL ← Salesforce: "closed-lost opps last quarter with competitor fields").
 

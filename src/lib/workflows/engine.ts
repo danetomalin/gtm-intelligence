@@ -105,6 +105,28 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   // 2. Data context.
   const context = await spec.buildContext(admin, ids);
 
+  // 2b. Assigned external data sources (migration 0033). Placeholder
+  // tier: no live connector yet, so the model is told exactly what's
+  // configured and that the data is NOT yet available — outputs that
+  // would rely on it must be labeled accordingly. When a source's
+  // connection_status flips to 'connected', this block becomes a live
+  // fetch through the connector layer.
+  let externalSources = "";
+  const { data: dataSources } = await admin
+    .from("workflow_data_sources")
+    .select("source_name, pull_instructions, enabled, connection_status")
+    .eq("organization_id", ids.organizationId)
+    .eq("workflow_code", spec.code)
+    .eq("enabled", true);
+  if (dataSources && dataSources.length > 0) {
+    const lines = dataSources
+      .map((s) => `- ${s.source_name} [${s.connection_status}]: ${s.pull_instructions || "(no pull instructions yet)"}`)
+      .join("\n");
+    externalSources =
+      `\n\n=== ASSIGNED EXTERNAL DATA SOURCES ===\n` +
+      `These sources are configured for this workflow. Sources marked [placeholder] are NOT yet connected — treat their data as unavailable, and clearly label any content that would normally come from them as representative/composite pending connection.\n${lines}`;
+  }
+
   // 3. Optional web research. Gemini profiles use the model's native
   // Google Search grounding (Dane 2026-06-11 — best access to current
   // info, no Tavily key needed); other providers use Tavily.
@@ -144,7 +166,7 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   }
 
   // 4. Model call on the assigned credential profile.
-  const user = `${spec.task}\n\n=== DATA CONTEXT ===\n${context}${research}\n\n=== OUTPUT FORMAT (MANDATORY) ===\n${spec.outputInstruction}\nReturn ONLY valid JSON — no prose, no markdown fences.`;
+  const user = `${spec.task}\n\n=== DATA CONTEXT ===\n${context}${externalSources}${research}\n\n=== OUTPUT FORMAT (MANDATORY) ===\n${spec.outputInstruction}\nReturn ONLY valid JSON — no prose, no markdown fences.`;
   const usage: RunUsage = { provider: cred.provider, model: cred.model, inputTokens: 0, outputTokens: 0 };
   const addUsage = (u?: { inputTokens: number; outputTokens: number }) => {
     if (u) {

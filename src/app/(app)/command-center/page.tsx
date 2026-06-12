@@ -3,6 +3,7 @@ import { agentTooling } from "@/lib/demo-data";
 import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { CommandCenterClient } from "./command-center-client";
 import { CostLedger } from "./cost-ledger";
+import { ApprovalsPanel } from "./approvals-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default function CommandCenterPage() {
         subtitle={`Run the full workflow system on ${DEMO_BRAND_NAME}, stage by stage. Each stage runs sequentially with a pause between workflows; advance manually once everything is green. The Customer Success track runs independently off the customer portfolio.`}
       />
       <CommandCenterClient names={names} purposes={purposes} />
+
+      <ApprovalsPanel />
 
       <CostLedger names={names} />
     </div>

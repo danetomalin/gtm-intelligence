@@ -22,6 +22,7 @@ import { classifyRunError } from "@/lib/run-errors";
 import { formatCost, formatTokens } from "@/lib/llm/pricing";
 import { CredentialAssign } from "../settings/credential-assign";
 import { InstructionsEditor } from "../settings/instructions-editor";
+import { DataConnections } from "./data-connections";
 import {
   CS_TRACK,
   PIPELINE_STAGES,
@@ -443,6 +444,14 @@ export function CommandCenterClient({
                   Manage profiles & models in Settings →
                 </Link>
               </div>
+            </div>
+
+            {/* External data connections (placeholder tier, migration 0033). */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-dim">
+                Data connections
+              </p>
+              <DataConnections workflowCode={code} />
             </div>
 
             {/* Operating instructions — same workflow_configs row Settings edits. */}
