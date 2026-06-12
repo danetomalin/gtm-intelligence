@@ -27,6 +27,13 @@ A Feedback button on every output card (dossiers first): verdict (keep / not rel
 
 Manage panel gains a Feedback tab (history + what's been applied). Feedback never touches schemas.
 
+**Brand code as collective intelligence (the frame for this item and beyond).** The brand code is the central, durable view of everything the system knows about how the brand operates — five layers: (1) Identity: voice, proof, capabilities, personas (exists); (2) Strategy: positioning, ICP, market category, competitive stance (exists, reframe as brand code); (3) Market knowledge: what research has established (exists as artifacts); (4) Customer truth: VoC, feedback themes, win/loss patterns (exists as artifacts); (5) Operating learnings: what humans and the market have taught the system — "we never lead with price," "compliance angle replies 3x" (NEW — no home today).
+
+Governing rule: **artifacts are hypotheses; brand code is accepted truth; approval and feedback are the promotion gates.** Build implications:
+- `brand_learnings` table for layer 5 (statement, layer, source: feedback/performance/approval-pattern, confidence, evidence link, active). Free-text feedback that doesn't map to a structured table lands here, reaching ALL workflows — workflow instructions are only for behavior specific to one workflow.
+- Shared `buildBrandCode(admin, ids, layers)` engine context builder replacing the hand-rolled brandBlock/intelBlock in every spec — token-budgeted, layered. One learning instantly reaches all 33 workflows, and item 2 (second brand) verifies one builder instead of 33 specs.
+- A unified **Brand Code page** consolidating Brand Voice / Positioning / Market Context into one surface showing all five layers with provenance and freshness — the natural anchor for lineage (#4) and staleness.
+
 ## 2 · Second brand, end to end (NEW)
 **Status: Queued (after #1) · The product proof**
 
