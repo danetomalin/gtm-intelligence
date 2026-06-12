@@ -58,7 +58,7 @@ const dsn: WorkflowSpec<typeof collateralSchema> = {
   code: "D-SN",
   task: "Produce ONE piece of longer-form sales collateral from the intelligence below — pick the single most useful type given what data exists (pitch deck outline or competitive comparison are usually safest on a fresh brand). One piece only: depth beats breadth, and each run adds a different piece to the library. Narrative consistency with the positioning framework is mandatory; cite which positioning elements it draws on; flag any claim lacking proof.",
   outputInstruction:
-    '{"collateral": [{"collateral_type": "pitch_deck_outline|competitive_comparison|roi_calculator_inputs|case_study_draft|executive_briefing", "target_account": "segment-level if no specific account", "target_segment": "...", "competitors": "comma,separated or empty", "content": "the full structured collateral in markdown", "positioning_refs": "which elements it draws on", "messaging_refs": "..."}]} — 1 to 2 pieces.',
+    '{"collateral": [{"collateral_type": "pitch_deck_outline|competitive_comparison|roi_calculator_inputs|case_study_draft|executive_briefing", "target_account": "segment-level if no specific account", "target_segment": "...", "competitors": "comma,separated or empty", "content": "the full structured collateral in markdown", "positioning_refs": "which elements it draws on", "messaging_refs": "..."}]} — exactly ONE piece.',
   outputSchema: collateralSchema,
   maxTokens: 8000,
   buildContext: async (admin, ids) => {
