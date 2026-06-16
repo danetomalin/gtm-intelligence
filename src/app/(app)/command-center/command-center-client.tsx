@@ -173,17 +173,25 @@ export function CommandCenterClient({
     const searchKey = getSearchApiKey();
     let runId: string | null = null;
     try {
+      // Shared profiles never carry the apiKey browser-side; the
+      // server resolves it from the x-llm-shared-id header.
+      const credHeaders: Record<string, string> = cred
+        ? cred.source === "shared"
+          ? {
+              "x-llm-shared-id": cred.id,
+              "x-llm-model": cred.model,
+            }
+          : {
+              "x-llm-provider": cred.provider,
+              "x-llm-key": cred.apiKey,
+              "x-llm-model": cred.model,
+              "x-llm-base-url": cred.baseUrl,
+            }
+        : {};
       const res = await fetch(`/api/agents/${code.toLowerCase()}/run`, {
         method: "POST",
         headers: {
-          ...(cred
-            ? {
-                "x-llm-provider": cred.provider,
-                "x-llm-key": cred.apiKey,
-                "x-llm-model": cred.model,
-                "x-llm-base-url": cred.baseUrl,
-              }
-            : {}),
+          ...credHeaders,
           ...(searchKey ? { "x-search-key": searchKey } : {}),
         },
       });

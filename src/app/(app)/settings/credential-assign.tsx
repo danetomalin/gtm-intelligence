@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import {
   loadCredentialStore,
   setAssignment,
+  subscribeSharedProfiles,
+  type CredentialProfile,
   type CredentialStore,
 } from "@/lib/llm/apiConfig";
 
@@ -19,14 +21,20 @@ export function CredentialAssign({
   onChanged?: () => void;
 }) {
   const [store, setStore] = useState<CredentialStore | null>(null);
+  const [shared, setShared] = useState<CredentialProfile[]>([]);
 
   useEffect(() => {
     setStore(loadCredentialStore());
+    // Subscribe to the shared profile fetch so this dropdown
+    // re-renders when the server list arrives (and on later
+    // refreshes if SHARED_*_KEY env vars are rotated).
+    return subscribeSharedProfiles(setShared);
   }, []);
 
   if (!store) return null;
   const code = workflowCode.toUpperCase();
   const value = store.assignments[code] ?? "";
+  const noOptions = store.profiles.length === 0 && shared.length === 0;
 
   return (
     <label className="inline-flex items-center gap-2 text-xs text-text-muted">
@@ -41,13 +49,26 @@ export function CredentialAssign({
         className="rounded-md border border-border bg-surface px-2 py-1.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent"
       >
         <option value="">
-          Default{store.profiles.length === 0 ? " (none saved)" : ""}
+          Default{noOptions ? " (none saved)" : ""}
         </option>
-        {store.profiles.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
+        {shared.length > 0 && (
+          <optgroup label="Shared (org-managed)">
+            {shared.map((p) => (
+              <option key={p.id} value={p.id}>
+                🔒 {p.name}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {store.profiles.length > 0 && (
+          <optgroup label="Personal">
+            {store.profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
     </label>
   );

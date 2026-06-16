@@ -23,6 +23,13 @@ export interface ApiConfig {
 export interface CredentialProfile extends ApiConfig {
   id: string;
   name: string; // user-facing label, e.g. "Anthropic prod", "Gemini cheap"
+  // 'personal' (default) = localStorage profile, user owns the key.
+  // 'shared' = org-managed profile, key resolved server-side at run
+  // time. Shared profiles have apiKey='' in the browser and are
+  // read-only in the UI: no Edit, no Delete, no key entry.
+  source?: "personal" | "shared";
+  // One-line subtext for shared profiles (registry description).
+  description?: string;
 }
 
 export interface CredentialStore {
@@ -142,8 +149,103 @@ export function getDefaultProfile(store?: CredentialStore): CredentialProfile | 
   return s.profiles.find((p) => p.id === s.defaultId) ?? s.profiles[0];
 }
 
+// ---------- Shared profile fetch (server-managed credentials) ----------
+//
+// /api/credentials/shared returns the metadata for any
+// SHARED_*_KEY env vars set on the server. We cache it in-memory
+// and expose a hook-free getter + an async refresh.
+//
+// Shared profiles are read-only — they don't enter the
+// localStorage credential store, they're merged into the
+// "available profiles" list at read time.
+
+let sharedCache: CredentialProfile[] = [];
+let sharedFetched = false;
+let sharedInFlight: Promise<CredentialProfile[]> | null = null;
+const sharedListeners = new Set<(list: CredentialProfile[]) => void>();
+
+interface SharedMetadataRow {
+  id: string;
+  name: string;
+  provider: Provider;
+  model: string;
+  baseUrl: string;
+  description: string | null;
+}
+
+export async function refreshSharedProfiles(): Promise<CredentialProfile[]> {
+  if (typeof window === "undefined") return [];
+  if (sharedInFlight) return sharedInFlight;
+  sharedInFlight = (async () => {
+    try {
+      const res = await fetch("/api/credentials/shared", { cache: "no-store" });
+      if (!res.ok) {
+        sharedCache = [];
+        sharedFetched = true;
+        return sharedCache;
+      }
+      const body = (await res.json()) as { shared: SharedMetadataRow[] };
+      sharedCache = body.shared.map((r) => ({
+        id: r.id,
+        name: r.name,
+        provider: r.provider,
+        apiKey: "",
+        model: r.model,
+        baseUrl: r.baseUrl,
+        source: "shared" as const,
+        description: r.description ?? undefined,
+      }));
+      sharedFetched = true;
+      for (const fn of sharedListeners) fn(sharedCache);
+      return sharedCache;
+    } catch {
+      sharedCache = [];
+      sharedFetched = true;
+      return sharedCache;
+    } finally {
+      sharedInFlight = null;
+    }
+  })();
+  return sharedInFlight;
+}
+
+export function getSharedProfiles(): CredentialProfile[] {
+  // Trigger eager fetch on first read so the next render sees data.
+  if (!sharedFetched && typeof window !== "undefined" && !sharedInFlight) {
+    void refreshSharedProfiles();
+  }
+  return sharedCache;
+}
+
+export function subscribeSharedProfiles(
+  fn: (list: CredentialProfile[]) => void,
+): () => void {
+  sharedListeners.add(fn);
+  if (!sharedFetched) void refreshSharedProfiles();
+  fn(sharedCache);
+  return () => {
+    sharedListeners.delete(fn);
+  };
+}
+
+// Combined list: personal profiles from the localStorage store
+// followed by any shared profiles fetched from the server. UI
+// surfaces (Settings list, workflow assignment dropdown) iterate
+// this so shared profiles appear alongside personal ones with a
+// 'Shared' badge.
+export function listAllProfiles(store?: CredentialStore): CredentialProfile[] {
+  const s = store ?? loadCredentialStore();
+  return [...s.profiles, ...getSharedProfiles()];
+}
+
+export function isSharedProfileId(id: string): boolean {
+  return getSharedProfiles().some((p) => p.id === id);
+}
+
 // Resolve which credentials a given workflow runs on: its assigned
-// profile if one exists, otherwise the default profile.
+// profile if one exists, otherwise the default profile. The lookup
+// checks both personal (localStorage) and shared (server-managed)
+// profiles so a workflow can be pinned to a shared profile too.
 export function resolveCredential(
   workflowCode: string,
   store?: CredentialStore,
@@ -151,8 +253,10 @@ export function resolveCredential(
   const s = store ?? loadCredentialStore();
   const assignedId = s.assignments[workflowCode.toUpperCase()];
   if (assignedId) {
-    const assigned = s.profiles.find((p) => p.id === assignedId);
-    if (assigned) return assigned;
+    const personal = s.profiles.find((p) => p.id === assignedId);
+    if (personal) return personal;
+    const shared = getSharedProfiles().find((p) => p.id === assignedId);
+    if (shared) return shared;
   }
   return getDefaultProfile(s);
 }

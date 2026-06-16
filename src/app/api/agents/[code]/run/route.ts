@@ -7,6 +7,48 @@ import { runWorkflowSpec } from "@/lib/workflows/engine";
 import { WORKFLOW_REGISTRY, isRegistryCode } from "@/lib/workflows/registry";
 import { isDistributionCode, runDistribution } from "@/lib/workflows/distribution-runner";
 import { costUsd } from "@/lib/llm/pricing";
+import { resolveShared, isSharedId } from "@/lib/llm/sharedCredentials";
+
+// Resolves the credential bundle for an agent run from the request
+// headers. Three paths in priority order:
+//   1. x-llm-shared-id → resolveShared() pulls the env-var key
+//      server-side (org-managed shared profile).
+//   2. x-llm-* headers → personal BYOK from the browser store.
+//   3. ANTHROPIC_API_KEY env var fallback for the anthropic
+//      provider only (no-config local dev).
+function resolveCredentialFromRequest(request: Request): {
+  provider: string;
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+} {
+  const sharedId = request.headers.get("x-llm-shared-id");
+  if (sharedId && isSharedId(sharedId)) {
+    const resolved = resolveShared(sharedId);
+    if (resolved) {
+      return {
+        provider: resolved.provider,
+        apiKey: resolved.apiKey,
+        model: resolved.model,
+        baseUrl: resolved.baseUrl,
+      };
+    }
+    // Falls through to header path if shared id is registered but
+    // its env var isn't set on the server (treat as misconfigured
+    // → BYOK / fallback).
+  }
+  const provider = request.headers.get("x-llm-provider") ?? "anthropic";
+  let apiKey = request.headers.get("x-llm-key") ?? "";
+  if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+    apiKey = process.env.ANTHROPIC_API_KEY;
+  }
+  return {
+    provider,
+    apiKey,
+    model: request.headers.get("x-llm-model") ?? "",
+    baseUrl: request.headers.get("x-llm-base-url") ?? "",
+  };
+}
 
 /** run_history columns for a finished run's token usage + frozen cost. */
 function usageColumns(usage?: { provider: string; model: string; inputTokens: number; outputTokens: number }) {
@@ -93,17 +135,7 @@ export async function POST(
   // code through the generic engine. Credentials + optional Tavily key
   // arrive in headers from the browser credential store.
   if (code && isRegistryCode(code)) {
-    const provider = request.headers.get("x-llm-provider") ?? "anthropic";
-    let apiKey = request.headers.get("x-llm-key") ?? "";
-    if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-      apiKey = process.env.ANTHROPIC_API_KEY;
-    }
-    const cred = {
-      provider,
-      apiKey,
-      model: request.headers.get("x-llm-model") ?? "",
-      baseUrl: request.headers.get("x-llm-base-url") ?? "",
-    };
+    const cred = resolveCredentialFromRequest(request);
     const searchKey = request.headers.get("x-search-key") ?? process.env.TAVILY_API_KEY ?? "";
 
     const admin = await createAdminClient();
@@ -151,17 +183,7 @@ export async function POST(
   // request headers (the assigned profile in Settings), data from the
   // live Customer Health tables.
   if (code && isNativeCsCode(code)) {
-    const provider = request.headers.get("x-llm-provider") ?? "anthropic";
-    let apiKey = request.headers.get("x-llm-key") ?? "";
-    if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-      apiKey = process.env.ANTHROPIC_API_KEY;
-    }
-    const cred = {
-      provider,
-      apiKey,
-      model: request.headers.get("x-llm-model") ?? "",
-      baseUrl: request.headers.get("x-llm-base-url") ?? "",
-    };
+    const cred = resolveCredentialFromRequest(request);
 
     const admin = await createAdminClient();
     const { data: run, error: runErr } = await admin
