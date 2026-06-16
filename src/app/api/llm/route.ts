@@ -1,16 +1,24 @@
 // ============================================================
 // LLM PROXY ROUTE — provider-agnostic pass-through.
-// The user's API key arrives in request headers, is forwarded to
-// the chosen provider, and is NEVER logged or persisted.
-// Fallback: if no user key is provided and the provider is
-// Anthropic, the platform's ANTHROPIC_API_KEY env var is used
-// (lets Dane run the app without configuring a key in the UI).
-// Provider mechanics live in src/lib/llm/providers.ts, shared with
-// the native workflow runner.
+//
+// Three credential paths (resolution priority):
+//   1. x-llm-shared-id → resolveShared() pulls the env-var key
+//      server-side. Browser never sees the value. Org-managed
+//      shared profile pattern (see lib/llm/sharedCredentials).
+//      Provider/model/baseUrl are also overridden from the
+//      registry so a member can't accidentally re-route a shared
+//      key to a different endpoint.
+//   2. x-llm-key + x-llm-provider + x-llm-model + x-llm-base-url
+//      → personal BYOK headers (existing flow).
+//   3. ANTHROPIC_API_KEY env var fallback (anthropic only, for
+//      no-config local dev).
+// Keys are NEVER logged or persisted. Provider mechanics live in
+// src/lib/llm/providers.ts.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { callProvider } from "@/lib/llm/providers";
+import { resolveShared, isSharedId } from "@/lib/llm/sharedCredentials";
 
 export const runtime = "nodejs";
 // Thinking models (Gemini 2.5 Pro, o-series) can take 30s+ with a
@@ -24,13 +32,30 @@ interface LlmRequestBody {
 }
 
 export async function POST(req: NextRequest) {
-  const provider = req.headers.get("x-llm-provider") ?? "anthropic";
-  const model = req.headers.get("x-llm-model") ?? "";
-  const baseUrl = req.headers.get("x-llm-base-url") ?? "";
+  let provider = req.headers.get("x-llm-provider") ?? "anthropic";
+  let model = req.headers.get("x-llm-model") ?? "";
+  let baseUrl = req.headers.get("x-llm-base-url") ?? "";
   let apiKey = req.headers.get("x-llm-key") ?? "";
 
-  // Platform fallback for Anthropic only
-  if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+  // Shared profile path: server resolves the env-var key. Browser
+  // sent only the profile id. Provider/model/baseUrl from the
+  // registry override the headers so a member can't re-route a
+  // shared key to a different endpoint.
+  const sharedId = req.headers.get("x-llm-shared-id");
+  if (sharedId && isSharedId(sharedId)) {
+    const resolved = resolveShared(sharedId);
+    if (!resolved) {
+      return NextResponse.json(
+        { error: "Shared profile env var is not configured on the server." },
+        { status: 503 },
+      );
+    }
+    provider = resolved.provider;
+    model = model || resolved.model;
+    baseUrl = resolved.baseUrl || baseUrl;
+    apiKey = resolved.apiKey;
+  } else if (!apiKey && provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+    // Platform fallback for Anthropic only
     apiKey = process.env.ANTHROPIC_API_KEY;
   }
 
