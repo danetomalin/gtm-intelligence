@@ -16,7 +16,7 @@ import { PortfolioProvider } from "@/features/cs-health/components/PortfolioProv
 import { FloatingCopilot } from "@/components/floating-copilot";
 import { buildSystemPrompt, SUGGESTED_PROMPTS } from "@/features/cs-health/lib/chatContext";
 import WeeklyReviewTab from "@/features/cs-health/components/tabs/WeeklyReviewTab";
-import ImplLaunchTab from "@/features/cs-health/components/tabs/ImplLaunchTab";
+import OnboardingTab from "@/features/cs-health/components/tabs/OnboardingTab";
 import AccountsTab from "@/features/cs-health/components/tabs/AccountsTab";
 import RenewalForecastTab from "@/features/cs-health/components/tabs/RenewalForecastTab";
 import ExpansionTab from "@/features/cs-health/components/tabs/ExpansionTab";
@@ -30,7 +30,7 @@ const TABS = [
   "expansion",
   "churn intelligence",
   "emerging signals",
-  "implementation & launch",
+  "onboarding",
 ] as const;
 
 export default function HealthDashboard({ data = DATA }: { data?: PortfolioData }) {
@@ -95,7 +95,7 @@ export default function HealthDashboard({ data = DATA }: { data?: PortfolioData 
       </nav>
 
       {activeTab === "weekly review" && <WeeklyReviewTab allScored={allScored} stats={stats} />}
-      {activeTab === "implementation & launch" && <ImplLaunchTab />}
+      {activeTab === "onboarding" && <OnboardingTab />}
       {activeTab === "accounts" && <AccountsTab allScored={allScored} />}
       {activeTab === "renewal forecast" && <RenewalForecastTab allScored={allScored} />}
       {activeTab === "expansion" && <ExpansionTab allScored={allScored} />}
