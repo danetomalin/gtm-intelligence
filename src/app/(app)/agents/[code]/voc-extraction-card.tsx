@@ -24,7 +24,10 @@ export type CompellingEvent = {
 
 export type CommitteeRole = {
   role?: string | null;
-  influence_weight?: number | null;
+  // The ICP/VoC prompt schema can emit influence_weight as a numeric
+  // score OR a qualitative string ("high" | "medium" | "low"), so the
+  // render guards on typeof before calling toFixed.
+  influence_weight?: number | string | null;
   typical_pain_focus?: string | null;
   observed_in_pct?: number | null;
 };
@@ -233,7 +236,7 @@ export function VoCExtractionCard({
                   {c.observed_in_pct != null && `${c.observed_in_pct.toFixed(0)}%`}
                   {c.influence_weight != null && (
                     <span>
-                      · weight {c.influence_weight.toFixed(1)}
+                      · weight {typeof c.influence_weight === "number" ? c.influence_weight.toFixed(1) : c.influence_weight}
                     </span>
                   )}
                 </div>

@@ -35,7 +35,9 @@ type ICPPain = {
 
 type ICPCommittee = {
   role?: string;
-  influence_weight?: number;
+  // Can be a numeric score or a qualitative string ("high"|"medium"|
+  // "low") depending on the run — render guards on typeof.
+  influence_weight?: number | string | null;
   primary_pain_focus?: string;
 };
 
@@ -324,7 +326,7 @@ export function ICPDefinitionCard({
                 </div>
                 {c.influence_weight != null && (
                   <span className="text-text-dim text-xs tabular-nums">
-                    weight {c.influence_weight.toFixed(1)}
+                    weight {typeof c.influence_weight === "number" ? c.influence_weight.toFixed(1) : c.influence_weight}
                   </span>
                 )}
               </li>
