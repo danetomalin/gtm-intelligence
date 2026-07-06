@@ -16,7 +16,7 @@ Owner: Dane · Updated: 2026-06-12 (resequenced against the product vision)
 ---
 
 ## 1 · Output → Input feedback loop
-**Status: Queued (next build) · Why first: every later feature inherits the steering**
+**Status: SHIPPED 2026-07-06 (migration 0035) — v1 covers dossiers; extend the Feedback button to other artifact cards as they come up**
 
 A Feedback button on every output card (dossiers first): verdict (keep / not relevant / needs change) + free-text comment → `workflow_feedback` table. Feedback applies through four layers, strongest first:
 
