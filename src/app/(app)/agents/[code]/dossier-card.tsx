@@ -1,3 +1,5 @@
+import { FeedbackButton } from "../../_components/feedback-button";
+
 export type Dossier = {
   id: string;
   competitor_name: string | null;
@@ -89,6 +91,17 @@ export function DossierCard({
             </p>
           </div>
         )}
+      </div>
+
+      {/* Output→input loop: feedback on this dossier steers R-CI (or
+          the brand) on every future run. */}
+      <div className="mt-3 border-t border-border/60 pt-2">
+        <FeedbackButton
+          workflowCode="R-CI"
+          artifactTable="competitive_dossiers"
+          artifactId={dossier.id}
+          competitorName={dossier.competitor_name}
+        />
       </div>
     </div>
   );

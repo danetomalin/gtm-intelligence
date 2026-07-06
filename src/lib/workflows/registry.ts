@@ -58,7 +58,7 @@ const rms: WorkflowSpec<typeof signalSchema> = {
   buildContext: async (admin, ids) => {
     const [brand, competitors, recent] = await Promise.all([
       brandLine(admin, ids),
-      admin.from("brand_competitors").select("name, domain, keywords, risk_level").eq("brand_id", ids.brandId),
+      admin.from("brand_competitors").select("name, domain, keywords, risk_level").eq("brand_id", ids.brandId).eq("active", true),
       admin
         .from("market_signals")
         .select("headline, signal_date")
@@ -78,6 +78,7 @@ const rms: WorkflowSpec<typeof signalSchema> = {
       .from("brand_competitors")
       .select("name, risk_level")
       .eq("brand_id", ids.brandId)
+      .eq("active", true)
       .in("risk_level", ["HIGH", "MEDIUM"])
       .limit(3);
     const name = brand?.name ?? "the company";

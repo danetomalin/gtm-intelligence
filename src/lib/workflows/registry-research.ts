@@ -31,7 +31,8 @@ async function competitorBlock(admin: SupabaseClient, ids: WorkflowIds): Promise
   const { data } = await admin
     .from("brand_competitors")
     .select("name, domain, keywords, risk_level, latest_messaging, latest_pricing_summary")
-    .eq("brand_id", ids.brandId);
+    .eq("brand_id", ids.brandId)
+    .eq("active", true);
   return (data ?? [])
     .map(
       (c) =>
@@ -44,7 +45,8 @@ async function topCompetitors(admin: SupabaseClient, ids: WorkflowIds, n: number
   const { data } = await admin
     .from("brand_competitors")
     .select("name, risk_level")
-    .eq("brand_id", ids.brandId);
+    .eq("brand_id", ids.brandId)
+    .eq("active", true);
   const order = { HIGH: 0, MEDIUM: 1, LOW: 2 } as Record<string, number>;
   return (data ?? [])
     .sort((a, b) => (order[a.risk_level ?? "LOW"] ?? 3) - (order[b.risk_level ?? "LOW"] ?? 3))

@@ -155,6 +155,54 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
     externalSources = `\n\n=== EXTERNAL DATA SOURCES ===\n${parts.join("\n\n")}`;
   }
 
+  // 2c. Feedback loop (migration 0035, BACKLOG item 1).
+  //   Brand learnings — layer 5 of the brand code: durable operating
+  //     learnings promoted from feedback. Active learnings reach EVERY
+  //     workflow run — one correction propagates to all future outputs.
+  //   Open feedback — until applied or dismissed, feedback rides the
+  //     next run's context verbatim: workflow-scoped feedback rides
+  //     this workflow; brand-scoped feedback rides all workflows.
+  let feedbackBlock = "";
+  {
+    const [{ data: learnings }, { data: openFeedback }] = await Promise.all([
+      admin
+        .from("brand_learnings")
+        .select("statement, layer, confidence")
+        .eq("organization_id", ids.organizationId)
+        .eq("brand_id", ids.brandId)
+        .eq("active", true)
+        .order("created_at", { ascending: true })
+        .limit(40),
+      admin
+        .from("workflow_feedback")
+        .select("verdict, comment, scope, workflow_code")
+        .eq("organization_id", ids.organizationId)
+        .eq("status", "new")
+        .or(`workflow_code.eq.${spec.code},scope.eq.brand`)
+        .order("created_at", { ascending: true })
+        .limit(20),
+    ]);
+    const parts: string[] = [];
+    if (learnings && learnings.length > 0) {
+      parts.push(
+        `=== BRAND CODE — OPERATING LEARNINGS (must respect) ===\n` +
+          learnings
+            .map((l) => `- [${l.layer}${l.confidence !== "confirmed" ? ` · ${l.confidence}` : ""}] ${l.statement}`)
+            .join("\n"),
+      );
+    }
+    const relevant = (openFeedback ?? []).filter((f) => (f.comment ?? "").trim());
+    if (relevant.length > 0) {
+      parts.push(
+        `=== USER FEEDBACK (must respect — open corrections awaiting application) ===\n` +
+          relevant
+            .map((f) => `- [${f.verdict}${f.scope === "brand" ? " · brand-wide" : ""}] ${f.comment}`)
+            .join("\n"),
+      );
+    }
+    if (parts.length > 0) feedbackBlock = `\n\n${parts.join("\n\n")}`;
+  }
+
   // 3. Optional web research. Gemini profiles use the model's native
   // Google Search grounding (Dane 2026-06-11 — best access to current
   // info, no Tavily key needed); other providers use Tavily.
@@ -194,7 +242,7 @@ export async function runWorkflowSpec<S extends ZodTypeAny>(
   }
 
   // 4. Model call on the assigned credential profile.
-  const user = `${spec.task}\n\n=== DATA CONTEXT ===\n${context}${externalSources}${research}\n\n=== OUTPUT FORMAT (MANDATORY) ===\n${spec.outputInstruction}\nReturn ONLY valid JSON — no prose, no markdown fences.`;
+  const user = `${spec.task}\n\n=== DATA CONTEXT ===\n${context}${externalSources}${feedbackBlock}${research}\n\n=== OUTPUT FORMAT (MANDATORY) ===\n${spec.outputInstruction}\nReturn ONLY valid JSON — no prose, no markdown fences.`;
   const usage: RunUsage = { provider: cred.provider, model: cred.model, inputTokens: 0, outputTokens: 0 };
   const addUsage = (u?: { inputTokens: number; outputTokens: number }) => {
     if (u) {

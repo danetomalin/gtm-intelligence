@@ -29,7 +29,7 @@ export async function buildSimSeed(
 ): Promise<SimSeed> {
   const [brand, comps, personas] = await Promise.all([
     admin.from("brands").select("name, website_url").eq("id", brandId).maybeSingle(),
-    admin.from("brand_competitors").select("name").eq("brand_id", brandId).limit(6),
+    admin.from("brand_competitors").select("name").eq("brand_id", brandId).eq("active", true).limit(6),
     admin.from("buyer_personas").select("persona_name, title").eq("brand_id", brandId).limit(3),
   ]);
   return {

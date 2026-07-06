@@ -23,6 +23,7 @@ import { formatCost, formatTokens } from "@/lib/llm/pricing";
 import { CredentialAssign } from "../settings/credential-assign";
 import { InstructionsEditor } from "../settings/instructions-editor";
 import { DataConnections } from "./data-connections";
+import { FeedbackPanel } from "./feedback-panel";
 import {
   CS_TRACK,
   PIPELINE_STAGES,
@@ -471,6 +472,16 @@ export function CommandCenterClient({
                 code={code}
                 defaultInstructions={purposes[code] ?? "Behave per the workflow's built-in brief."}
               />
+            </div>
+
+            {/* Output→input feedback loop (migration 0035): open feedback,
+                application layers, and the brand-code learnings it can
+                promote into. */}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-dim">
+                Feedback
+              </p>
+              <FeedbackPanel workflowCode={code} />
             </div>
 
             {/* Last error in full, with the classified diagnosis. */}
