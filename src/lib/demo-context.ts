@@ -16,3 +16,8 @@ export const DEMO_BRAND_WEBSITE = "https://www.deputy.com/";
 export const DEMO_CS_ORG_ID = "33333333-3333-3333-3333-333333333333";
 export const DEMO_CS_BRAND_ID = "44444444-4444-4444-4444-444444444444";
 export const DEMO_CS_COMPANY = "Halcyon";
+
+// Live-connector testing org (migration 0036): real HubSpot/Zendesk syncs
+// write here so the Halcyon demo portfolio is never touched. Point the
+// dashboard at it with CS_HEALTH_ORG_ID env var when verifying.
+export const INTEGRATION_TEST_ORG_ID = "66666666-6666-6666-6666-666666666666";

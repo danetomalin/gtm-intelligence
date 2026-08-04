@@ -4,6 +4,7 @@ import { DEMO_BRAND_NAME } from "@/lib/demo-context";
 import { CommandCenterClient } from "./command-center-client";
 import { CostLedger } from "./cost-ledger";
 import { ApprovalsPanel } from "./approvals-panel";
+import { ConnectorPanel } from "./connector-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ export default function CommandCenterPage() {
       <CommandCenterClient names={names} purposes={purposes} />
 
       <ApprovalsPanel />
+
+      <ConnectorPanel />
 
       <CostLedger names={names} />
     </div>
