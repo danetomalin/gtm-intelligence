@@ -55,6 +55,16 @@ export function ConnectorPanel() {
     void refresh();
   }, [refresh]);
 
+  // Read a response defensively: server crashes can return non-JSON
+  // (e.g. a 500 page), which must still surface as a visible message.
+  async function readBody(res: Response): Promise<{ error?: string; result?: Record<string, number> }> {
+    try {
+      return await res.json();
+    } catch {
+      return { error: `Server error (${res.status}) — check the deployment function logs.` };
+    }
+  }
+
   async function save() {
     setBusy("save");
     setMessage(null);
@@ -64,7 +74,7 @@ export function ConnectorPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, baseUrl }),
       });
-      const body = await res.json();
+      const body = await readBody(res);
       if (!res.ok) {
         setMessage(body.error ?? "Save failed");
       } else {
@@ -73,6 +83,8 @@ export function ConnectorPanel() {
         setEditing(false);
         await refresh();
       }
+    } catch (e) {
+      setMessage(`Request failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
@@ -83,14 +95,16 @@ export function ConnectorPanel() {
     setMessage(null);
     try {
       const res = await fetch("/api/connectors/hubspot/sync", { method: "POST" });
-      const body = await res.json();
+      const body = await readBody(res);
       setMessage(
-        res.ok
+        res.ok && body.result
           ? `Synced: ${body.result.companies} companies, ${body.result.deals} deals -> ` +
             `${body.result.accountsUpserted} accounts (${body.result.baselinesInserted} new baselines).`
           : (body.error ?? "Sync failed"),
       );
       await refresh();
+    } catch (e) {
+      setMessage(`Request failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
     }
