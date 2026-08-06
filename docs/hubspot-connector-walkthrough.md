@@ -73,6 +73,24 @@ To test without a real HubSpot account: run the prototype mock
 set the panel's Base URL to `http://127.0.0.1:8900/hubspot` and token to
 `mock-hs-token`.
 
+## Review follow-ups (second commit)
+
+- **Connector registry + dynamic routes** — routes are now
+  `/api/connectors/[source]/credentials|sync`, dispatching through
+  `connectors/registry.ts`. Adding Zendesk later = one registry entry
+  (id, name, defaultBaseUrl, validate, sync) + a sync function. Per-source
+  platform defaults (like HubSpot's API host) live in the registry entry,
+  overridable per-org via the stored `base_url`.
+- **Structured logging** — `src/lib/connectors/logger.ts` emits one-line
+  JSON events (sync.start/complete/failed, rate-limit warnings, credential
+  validation outcomes) that Vercel's Logs dashboard captures and makes
+  searchable. Hard rules: never log credential values or API response
+  bodies — counts, ids, durations, truncated errors only.
+- **Gated integration test** — `hubspot.integration.test.ts` runs the real
+  fetch→map path against the prototype mock server. Skipped unless
+  `CONNECTOR_IT_URL` is set, so CI needs no infrastructure:
+  `CONNECTOR_IT_URL=http://127.0.0.1:8900/hubspot npm test`
+
 ## Design decisions worth knowing
 
 - **Why a neutral 60/55/60 baseline?** The dashboard only renders accounts

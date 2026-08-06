@@ -18,6 +18,7 @@
 // ============================================================
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { connectorLog } from "@/lib/connectors/logger";
 
 export interface HubSpotConfig {
   baseUrl: string; // https://api.hubapi.com, or the prototype mock
@@ -64,6 +65,7 @@ async function hsFetch<T>(
     });
     if (res.status === 429) {
       const wait = Number(res.headers.get("retry-after") ?? 2 ** attempt);
+      connectorLog.warn("hubspot", "http.rate_limited", { path, attempt, waitSeconds: wait });
       await new Promise((r) => setTimeout(r, wait * 1000));
       continue;
     }
@@ -183,6 +185,10 @@ export async function syncHubSpot(
   organizationId: string,
 ): Promise<SyncResult> {
   const { companies, deals } = await fetchPortfolio(cfg);
+  connectorLog.info("hubspot", "fetch.complete", {
+    companies: companies.length,
+    deals: deals.length,
+  });
   const rows = mapToAccounts(companies, deals, organizationId);
 
   // Upsert accounts on the natural key (organization_id, external_id).
