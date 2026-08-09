@@ -31,16 +31,21 @@ const REASON_META: Record<string, { label: string; color: string }> = {
 export async function loadPortfolioData(): Promise<PortfolioData> {
   if (process.env.CS_HEALTH_DATA_SOURCE === "mock") return DATA;
 
+  // CS_HEALTH_ORG_ID lets a preview/staging deployment point the dashboard
+  // at another org (e.g. the Integration Test org that live connector
+  // syncs write to) without touching the Halcyon default.
+  const orgId = process.env.CS_HEALTH_ORG_ID ?? DEMO_CS_ORG_ID;
+
   try {
     const supa = await createAdminClient();
 
     const [accountsRes, varRes, snapRes, churnRes] = await Promise.all([
-      supa.from("accounts").select("*").eq("organization_id", DEMO_CS_ORG_ID),
-      supa.from("var_metrics").select("*").eq("organization_id", DEMO_CS_ORG_ID)
+      supa.from("accounts").select("*").eq("organization_id", orgId),
+      supa.from("var_metrics").select("*").eq("organization_id", orgId)
         .order("as_of", { ascending: false }),
       supa.from("health_score_snapshots").select("account_id, as_of, score")
-        .eq("organization_id", DEMO_CS_ORG_ID).order("as_of", { ascending: true }),
-      supa.from("churn_events").select("*").eq("organization_id", DEMO_CS_ORG_ID)
+        .eq("organization_id", orgId).order("as_of", { ascending: true }),
+      supa.from("churn_events").select("*").eq("organization_id", orgId)
         .order("churn_date", { ascending: true }),
     ]);
 

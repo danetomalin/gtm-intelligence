@@ -1,5 +1,6 @@
 import { PageHeader } from "../_components/page-header";
 import HealthDashboard from "@/features/cs-health/components/HealthDashboard";
+import { FreshnessBar } from "@/features/cs-health/components/FreshnessBar";
 import { loadPortfolioData } from "@/features/cs-health/lib/loadPortfolio";
 import Link from "next/link";
 import { agentTooling } from "@/lib/demo-data";
@@ -25,6 +26,7 @@ export default async function CustomerHealthPage() {
         title="Customer Health"
         subtitle="VAR health model, confidence-weighted renewal forecasting, and expansion readiness across the Deputy customer portfolio — 30 named accounts plus an SMB cohort."
       />
+      <FreshnessBar />
       <HealthDashboard data={data} />
 
       {/* CS workflows — merged from the old CS workspace landing */}
