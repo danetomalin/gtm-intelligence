@@ -119,6 +119,7 @@ export interface AccountRow {
   organization_id: string;
   external_id: string;
   name: string;
+  domain: string | null; // cross-source join key (Zendesk orgs match on this)
   arr: number;
   segment: "ENT" | "MM" | "SMB";
   stage: "Implementation" | "Launch" | "Steady State" | "Renewal Window";
@@ -165,6 +166,7 @@ export function mapToAccounts(
       organization_id: organizationId,
       external_id: c.id,
       name: c.properties.name ?? c.properties.domain ?? `Company ${c.id}`,
+      domain: c.properties.domain?.toLowerCase() ?? null,
       arr,
       segment: arr >= 100_000 ? "ENT" : arr >= 25_000 ? "MM" : "SMB",
       stage:

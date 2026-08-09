@@ -1,12 +1,13 @@
 // ============================================================
 // /api/connectors/[source]/credentials — generic over the
-// connector registry (review follow-up: no per-source routes).
+// registry, with credential fields DECLARED by each connector
+// (design §6). PUT validates live via the connector's validate()
+// before encrypting + saving. GET returns metadata only.
 //
-// PUT  — validate credentials live via the connector's validate(),
-//        encrypt, save. GET — metadata only; never the token.
-//
-// Writes are scoped to the Integration Test org (migration 0036)
-// until real multi-tenant sessions land.
+// Body shape:  { values: { <declared field key>: string, ... } }
+// "baseUrl" is an optional declared field; when absent the
+// connector's defaultBaseUrl applies. Legacy { token } bodies from
+// the HubSpot-era panel are accepted for backward compatibility.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -47,21 +48,29 @@ export async function PUT(
     return NextResponse.json({ error: `Unknown connector: ${source}` }, { status: 404 });
   }
 
-  let body: { token?: string; baseUrl?: string };
+  let body: { values?: Record<string, string>; token?: string; baseUrl?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
   }
-  const token = (body.token ?? "").trim();
-  const baseUrl = (body.baseUrl ?? connector.defaultBaseUrl).trim().replace(/\/$/, "");
-  if (!token) {
-    return NextResponse.json({ error: "token is required" }, { status: 400 });
-  }
+  // Accept both the declared-fields shape and the legacy flat shape.
+  const values: Record<string, string> = { ...(body.values ?? {}) };
+  if (body.token && !values.token) values.token = body.token;
+  if (body.baseUrl && !values.baseUrl) values.baseUrl = body.baseUrl;
 
-  // Validate live before saving — a saved-but-broken token is the worst state.
+  for (const field of connector.credentialFields) {
+    if (field.key === "baseUrl") continue; // optional; default applies
+    if (!(values[field.key] ?? "").trim()) {
+      return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });
+    }
+    values[field.key] = values[field.key].trim();
+  }
+  const baseUrl = (values.baseUrl ?? connector.defaultBaseUrl).trim().replace(/\/$/, "");
+  values.baseUrl = baseUrl;
+
   connectorLog.info(source, "credentials.validate.start", { baseUrl });
-  const check = await connector.validate({ baseUrl, token });
+  const check = await connector.validate({ baseUrl, values });
   if (!check.ok) {
     connectorLog.warn(source, "credentials.validate.failed", { baseUrl, message: check.message });
     return NextResponse.json({ error: check.message }, { status: 400 });
@@ -73,7 +82,7 @@ export async function PUT(
       organization_id: INTEGRATION_TEST_ORG_ID,
       source_id: source,
       base_url: baseUrl,
-      encrypted: encryptJson({ token }),
+      encrypted: encryptJson({ values }),
       status: "configured",
       last_error: null,
     },
@@ -83,6 +92,6 @@ export async function PUT(
     connectorLog.error(source, "credentials.save.failed", { message: error.message });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  connectorLog.info(source, "credentials.saved", { baseUrl, tokenConfigured: true });
+  connectorLog.info(source, "credentials.saved", { baseUrl });
   return NextResponse.json({ ok: true });
 }
